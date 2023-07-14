@@ -1,0 +1,50 @@
+{
+  "name": "blueskyfeeds.com",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "cross-env NODE_OPTIONS='--inspect' node server.js",
+    "build": "next build",
+    "start": "node server.js",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@atproto/api": "^0.3.12",
+    "@headlessui/react": "^1.7.4",
+    "@tailwindcss/forms": "^0.5.3",
+    "add": "^2.0.6",
+    "axios": "^1.1.3",
+    "base-x": "^4.0.0",
+    "buffer": "^6.0.3",
+    "clsx": "^1.2.1",
+    "cookies-next": "^2.1.1",
+    "express-rate-limit": "^6.7.1",
+    "express-slow-down": "^1.6.0",
+    "jquery": "^3.7.0",
+    "mongodb": "^4.12.0",
+    "next": "13.0.4",
+    "next-auth": "^4.17.0",
+    "next-translate": "^1.6.0",
+    "node-cron": "^3.0.2",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-dropzone": "^14.2.3",
+    "react-hook-form": "^7.39.6",
+    "react-icons": "^4.7.1",
+    "react-table": "^7.8.0",
+    "tailwindcss": "^3.2.4",
+    "typescript": "4.9.3",
+    "uuid": "^9.0.0",
+    "yarn": "^1.22.19"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.9",
+    "@types/react": "^18.0.15",
+    "@types/react-dom": "^18.0.9",
+    "autoprefixer": "^10.4.13",
+    "cross-env": "^7.0.3",
+    "eslint": "8.20.0",
+    "eslint-config-next": "12.2.2",
+    "postcss": "^8.4.19"
+  }
+}
