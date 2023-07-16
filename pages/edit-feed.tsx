@@ -24,6 +24,7 @@ import ModalManualSearch from "features/components/specific/ModeManualSearch";
 import {connectToDatabase} from "features/utils/dbUtils";
 import {serializeFile} from "features/utils/fileUtils";
 import {SIGNATURE} from "features/utils/constants";
+import {SUPPORTED_LANGUAGES} from "features/utils/constants";
 
 export async function getServerSideProps({req, res, query}) {
     const db = await connectToDatabase();
@@ -36,9 +37,22 @@ export async function getServerSideProps({req, res, query}) {
 
         const {feed:_feed} = query;
         if (_feed) {
-            const result = await getFeedDetails(agent, db, _feed);
-            if (result) {
-                feed = result;
+            const feedData:any = await getFeedDetails(agent, db, _feed);
+            if (feedData) {
+                let {allowList, blockList} = feedData;
+                const actors = [...allowList, ...blockList];
+                const {data:{profiles}} = await agent.api.app.bsky.actor.getProfiles({actors});
+                const findAndMatch = (acc, did) => {
+                    const profile = profiles.find(x => x.did === did);
+                    if (profile) {
+                        const {did, handle, displayName} = profile;
+                        acc.push({did, handle, displayName});
+                    }
+                    return acc;
+                };
+                allowList = allowList.reduce(findAndMatch, []);
+                blockList = blockList.reduce(findAndMatch, []);
+                feed = {...feedData, allowList, blockList};
             } else {
                 return { redirect: { destination: '/404', permanent: false } }
             }
@@ -54,15 +68,19 @@ export async function getServerSideProps({req, res, query}) {
 export default function Home({feed}) {
     const router = useRouter();
     const languageNames = new Intl.DisplayNames([router.locale], {type: 'language'});
-    const SUPPORTED_LANGUAGES = [
-        {id:"", txt:"Blank (many users have not set their language)"},
-        {id:"en", txt:`${languageNames.of("en")} (en)`},
-        {id:"ja", txt: `${languageNames.of("ja")} (ja)`},
-    ];
+    const SUPPORTED_LANG = SUPPORTED_LANGUAGES.map(id => {
+        let txt;
+        if (id === "") {
+            txt = "Blank (many users have not set their language)";
+        } else {
+            txt = `${languageNames.of(id)} (${id})`;
+        }
+        return {
+            id, txt
+        }
+    });
     const { data: session } = useSession();
     const [languages, setLanguages] = useState<string[]>([]);
-    const [allowList, setAllowList] = useState<{did:string, handle:string, displayName:string}[]>([]);
-    const [blockList, setBlockList] = useState<{did:string, handle:string, displayName:string}[]>([]);
     const [tokenSearch, setTokenSearch] = useState<string[]>([]);
     const [manualSearch, setManualSearch] = useState<{w:string, pre:string[], suf:string[]}[]>([]);
     const [newKeywordMode, setNewKeywordMode] = useState<"token"|"character">("token");
@@ -83,15 +101,14 @@ export default function Home({feed}) {
 
     useEffect(() => {
         if (!feed) {
-            reset({sort:"chronological"});
-            setLanguages(SUPPORTED_LANGUAGES.map(x => x.id));
-            setAllowList([]);
-            setBlockList([]);
+            reset({sort:"chronological", allowList:[], blockList:[]});
+            setLanguages(SUPPORTED_LANGUAGES);
         } else {
-            const {avatar, sort, uri, displayName, description} = feed;
+            const {avatar, sort, uri, displayName, description, blockList, allowList, languages} = feed;
+
             let o:any = {
                 sort,displayName, description: description.replaceAll(SIGNATURE, ""),
-                shortName: uri.split("/").at(-1),
+                shortName: uri.split("/").at(-1), blockList, allowList
             };
 
             if (avatar) {
@@ -101,6 +118,11 @@ export default function Home({feed}) {
 
             reset(o);
             setShortNameLocked(true);
+            if (languages) {
+                setLanguages(languages);
+            } else {
+                setLanguages(SUPPORTED_LANGUAGES);
+            }
 
         }
     }, [feed]);
@@ -114,6 +136,9 @@ export default function Home({feed}) {
         return async(val, callback) => {
             if (val.startsWith("@") || val.startsWith("did:plc:")) {
                 const user = val.startsWith("@")? val.slice(1) : val;
+                console.log("user", user);
+                const allowList = getValues("allowList");
+                const blockList = getValues("blockList");
                 if (blockList.find(x => x.did === user || x.handle === user)) {
                     setError(fieldName, {type:'custom', message:`${user} is already in Block List`});
                 } else if (allowList.find(x => x.did === user || x.handle === user)) {
@@ -124,16 +149,16 @@ export default function Home({feed}) {
                             //@ts-ignore
                             const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
                             //@ts-ignore
-                            const result = await localGet("/user/check", {
-                                captcha,
-                                user
-                            });
+                            const result = await localGet("/user/check", {captcha, user});
                             if (result.status === 200) {
                                 clearErrors(fieldName);
-                                callback();
+                                callback(result.data);
                             } else if (result.status === 400) {
                                 setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
+                            } else if (result.status === 401) {
+                                await router.reload();
                             } else {
+                                console.log(result);
                                 setError(fieldName, {type:'custom', message:"Error"});
                             }
                         });
@@ -160,7 +185,9 @@ export default function Home({feed}) {
                     useFormReturn={useFormReturn}
                     cleanUpData={async (data) => {
                         console.log(data);
-                        const {sort, file, displayName, shortName, description} = data;
+                        const {sort, file, displayName, shortName, description, allowList:_allowList, blockList:_blockList} = data;
+                        const allowList = _allowList.map(x => x.did);
+                        const blockList = _blockList.map(x => x.did);
                         let imageObj:any = {};
                         if (file) {
                             const {type:encoding, changed, url} = file;
@@ -171,7 +198,7 @@ export default function Home({feed}) {
                                 imageObj = {encoding, imageUrl:url};
                             }
                         }
-                        const result = {...imageObj, displayName, shortName, description, allowList, blockList, languages, sort}
+                        const result = {...imageObj, displayName, shortName, description, allowList, blockList, languages, sort};
                         console.log(result);
 
                         return result;
@@ -247,16 +274,36 @@ export default function Home({feed}) {
                             className="border border-2 border-green-700 p-2 rounded-xl bg-lime-100"
                             labelText="Allow List: Show all posts from these Users"
                             placeHolder="@handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
-                            splitWithSpace={false} orderedList={false}
-                            fieldName="allowList" useFormReturn={useFormReturn}
+                            fieldName="allowList"
+                            handleItem={(item, value, onChange) => {
+                                value.push(item);
+                                value.sort((a,b) => {
+                                    return a.handle.localeCompare(b.handle);
+                                })
+                                onChange(value);
+                            }}
+                            valueModifier={item => {
+                                return `${item.displayName} @${item.handle}`
+                            }}
+                            useFormReturn={useFormReturn}
                             check={multiWordCallback("allowList")}/>
 
                         <InputMultiWord
                             className="border border-2 border-red-700 p-2 rounded-xl bg-pink-100"
                             labelText="Block List: Block all posts from these Users"
                             placeHolder="@handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
-                            splitWithSpace={false} orderedList={false}
-                            fieldName="blockList" useFormReturn={useFormReturn}
+                            fieldName="blockList"
+                            handleItem={(item, value, onChange) => {
+                                value.push(item);
+                                value.sort((a,b) => {
+                                    return a.handle.localeCompare(b.handle);
+                                })
+                                onChange(value);
+                            }}
+                            valueModifier={item => {
+                                return `${item.displayName} @${item.handle}`
+                            }}
+                            useFormReturn={useFormReturn}
                             check={multiWordCallback("blockList")}/>
                     </div>
 
@@ -266,28 +313,28 @@ export default function Home({feed}) {
                         <div className="grid grid-cols-2">
                             <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
                                  onClick={() => {
-                                     if (SUPPORTED_LANGUAGES.every(x => languages.indexOf(x.id) >= 0)) {
+                                     if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
                                          setLanguages([]);
                                      } else {
-                                         setLanguages(SUPPORTED_LANGUAGES.map(x => x.id));
+                                         setLanguages(SUPPORTED_LANG.map(x => x.id));
                                      }
                                  }}>
                                 <div className="flex items-center p-2">
                                     <input type="checkbox"
                                            onChange={() => {}}
                                            onClick={() => {
-                                               if (SUPPORTED_LANGUAGES.every(x => languages.indexOf(x.id) >= 0)) {
+                                               if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
                                                    setLanguages([]);
                                                } else {
-                                                   setLanguages(SUPPORTED_LANGUAGES.map(x => x.id));
+                                                   setLanguages(SUPPORTED_LANG.map(x => x.id));
                                                }
                                            }}
-                                           checked={SUPPORTED_LANGUAGES.every(x => languages.indexOf(x.id) >= 0)}
+                                           checked={SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)}
                                            className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-md")}
                                     />
                                     <div className={clsx("ml-3 text-gray-700")}>
                                         {
-                                            SUPPORTED_LANGUAGES.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
+                                            SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
                                                 Deselect All
                                                 <RxCross2 className="w-6 h-6 text-red-600"/>
                                             </div>: <div className="flex place-items-center">
@@ -299,7 +346,7 @@ export default function Home({feed}) {
                                 </div>
                             </div>
                             {
-                                SUPPORTED_LANGUAGES.map(({txt, id}) => {
+                                SUPPORTED_LANG.map(({txt, id}) => {
                                     const onClick = () => {
                                         if (languages.indexOf(id) < 0) {
                                             const lang = [...languages];

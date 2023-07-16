@@ -45,7 +45,6 @@ export const getMyFeedIds = async (agent) => {
 export const getFeedDetails = async (agent, db, feedId) => {
      const feeds = await getCustomFeeds(agent);
      const foundFeed = feeds.find(x => x.uri.endsWith(feedId));
-     console.log("found", foundFeed);
      if (!foundFeed) { return false; }
      const dbData = await db.feeds.findOne({_id: foundFeed.uri});
      if (!dbData) { return false; }

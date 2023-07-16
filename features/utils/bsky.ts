@@ -118,7 +118,6 @@ export const editFeed = async (agent, {img, shortName, displayName, description}
             createdAt: new Date().toISOString(),
         },
     };
-    console.log(record);
 
     return await agent.api.com.atproto.repo.putRecord(record);
 }
