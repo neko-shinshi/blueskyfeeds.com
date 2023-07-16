@@ -122,7 +122,7 @@ export default function InputMultiWord(
                                 </button>
                             </div>
                             {
-                                dotObjectStringPath(errors, fieldName) && <div>{dotObjectStringPath(errors, fieldName).message as unknown as string}</div>
+                                dotObjectStringPath(errors, fieldName) && <div className="text-red-700">{dotObjectStringPath(errors, fieldName).message as unknown as string}</div>
                             }
                             <SortableWordBubbles value={value} orderedList={orderedList} disabled={disabled} valueModifier={text => {return`${prefix}${text}`}} updateCallback={onChange}/>
                         </div>

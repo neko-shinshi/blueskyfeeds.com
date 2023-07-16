@@ -1,20 +1,110 @@
 import HeadExtended from "features/layout/HeadExtended";
 import {connectToDatabase} from "features/utils/dbUtils";
-import {useEffect} from "react";
-import Table from "features/components/table/Table";
+import {useEffect, useRef, useState} from "react";
 import Link from "next/link";
 import {SiBuzzfeed} from "react-icons/si";
 import PageHeader from "features/components/PageHeader";
 import {rebuildAgentFromSession, getMyFeedIds, feedUriToUrl} from "features/utils/feedUtils";
 import {getSessionData} from "features/network/session";
+import {multipleIndexOf} from "features/utils/textUtils";
+import {localDelete, urlWithParams} from "features/network/network";
+import PopupConfirmation from "features/components/PopupConfirmation";
+import {useRecaptcha} from "features/auth/RecaptchaProvider";
+import FeedItem from "features/components/specific/FeedItem";
+import clsx from "clsx";
+import {useRouter} from "next/router";
 
-export async function getServerSideProps({req, res}) {
+export async function getServerSideProps({req, res, query}) {
     const db = await connectToDatabase();
     if (!db) { return { redirect: { destination: '/500', permanent: false } } }
-    const feedsDefault = (await db.allFeeds.find({}).sort({likeCount:-1, indexedAt:1}).limit(10).toArray()).map(x => {
-        const {_id:uri, ...y} = x;
-        return {...y, uri};
-    });
+
+    const PAGE_SIZE = 20;
+    let {t, q, p} = query;
+    let $search, $skip;
+    if (p) {
+        $skip = parseInt(p) * PAGE_SIZE;
+        if (isNaN($skip)) {
+            return { redirect: { destination: '/400', permanent: false } };
+        }
+    }
+
+    if (q) {
+        let path = ["description", "displayName"];
+        if (t === "name") {
+            path = ["creator.handle", "creator.displayName"];
+        }
+        q = q.split("");
+        q = q.reduce((acc, x) => {
+            switch (x) {
+                case " ": {
+                    if (acc.carry.indexOf("\"") >= 0) {
+                        acc.carry.push(x);
+                    } else {
+                        const carry = acc.carry.filter(x => x !== "\"");
+                        acc.arr.push(carry);
+                        acc.carry = [];
+                    }
+                    break;
+                }
+                case "\"": {
+                    if ((acc.carry.length === 1 && acc.carry[0] === "-") || acc.carry.length === 0) {
+                        acc.carry.push(x);
+                    } else if (acc.carry.indexOf("\"") >= 0) {
+                        // break carry
+                        const carry = acc.carry.filter(x => x !== "\"");
+                        acc.arr.push(carry);
+                        acc.carry = [];
+                    } else {
+                        // break carry & push ""
+                        const carry = acc.carry.filter(x => x !== "\"");
+                        acc.arr.push(carry);
+                        acc.carry = ["\""];
+                    }
+                    break;
+                }
+                default: {
+                    acc.carry.push(x);
+                    break;
+                }
+            }
+            return acc;
+        }, {arr:[], carry:[]});
+        q = [...q.arr, q.carry].filter(x => x.length > 0).map(x => x.join(""));
+        let {o, x} = q.reduce((acc, y) => {
+            if (y.startsWith("-")) {
+                acc.x.push(y.slice(1));
+            } else {
+                acc.o.push(y);
+            }
+            return acc;
+        }, {o:[], x:[]});
+        $search = {
+            index: "all-feed-search",
+            compound: {
+                must: o.map(query => {
+                    return {phrase: {query, path}};
+                }),
+                mustNot: x.map(query => {
+                    return {phrase: {query, path}};
+                })
+            }
+        };
+    }
+
+    const agg = [
+        $search && {$search},
+        { $sort : { likeCount:-1, indexedAt:1 } },
+        $skip && { $skip },
+        { $limit: PAGE_SIZE },
+        {
+            $project: {
+                _id: 0, uri: "$_id",
+                cid:1, did:1, creator:1, avatar:1,
+                displayName:1, description:1, likeCount:1, indexedAt:1
+            },
+        },
+    ].filter(x => x);
+    const feeds = await db.allFeeds.aggregate(agg).toArray();
     let myFeeds = [];
 
     let session = await getSessionData(req, res);
@@ -26,81 +116,67 @@ export async function getServerSideProps({req, res}) {
     }
 
 
-    return {props: {session, myFeeds, feedsDefault}};
+    return {props: {session, myFeeds, feeds}};
 }
 
-const columns = [
-    {
-        Header: "Feed",
-        columns: [
-            {Header: "Image", disableFilters:true, Cell: tableProps => {
-                    const url = tableProps.row.original.avatar;
-                    return <>{
-                        url?<img
-                            src={url}
-                            className="w-8 h-8 rounded-xl"
-                            alt='Feed Image'
-                        />:<svg className="w-8 h-8 bg-[#0070FF] rounded-xl" viewBox="0 0 32 32">
-                            <path d="M13.5 7.25C13.5 6.55859 14.0586 6 14.75 6C20.9648 6 26 11.0352 26 17.25C26 17.9414 25.4414 18.5 24.75 18.5C24.0586 18.5 23.5 17.9414 23.5 17.25C23.5 12.418 19.582 8.5 14.75 8.5C14.0586 8.5 13.5 7.94141 13.5 7.25ZM8.36719 14.6172L12.4336 18.6836L13.543 17.5742C13.5156 17.4727 13.5 17.3633 13.5 17.25C13.5 16.5586 14.0586 16 14.75 16C15.4414 16 16 16.5586 16 17.25C16 17.9414 15.4414 18.5 14.75 18.5C14.6367 18.5 14.5312 18.4844 14.4258 18.457L13.3164 19.5664L17.3828 23.6328C17.9492 24.1992 17.8438 25.1484 17.0977 25.4414C16.1758 25.8008 15.1758 26 14.125 26C9.63672 26 6 22.3633 6 17.875C6 16.8242 6.19922 15.8242 6.5625 14.9023C6.85547 14.1602 7.80469 14.0508 8.37109 14.6172H8.36719ZM14.75 9.75C18.8906 9.75 22.25 13.1094 22.25 17.25C22.25 17.9414 21.6914 18.5 21 18.5C20.3086 18.5 19.75 17.9414 19.75 17.25C19.75 14.4883 17.5117 12.25 14.75 12.25C14.0586 12.25 13.5 11.6914 13.5 11C13.5 10.3086 14.0586 9.75 14.75 9.75Z" fill="white">
-                            </path>
-                        </svg>
-                    }</>
-                }},
-            {Header: "Feed Name", accessor: "displayName", Cell: tableProps => {
-                    const {displayName, uri} = tableProps.row.original;
-                    const feedUrl = `https://bsky.app/profile/${feedUriToUrl(uri)}`;
 
-                    return <a href={feedUrl} className="text-blue-500 hover:underline hover:text-blue-700">
-                        {displayName}
-                    </a>
-                }},
-            {Header: "Description", accessor: "description"},
-            {Header: "Likes", accessor: "likeCount"},
-        ]
-    },
-    {
-        Header: "Owner",
-        columns: [
-            {Header: "Avatar", disableFilters:true, Cell: tableProps => {
-                    const url = tableProps.row.original.creator.avatar;
-                    return <a href={`https://bsky.app/profile/${tableProps.row.original.creator.handle}`}>{
-                        url?<img
-                            src={url}
-                            className="w-8 h-8 rounded-xl"
-                            alt='User Image'
-                        />:<svg className="w-8 h-8 bg-[#0070FF] rounded-xl" viewBox="0 0 32 32">
-                            <path d="M13.5 7.25C13.5 6.55859 14.0586 6 14.75 6C20.9648 6 26 11.0352 26 17.25C26 17.9414 25.4414 18.5 24.75 18.5C24.0586 18.5 23.5 17.9414 23.5 17.25C23.5 12.418 19.582 8.5 14.75 8.5C14.0586 8.5 13.5 7.94141 13.5 7.25ZM8.36719 14.6172L12.4336 18.6836L13.543 17.5742C13.5156 17.4727 13.5 17.3633 13.5 17.25C13.5 16.5586 14.0586 16 14.75 16C15.4414 16 16 16.5586 16 17.25C16 17.9414 15.4414 18.5 14.75 18.5C14.6367 18.5 14.5312 18.4844 14.4258 18.457L13.3164 19.5664L17.3828 23.6328C17.9492 24.1992 17.8438 25.1484 17.0977 25.4414C16.1758 25.8008 15.1758 26 14.125 26C9.63672 26 6 22.3633 6 17.875C6 16.8242 6.19922 15.8242 6.5625 14.9023C6.85547 14.1602 7.80469 14.0508 8.37109 14.6172H8.36719ZM14.75 9.75C18.8906 9.75 22.25 13.1094 22.25 17.25C22.25 17.9414 21.6914 18.5 21 18.5C20.3086 18.5 19.75 17.9414 19.75 17.25C19.75 14.4883 17.5117 12.25 14.75 12.25C14.0586 12.25 13.5 11.6914 13.5 11C13.5 10.3086 14.0586 9.75 14.75 9.75Z" fill="white">
-                            </path>
-                        </svg>
-                    }</a>
-                }},
-            {Header: "Name", accessor: "creator.displayName", Cell: tableProps => {
-                    const name = tableProps.row.original.creator.displayName;
-                    return <a href={`https://bsky.app/profile/${tableProps.row.original.creator.handle}`} className="text-blue-500 hover:underline hover:text-blue-700">
-                        {name}
-                    </a>
-                }}
-        ]
-    }
-
-];
-
-
-export default function Home({feedsDefault, myFeeds}) {
+export default function Home({feeds, myFeeds}) {
     const title = "BlueskyFeeds.com";
     const description = "Find your perfect feed algorithm for Bluesky Social App, or build one yourself";
+    const [popupState, setPopupState] = useState<"delete"|false>(false);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [busy, setBusy] = useState(false);
+    const [searchUser, setSearchUser] = useState(false);
+    const recaptcha = useRecaptcha();
+    const router = useRouter();
+    const searchTextRef = useRef(null);
+    const startSearch = async () => {
+        const q = searchTextRef.current.value;
+        if (!q.trim()) { await router.push("/"); return;}
+        let params:any = {q};
+        if (searchUser) {
+            params.t = "name";
+        }
+        await router.push(urlWithParams("/", params));
+    }
 
     useEffect(() => {
-        console.log("feeds", feedsDefault);
-    }, [feedsDefault]);
-    useEffect(() => {
-        console.log("myFeeds", myFeeds);
-    }, [myFeeds])
+        const {t, q} = router.query;
+        if (t) {
+            setSearchUser(t === "name");
+        }
+        if (q) {
+            searchTextRef.current.value = q;
+        }
+    }, [router]);
+
     return (
         <>
             <HeadExtended title={title}
                           description={description}/>
-            <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
+            <PopupConfirmation
+                isOpen={popupState === "delete"}
+                setOpen={setPopupState}
+                title={`Confirm deletion of ${selectedItem?.displayName}`}
+                message="This cannot be reversed"
+                yesCallback={async() => {
+                    if (typeof recaptcha !== 'undefined' && !busy) {
+                        recaptcha.ready(async () => {
+                            setBusy(true);
+                            //@ts-ignore
+                            const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                            const result = await localDelete("/feed/delete", {captcha, rkey: selectedItem.uri.split("/").slice(-1)[0]});
+                            if (result.status === 200) {
+                                router.reload();
+                            } else {
+                                console.log(result);
+                            }
+                            setBusy(false);
+                        });
+                    }
+                }
+                }/>
+            <div className="bg-sky-200 w-full max-w-7xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} />
 
                 <Link href="/my-feeds">
@@ -110,25 +186,35 @@ export default function Home({feedsDefault, myFeeds}) {
                     </button>
                 </Link>
 
-                <div className="bg-white border border-black border-2 p-1 rounded-xl">
-                    <div className="text-lg font-medium">Search Existing Feeds</div>
+                <div className="bg-white border border-black border-2 p-4 rounded-xl space-y-2">
+                    <div className="text-lg font-medium">Existing Feeds</div>
 
-                    <Table columns={columns} data={feedsDefault} getCellProps={(row, cell, j, className) => {
-                        const i = row.index; // The i retrieved this way is the data's i
-                        /*if (j === columns.findIndex(x => x.Header === "Feed Name")) {
-                            return {
-                                className: clsx(className, "hover:bg-blue-700")
-                            }
-                        }*/
-                        return { className };
-                    }} rowProps={(row) => {
-                        return {
-                            className: "hover:bg-gray-100"
-                        }
-                    }} />
+                    <div className="flex place-items-center gap-2 bg-sky-200 w-fit p-2 rounded-xl">
+                        <div className="flex">
+                            <input ref={searchTextRef} className="rounded-l-md p-1" type="text" onKeyDown={async (event)  => {
+                                if (event.key === "Enter") {
+                                    await startSearch();
+                                }
+                            }} />
+                            <button
+                                type="button"
+                                className={"relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"}
+                                onClick={() => startSearch}
+                            >
+                            <span>Search</span>
+                            </button>
+                        </div>
+                        <div className="flex place-items-center gap-1 p-1 hover:bg-orange-100 select-none" onClick={()=> setSearchUser(!searchUser)}>
+                            <input type="checkbox" checked={searchUser} onChange={() => {}} onKeyDown={async e => {if (e.key === "Enter") {await startSearch()}}}/>Search User
+                        </div>
+                    </div>
+
+                    {
+                        feeds.map(x =>
+                            <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />
+                        )
+                    }
                 </div>
-
-
             </div>
         </>
     )

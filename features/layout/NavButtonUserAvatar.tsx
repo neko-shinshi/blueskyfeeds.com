@@ -20,10 +20,7 @@ export default function NavButtonUserAvatar({navPosition}) {
 
     useEffect(() => {
         setOpen(false);
-        if (session) {
-        //    console.log(session);
-        }
-    }, [session])
+    }, [session, router]);
 
     return (
         <>
@@ -35,8 +32,8 @@ export default function NavButtonUserAvatar({navPosition}) {
                         {
                             session.user.image ? <div className="relative h-8 w-8"><Image unoptimized fill src={session.user.image} alt="user-avatar"/></div> :
                                 <span className="text-sm font-medium leading-none text-white select-none">
-                                        {session.user.name.charAt(0)}
-                                    </span>
+                                    {session.user.name.charAt(0)}
+                                </span>
                         }
                     </Menu.Button>
                     <Transition

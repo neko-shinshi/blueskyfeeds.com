@@ -1,4 +1,5 @@
 import { BskyAgent }  from "@atproto/api";
+import {SIGNATURE} from "features/utils/constants";
 
 export const getAgent = async (service, identifier, password) => {
     const agent = new BskyAgent({ service: `https://${service}/` });
@@ -20,7 +21,7 @@ export const rebuildAgent = async (service, {did,refreshJwt, accessJwt, handle, 
 
 
 
-export const getMyCustomFeeds = async (agent) => {
+export const getCustomFeeds = async (agent) => {
     let cursor:any = {};
     let results:any = [];
     do {
@@ -70,4 +71,54 @@ export const getSavedFeeds = async (agent) => {
         }
     }
     return [];
+}
+
+export const deleteFeed = async (agent, rkey) => {
+    const record = {
+        repo: agent.session.did,
+        collection: 'app.bsky.feed.generator',
+        rkey,
+    };
+
+    try {
+        const result = await agent.api.com.atproto.repo.deleteRecord(record);
+        if (result.success) {
+            return true;
+        }
+    } catch (e) {
+        console.log(e);
+    }
+    return false;
+}
+
+export const editFeed = async (agent, {img, shortName, displayName, description}) => {
+    try {
+        await agent.api.app.bsky.feed.describeFeedGenerator()
+    } catch (err) {
+        throw new Error(
+            'The bluesky server is not ready to accept published custom feeds yet',
+        )
+    }
+    const {imageBlob, encoding} = img;
+    let avatar:any = {};
+    if (imageBlob) {
+        const blobRes = await agent.api.com.atproto.repo.uploadBlob(imageBlob, {encoding});
+        avatar = {avatar:blobRes.data.blob};
+    }
+
+    const record = {
+        repo: agent.session?.did ?? '',
+        collection: 'app.bsky.feed.generator',
+        rkey:shortName,
+        record: {
+            did: `did:web:blueskyfeeds.com`,
+            displayName,
+            description: `${description}${SIGNATURE}`,
+            ...avatar,
+            createdAt: new Date().toISOString(),
+        },
+    };
+    console.log(record);
+
+    return await agent.api.com.atproto.repo.putRecord(record);
 }

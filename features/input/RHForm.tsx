@@ -16,6 +16,7 @@ export default function RHForm(
         name,
         stopBeforeSend=false,
         formRef=undefined,
+        recaptcha
     }:{
         children:any
         className?:string
@@ -27,6 +28,7 @@ export default function RHForm(
         name?:string
         stopBeforeSend?:boolean
         formRef?: MutableRefObject<any> // formRef.current.dispatchEvent(new Event('submit', { cancelable: true }))
+        recaptcha?: any
     }) {
 
     const {
@@ -36,7 +38,6 @@ export default function RHForm(
 
 
     const formHandleSubmit = (e) => {
-        console.log("submit");
         trigger();
 
         handleSubmit(async (data) => {
@@ -44,16 +45,20 @@ export default function RHForm(
             if (!cleanData) {
                 return;
             }
-
-            console.log(JSON.stringify(cleanData, null, 2));
             if (stopBeforeSend) {
-                console.log(postUrl);
                 return;
             }
-
-            const result = await localPost(postUrl, {...cleanData});
-            console.log(result);
-            postCallback(result, cleanData);
+            if (typeof recaptcha !== 'undefined') {
+                recaptcha.ready(async () => {
+                    //@ts-ignore
+                    const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                    const result = await localPost(postUrl, {...cleanData, captcha});
+                    postCallback(result, cleanData);
+                });
+            } else {
+                const result = await localPost(postUrl, {...cleanData});
+                postCallback(result, cleanData);
+            }
         })(e).catch(err => {
             console.log(err);
             if (postError) {

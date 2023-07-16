@@ -1,23 +1,6 @@
 import {useDropzone} from "react-dropzone";
 import clsx from "clsx";
 import {Controller} from "react-hook-form";
-import Image from "next/image";
-
-export const serializeFile = async (file) => {
-    if (!file) { return null; }
-    if (!file.changed) {  return null; } // empty means no change in this case
-
-    const blob = await fetch(file.url).then(res => res.blob());
-    const arrayBuffer = await blob.arrayBuffer();
-    return Buffer.from(arrayBuffer).toString('base64');
-}
-
-export const serializeCanvas = (file, canvasRef) => {
-    if (!file) { return null; }
-    if (!file.changed) {  return "KEEP"; }
-    return canvasRef.current.toDataURL('image/webp').split(';base64,')[1];
-}
-
 
 export default function InputFileDropzone ({fieldName, acceptedTypes, acceptedTypesLabel, useFormReturn, className=""}) {
     const {

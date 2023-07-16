@@ -1,13 +1,10 @@
 import NextAuth, {NextAuthOptions, Session, User} from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import {makeCustomException} from "features/error/customException";
-import {connectToDatabase} from "features/utils/dbUtils";
 import {APP_PASSWORD} from "features/auth/authUtils";
 import {timeAfter} from "features/utils/timeUtils";
 import {testRecaptcha} from "features/utils/recaptchaUtils";
 import {getAgent} from "features/utils/bsky";
-
-const DEBUG_MODE = process.env.NEXT_PUBLIC_DEBUG_MODE === "1";
 
 export const authOptions: NextAuthOptions = {
     session: {
@@ -15,16 +12,7 @@ export const authOptions: NextAuthOptions = {
         maxAge: 7 * 24 * 60 * 60 // 7 days
     },
     events: {
-        async signOut({ token }) {
-            /*
-            const key = (token as any).sk?.key;
-            if (key) {
-                const db = await connectToDatabase();
-                db.sessions.deleteOne({key});
-             //   console.log(`SIGNED OUT ${token.id}`);
-            }
-            */
-        },
+        async signOut({ token }) {},
     },
     pages: {
         signIn: '/my-feeds',

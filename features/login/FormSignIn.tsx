@@ -3,14 +3,10 @@ import {useEffect, useRef, useState} from "react";
 import clsx from "clsx";
 import {clearRememberEmail, getRememberEmail, setRememberEmail} from "features/utils/localStorageUtils";
 import {APP_PASSWORD} from "features/auth/authUtils";
-import {useRouter} from "next/router";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {HiAtSymbol} from "react-icons/hi";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import Link from "next/link";
-
-const DEBUG_MODE = process.env.NEXT_PUBLIC_DEBUG_MODE === "1";
-
 
 export default function FormSignIn() {
     const [password, setPassword] = useState("");
@@ -27,7 +23,6 @@ export default function FormSignIn() {
         const remembered = getRememberEmail();
         setRememberMe(!!remembered);
         if (emailRef.current) {
-            console.log("gonna set");
             emailRef.current.value = remembered;
             rememberMeRef.current.checked = true;
         }
@@ -66,18 +61,15 @@ export default function FormSignIn() {
         event.preventDefault();
         try {
             if (!validateFields(domain, emailRef.current.value, password)) {
-                console.log("failed");
                 return;
             }
 
             if (typeof recaptcha !== 'undefined') {
-                console.log("checking captcha");
                 recaptcha.ready(async () => {
                     //@ts-ignore
                     const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
                     const usernameOrEmail = emailRef.current.value;
                     const result = await signIn(APP_PASSWORD, {redirect:false, service:domain, usernameOrEmail, password, captcha});
-                    console.log("before remember", result);
                     if (result.status === 200) { // If signin successful
                         if (rememberMe) {
                             setRememberEmail(usernameOrEmail);

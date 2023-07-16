@@ -1,9 +1,6 @@
 import clsx from "clsx";
 import {dotObjectStringPath} from "features/utils/objectUtils";
 import {HiExclamationCircle} from "react-icons/hi";
-import {SlMagicWand} from "react-icons/sl";
-import {SiGoogletranslate} from "react-icons/si";
-import {localPost} from "features/network/network";
 
 export default function InputTextAreaBasic(
     {
@@ -16,7 +13,6 @@ export default function InputTextAreaBasic(
         hiddenOrInvisible,
         disabled=false,
         maxLength=undefined,
-        transformations=undefined,
         parentFieldName="",
     }:{
         fieldName: string,
@@ -28,7 +24,6 @@ export default function InputTextAreaBasic(
         hiddenOrInvisible?: boolean,
         disabled?:boolean,
         maxLength?:number
-        transformations?:any
         parentFieldName?:string
     }) {
     const {
@@ -39,14 +34,6 @@ export default function InputTextAreaBasic(
     } = useFormReturn;
 
     const watchField = watch(fieldName);
-    const parentField = watch(parentFieldName);
-    const transformText = (inText) => {
-        let txt = inText;
-        for (const [key, value] of Object.entries(transformations)) {
-            txt = txt.replaceAll(key, value);
-        }
-        return txt;
-    }
 
     return (
         <div className={hiddenOrInvisible === undefined? "" : hiddenOrInvisible? "hidden" : "invisible"}>
@@ -80,40 +67,6 @@ export default function InputTextAreaBasic(
                     maxLength && watchField && <div className="absolute bottom-0 right-4 text-gray-600 text-sm">{watchField.length}/200</div>
                 }
             </div>
-            {
-                transformations &&
-                <div className="flex justify-end">
-                    <button
-                        type="button"
-                        className={clsx( "justify-center items-center p-1 rounded-md border border-gray-300 bg-white disabled:bg-slate-400  text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500")}
-                        onClick={async () => {
-                            console.log("Translate");
-                            console.log(parentFieldName);
-                            console.log(parentField);
-                            if (parentField.trim().length <= 0) { return; }
-
-                            const result = await localPost("/admin/translate-to-jpn", {txt: parentField});
-                            if (result.status === 200) {
-                                setValue(fieldName, transformText(result.data.text));
-                            }
-                        }}
-                    >
-                        <SiGoogletranslate className="h-6 w-6"/>
-                    </button>
-                    <button
-                        type="button"
-                        className={clsx( "justify-center items-center p-1 rounded-md border border-gray-300 bg-white disabled:bg-slate-400  text-sm font-medium text-gray-500 hover:bg-gray-50 focus:z-10 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500")}
-                        onClick={() => {
-                            console.log("Magic");
-                            let txt = watchField;
-                            setValue(fieldName, transformText(txt));
-                        }}
-                    >
-                        <SlMagicWand className="h-6 w-6" />
-                    </button>
-                </div>
-
-            }
 
             {
                 dotObjectStringPath(errors,fieldName) &&

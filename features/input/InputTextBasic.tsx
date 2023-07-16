@@ -6,6 +6,7 @@ export default function InputTextBasic(
     {
         fieldName,
         fieldReadableName,
+        subtext="",
         placeholder="",
         initialValue,
         options={},
@@ -21,6 +22,7 @@ export default function InputTextBasic(
     }:{
         fieldName: string,
         fieldReadableName: string,
+        subtext?: string,
         options?: Object,
         useFormReturn: any,
         optional?: boolean,
@@ -48,6 +50,10 @@ export default function InputTextBasic(
                 </label>
                 { optional && <span className="text-sm text-gray-500">Optional</span> }
             </div>
+            {
+                subtext && <div className="text-sm font-light text-gray-600">{subtext}</div>
+            }
+
             <div className="mt-1 relative rounded-md shadow-sm">
                 <input
                     type={specialType || "text"}

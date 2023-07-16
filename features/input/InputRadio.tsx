@@ -14,6 +14,7 @@ export default function InputRadio(
         hiddenOrInvisible,
         disabled=false,
         unregistered=false,
+        modifyText=(text) => text,
         entriesPerRow=4,
     }:{
         fieldName: string,
@@ -24,6 +25,7 @@ export default function InputRadio(
         hiddenOrInvisible?: boolean,
         disabled?:boolean,
         unregistered?:boolean,
+        modifyText?:(string) => string,
         entriesPerRow?:number
     }) {
     const {
@@ -31,15 +33,6 @@ export default function InputRadio(
         setValue,
         formState: { errors },
     } = useFormReturn;
-
-    const [cleanReadableName, setCleanReadableName] = useState("");
-    useEffect(() => {
-        if (cleanName) {
-            setCleanReadableName(cleanName);
-        } else {
-            setCleanReadableName(fieldReadableName);
-        }
-    }, [cleanName]);
 
     const [entries, setEntries] = useState("");
 
@@ -49,11 +42,11 @@ export default function InputRadio(
 
     return (
         <div className={hiddenOrInvisible === undefined? "" : hiddenOrInvisible? "hidden" : "invisible"}>
-            <label htmlFor={fieldName} className="block text-sm font-medium text-gray-700">
+            <label htmlFor={fieldName} className={clsx(modifyText("block text-sm font-medium text-gray-700"))}>
                 { fieldReadableName }
             </label>
 
-            <div className={clsx("sm:space-y-0 space-y-4 sm:grid sm:items-center sm:gap-2 mt-2", entries)}>
+            <div className={clsx("sm:space-y-0 space-y-2 sm:grid sm:items-center sm:gap-2 mt-2", entries)}>
                 {
                     items.map((item, i) => {
                         const idComponent = item.id;

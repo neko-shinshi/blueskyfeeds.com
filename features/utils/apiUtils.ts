@@ -37,7 +37,6 @@ const deduplicatedPromise = (req, res, validation, getDB, callback) => {
 
 
 export const userPromise = (req, res, type:"POST"|"GET"|"DELETE", captcha, getDB, validation, callback) => {
-    console.log(type);
     if (req.method === type) {
         if (captcha) {
             return deduplicatedPromise(req, res, validation, getDB, async ({db}) => {

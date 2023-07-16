@@ -6,31 +6,44 @@ import {useForm} from "react-hook-form";
 import InputTextBasic from "features/input/InputTextBasic";
 import RHForm from "features/input/RHForm";
 import clsx from "clsx";
-import {HiMinus, HiOutlineExclamationCircle, HiPlus, HiTrash} from "react-icons/hi";
 import InputRadio from "features/input/InputRadio";
 import InputTextAreaBasic from "features/input/InputTextAreaBasic";
 import InputFileDropzone from "features/input/InputFileDropzone";
 import {useRouter} from "next/router";
 import PageHeader from "features/components/PageHeader";
 import {getSessionData} from "features/network/session";
-import {rebuildAgentFromSession} from "features/utils/feedUtils";
+import {getFeedDetails, rebuildAgentFromSession} from "features/utils/feedUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import {localGet} from "features/network/network";
 import InputTextButton from "features/input/InputTextButton";
 import Image from "next/image";
-import {handleEnter} from "features/utils/keyboardUtils";
 import InputMultiWord from "features/input/InputMultiWord";
+import ModalManualSearch from "features/components/specific/ModeManualSearch";
+import {connectToDatabase} from "features/utils/dbUtils";
+import {serializeFile} from "features/utils/fileUtils";
+import {SIGNATURE} from "features/utils/constants";
 
 export async function getServerSideProps({req, res, query}) {
+    const db = await connectToDatabase();
+    if (!db) { return { redirect: { destination: '/500', permanent: false } } }
     const session = await getSessionData(req, res);
+    let feed = null;
     if (session) {
         const agent = await rebuildAgentFromSession(session);
         if (!agent) {return { redirect: { destination: '/signout', permanent: false } };}
+
+        const {feed:_feed} = query;
+        if (_feed) {
+            const result = await getFeedDetails(agent, db, _feed);
+            if (result) {
+                feed = result;
+            } else {
+                return { redirect: { destination: '/404', permanent: false } }
+            }
+        }
     }
-    const {feed:_feed} = query;
-    const feed = _feed || null;
 
     return {props: {session, feed}};
 }
@@ -50,27 +63,13 @@ export default function Home({feed}) {
     const [languages, setLanguages] = useState<string[]>([]);
     const [allowList, setAllowList] = useState<{did:string, handle:string, displayName:string}[]>([]);
     const [blockList, setBlockList] = useState<{did:string, handle:string, displayName:string}[]>([]);
-    const allowListRef = useRef(null);
-    const blockListRef = useRef(null);
-    const [allowListError, setAllowListError] = useState("");
-    const [blockListError, setBlockListError] = useState("");
     const [tokenSearch, setTokenSearch] = useState<string[]>([]);
-    const [manualSearch, setManualSearch] = useState<{w:string, pre:string[], post:string[]}[]>([]);
-    const [newKeywordMode, setNewKeywordMode] = useState<"token"|"manual">("token");
-
-    const [manualKeyword, setManualKeyword] = useState("");
-    const tokenInputRef = useRef(null);
-    const [tokenInputError, setTokenInputError] = useState("");
-
-    const [rejectWords, setRejectWords] = useState<{pre:string, suf:string}[]>([]);
-
-
-    const validateTokenInput = (val) => {
-
-    }
-
+    const [manualSearch, setManualSearch] = useState<{w:string, pre:string[], suf:string[]}[]>([]);
+    const [newKeywordMode, setNewKeywordMode] = useState<"token"|"character">("token");
+    const [shortNameLocked, setShortNameLocked] = useState(false);
 
     const recaptcha = useRecaptcha();
+    const imageRef = useRef(null);
 
     const useFormReturn = useForm();
     const {
@@ -89,6 +88,19 @@ export default function Home({feed}) {
             setAllowList([]);
             setBlockList([]);
         } else {
+            const {avatar, sort, uri, displayName, description} = feed;
+            let o:any = {
+                sort,displayName, description: description.replaceAll(SIGNATURE, ""),
+                shortName: uri.split("/").at(-1),
+            };
+
+            if (avatar) {
+                const type = `image/${avatar.split("@")[1]}`;
+                o.file = {changed: false, url: avatar, type}
+            }
+
+            reset(o);
+            setShortNameLocked(true);
 
         }
     }, [feed]);
@@ -108,7 +120,6 @@ export default function Home({feed}) {
                     setError(fieldName, {type:'custom', message:`${user} is already in Allow List`});
                 } else {
                     if (typeof recaptcha !== 'undefined') {
-                        console.log("checking captcha");
                         recaptcha.ready(async () => {
                             //@ts-ignore
                             const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
@@ -144,40 +155,80 @@ export default function Home({feed}) {
         {
             session && <div className="bg-sky-200 w-full max-w-5xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} />
+                <RHForm
+                    recaptcha={recaptcha}
+                    useFormReturn={useFormReturn}
+                    cleanUpData={async (data) => {
+                        console.log(data);
+                        const {sort, file, displayName, shortName, description} = data;
+                        let imageObj:any = {};
+                        if (file) {
+                            const {type:encoding, changed, url} = file;
+                            if (changed) {
+                                const image = await serializeFile(url);
+                                imageObj = {image, encoding};
+                            } else {
+                                imageObj = {encoding, imageUrl:url};
+                            }
+                        }
+                        const result = {...imageObj, displayName, shortName, description, allowList, blockList, languages, sort}
+                        console.log(result);
 
-                <RHForm useFormReturn={useFormReturn} cleanUpData={data => data} postUrl="" postCallback={(data) => {}} className="space-y-4">
+                        return result;
+                    }}
+                    postUrl="/feed/submit" postCallback={async (result) => {
+                        console.log(result);
+                        if (result.status === 200) {
+                           await router.push("/my-feeds");
+                        }
+                    }}
+                    className="space-y-4">
                     <div className="bg-white p-2">
                         <div>Feed Settings</div>
                         <div className="flex w-full place-items-center gap-4">
                             <div>
                                 <div className="text-center">Avatar</div>
                                 <div className="w-40 h-40 aspect-square relative rounded-xl overflow-hidden">
-
                                     <InputFileDropzone
                                         fieldName="file"
                                         className="inset-0 absolute rounded-xl z-10"
                                         useFormReturn={useFormReturn}
-                                        acceptedTypes={{'image/jpeg': ["*.jpg", "*.jpeg"], 'image/png':[]}}
+                                        acceptedTypes={{'image/jpeg': ["*.jpg", "*.jpeg"], 'image/png':["*.png"]}}
                                         acceptedTypesLabel="jpg or png"/>
                                     {
-                                        watchFile && <Image className="object-cover hover:blur-sm" unoptimized fill src={watchFile.url} alt="animal-avatar" />
+                                        watchFile && <Image ref={imageRef} className="object-cover hover:blur-sm" unoptimized fill src={watchFile.url} alt="feed-avatar" />
                                     }
                                 </div>
                             </div>
 
                             <div className="grow">
-                                <InputTextButton fieldName="name" fieldReadableName="Full Name" options={{}} useFormReturn={useFormReturn} placeholder="My Amazing Feed"  optional={false} buttonText="Make Short Name" buttonCallback={() => {
-                                    const name = getValues("name");
-                                    setValue("shortname", name.toLowerCase().replaceAll(" ", "-").replaceAll(/[^a-z0-9-]/g, ""));
+                                <InputTextButton
+                                    maxLength={24}
+                                    fieldName="displayName"
+                                    fieldReadableName="Full Name (Max 24 characters)"
+                                    options={{}}
+                                    useFormReturn={useFormReturn}
+                                    placeholder="My Amazing Feed"
+                                    optional={false}
+                                    buttonDisabled={shortNameLocked}
+                                    buttonText="Make Short Name"
+                                    buttonCallback={() => {
+                                    const name = getValues("displayName");
+                                    setValue("shortName", name.toLowerCase().replaceAll(" ", "-").replaceAll(/[^a-z0-9-]/g, ""));
                                 }} />
-                                <InputTextBasic fieldName="shortname" fieldReadableName="Short Name (lowercase alphanumeric with dashes only) [0-9a-zA-z-]" options={{}} useFormReturn={useFormReturn} placeholder="my-amazing-feed" />
+                                <InputTextBasic maxLength={15} fieldName="shortName" disabled={shortNameLocked} fieldReadableName="Unique Short Name among all your feeds (CANNOT be changed once submitted)" subtext="(lowercase alphanumeric and dashes only max 15 characters) [0-9a-zA-z-]" options={{}} useFormReturn={useFormReturn} placeholder="my-amazing-feed" />
                                 <InputTextAreaBasic fieldName="description" fieldReadableName="Description" options={{}} useFormReturn={useFormReturn} placeholder="This is an amazing feed, please use it" />
-
                             </div>
                         </div>
 
 
-                        <InputRadio fieldName="sort" fieldReadableName="Sort Order" useFormReturn={useFormReturn} items={[
+
+                    </div>
+
+                    <div className="bg-white p-2 space-y-2">
+                        <InputRadio entriesPerRow={2} modifyText={_ => {
+                            return "text-lg font-bold";
+                        }} fieldName="sort" fieldReadableName="Sort Order" useFormReturn={useFormReturn} items={[
                             {id:"chronological", txt:"Chronological - Most recent post at top"},
                             {id:"score", txt:"Hot - Use Hacker News sorting algorithm"}
                         ]}/>
@@ -198,7 +249,7 @@ export default function Home({feed}) {
                             placeHolder="@handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
                             splitWithSpace={false} orderedList={false}
                             fieldName="allowList" useFormReturn={useFormReturn}
-                            check={multiWordCallback("blockList")}/>
+                            check={multiWordCallback("allowList")}/>
 
                         <InputMultiWord
                             className="border border-2 border-red-700 p-2 rounded-xl bg-pink-100"
@@ -216,10 +267,8 @@ export default function Home({feed}) {
                             <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
                                  onClick={() => {
                                      if (SUPPORTED_LANGUAGES.every(x => languages.indexOf(x.id) >= 0)) {
-                                         console.log("clear")
                                          setLanguages([]);
                                      } else {
-                                         console.log("fill")
                                          setLanguages(SUPPORTED_LANGUAGES.map(x => x.id));
                                      }
                                  }}>
@@ -228,10 +277,8 @@ export default function Home({feed}) {
                                            onChange={() => {}}
                                            onClick={() => {
                                                if (SUPPORTED_LANGUAGES.every(x => languages.indexOf(x.id) >= 0)) {
-                                                   console.log("clear")
                                                    setLanguages([]);
                                                } else {
-                                                   console.log("fill")
                                                    setLanguages(SUPPORTED_LANGUAGES.map(x => x.id));
                                                }
                                            }}
@@ -286,7 +333,7 @@ export default function Home({feed}) {
                         <div>Keyword Filters</div>
 
                         <div className={clsx("grid grid-cols-2")}>
-                            <div className="flex items-center bg-orange-100 hover:bg-gray-50 p-2 rounded-md"
+                            <div className="flex items-center bg-blue-100 hover:bg-blue-200 p-2 rounded-tl-md border border-t-2 border-l-2 border-b-0 border-black"
                                  onClick={() => {
                                      setNewKeywordMode("token");
                                  }}>
@@ -299,174 +346,76 @@ export default function Home({feed}) {
                                     onClick={() => {setNewKeywordMode("token")}}
                                     className="mr-2 focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
                                 />
-                                Token Search
+                                Tokenized Term Filter
                             </div>
-                            <div className="flex items-center bg-orange-100 hover:bg-gray-50 p-2 rounded-md"
+                            <div className="flex items-center bg-yellow-100 hover:bg-yellow-200 p-2 rounded-tr-md border border-t-2 border-r-2 border-b-0 border-black"
                                  onClick={() => {
-                                     setNewKeywordMode("manual");
+                                     setNewKeywordMode("character");
                                  }}>
                                 <input
                                     id='keyword-filter-type'
                                     type="radio"
                                     value="manual"
-                                    checked={newKeywordMode === "manual"}
+                                    checked={newKeywordMode === "character"}
                                     onChange={() => {}}
-                                    onClick={() => {setNewKeywordMode("manual")}}
+                                    onClick={() => {setNewKeywordMode("character")}}
                                     className="mr-2 focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
                                 />
-                                Manual Search
+                                Character-by-Character Term Filter
                             </div>
                         </div>
-                        {
-                            <div>
-                                <div>{`${newKeywordMode.slice(0,1).toUpperCase()}${newKeywordMode.slice(1)} Search`}</div>
-                                {
-                                    newKeywordMode === "token" && <>
-                                        <ul className="list-disc pl-4">
-                                            <li>Posts are split into individual words (tokens) by splitting them by non latin characters (e.g. spaces, symbols, 言,  ل) and searching them from left to right</li>
-                                            <li>Terms with spaces like `Quick Draw` will also find `#quickdraw`</li>
-                                            <li>Works for terms with accents slike `Bon Appétit`</li>
-                                            <li>Might not work well for `1989`, e.g. `Summer1989` will fail</li>
-                                            <li>Does not work for hyphenated terms like deep-fried (search for `deep fried` instead)</li>
-                                            <li>Does not work for well for non-latin languages like Korean, Mandarin or Japanese</li>
-                                        </ul>
-                                        <div className="mt-1 flex rounded-md shadow-sm place-items-center">
-                                            <div className="mr-2">Tokens</div>
-                                            <div className="mt-1 flex rounded-md shadow-sm">
-                                                <div className="relative flex flex-grow items-stretch focus-within:z-10">
-                                                    <input
-                                                        ref={tokenInputRef}
-                                                        type="text"
-                                                        className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2",
-                                                            allowListError? "pr-10 focus:border-red-500 focus:ring-red-500 border-red-300 text-red-900 placeholder-red-300"
-                                                                :"focus:border-gray-500 focus:ring-gray-500 border-gray-300 text-gray-900 placeholder-gray-300")}
-                                                        aria-invalid="true"
-                                                        autoComplete="off"
-                                                        onChange={() => {validateTokenInput(tokenInputRef.current.value)}}
-                                                        placeholder="Enter tokens"
-                                                    />
-                                                    {
-                                                        tokenInputError &&
-                                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                                                            <HiOutlineExclamationCircle className="h-5 w-5 text-red-500" aria-hidden="true"/>
-                                                        </div>
-                                                    }
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
-                                                    onClick={() => {
-                                                    }}
-                                                >
-                                                    <span>Add</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        {
-                                            tokenInputError && <div>{tokenInputError}</div>
+                        <div className={clsx("p-2 border border-l-2 border-r-2 border-y-0 border-black", newKeywordMode === "token"? "bg-blue-100" : "bg-yellow-100")}>
+                            <div className="font-semibold">{`${newKeywordMode.slice(0,1).toUpperCase()}${newKeywordMode.slice(1)} Search`}</div>
+                            {
+                                newKeywordMode === "token" &&
+                                <ModalManualSearch
+                                    keyword="Token"
+                                    handleTokenization={(rejectWords, term) => {
+                                        let word = "";
+                                        if (rejectWords.pre) {
+                                            word += rejectWords.pre + " ";
                                         }
-                                    </>
-                                }
-                                {
-                                    newKeywordMode === "manual" && <>
-                                        <ul className="list-disc pl-4">
-                                            <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>
-                                            <li>For example: `act` is inside both `action` and `react`</li>
-                                            <li>To prevent it, add the prefix and suffix of common terms to reject</li>
-                                            <li>This is the preferred way to search for non-latin words like アニメ</li>
-                                        </ul>
+                                        word += term;
+                                        if (rejectWords.suf) {
+                                            word += " " + rejectWords.suf;
+                                        }
+                                        return word;
+                                    }}
+                                    validateKeyword={term => {
+                                        return true;
+                                    }}
+                                    submitKeyword={undefined}>
+                                    <ul className="list-disc pl-4">
+                                        <li>Posts and search terms are split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is ok` becomes `this` `is` `ok`</li>
+                                        <li>Terms with spaces like `Quick Draw` will also find `#quickdraw`</li>
+                                        <li>Works for terms with accents slike `Bon Appétit`</li>
+                                        <li>Might not work well if the searched term is combined with other terms, e.g. searching for `cat` will not find `caturday`</li>
+                                        <li>Does not work for well for non-latin languages like Korean, Mandarin or Japanese</li>
+                                    </ul>
+                                </ModalManualSearch>
+                            }
+                            {
+                                newKeywordMode === "character" && <ModalManualSearch
+                                    keyword="Term"
+                                    handleTokenization={(rejectWords, term) => `${rejectWords.pre || ""}${term}${rejectWords.suf || ""}`}
+                                    validateKeyword={term => {
+                                        return true;
+                                    }} submitKeyword={undefined}
+                                >
 
-                                        <div className="flex justify-between">
-                                            <div className="grow">
-                                                <div className="flex place-items-center space-x-2">
-                                                    <div>Keyword</div>
-                                                    <input
-                                                        type="text"
-                                                        className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2",
-                                                            "focus:border-gray-500 focus:ring-gray-500 border-gray-300 text-gray-900 placeholder-gray-300")}
-                                                        aria-invalid="true"
-                                                        autoComplete="off"
-                                                        autoCapitalize="off"
-                                                        placeholder="Keyword"
-                                                        onChange={(e) => {
-                                                            setManualKeyword(e.target.value);
-                                                        }}
-                                                    />
-                                                </div>
-                                                {
-                                                    rejectWords.map((x,i) =>
-                                                        <div key={i} className="flex rounded-md shadow-sm place-items-center">
-                                                            <button type="button"
-                                                                    className="w-12 inline-flex justify-center items-center px-4 py-2 rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                                                    onClick={() => {
-                                                                        rejectWords.splice(i,1);
-                                                                        setRejectWords([...rejectWords]);
-                                                                    }}>
-                                                                <HiMinus className="w-6 h-6"/>
-                                                            </button>
-                                                            <input
-                                                                type="text"
-                                                                className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2",
-                                                                    "focus:border-gray-500 focus:ring-gray-500 border-gray-300 text-gray-900 placeholder-gray-300")}
-                                                                aria-invalid="true"
-                                                                autoComplete="off"
-                                                                autoCapitalize="off"
-                                                                placeholder="Prefix"
-                                                            />
-                                                            <input
-                                                                type="text"
-                                                                disabled={true}
-                                                                value={manualKeyword}
-                                                                className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2",
-                                                                    "bg-gray-300")}
-                                                                placeholder="Keyword"
-                                                            />
-                                                            <input
-                                                                type="text"
-                                                                className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2",
-                                                                    "focus:border-gray-500 focus:ring-gray-500 border-gray-300 text-gray-900 placeholder-gray-300")}
-                                                                aria-invalid="true"
-                                                                autoComplete="off"
-                                                                autoCapitalize="off"
-                                                                placeholder="Suffix"
-                                                            />
+                                    <ul className="list-disc pl-4">
+                                        <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>
+                                        <li>For example: `act` is inside both `action` and `react`</li>
+                                        <li>To prevent it, add the prefix and suffix of common terms to reject</li>
+                                        <li>This is the preferred way to search for non-latin words like アニメ</li>
+                                    </ul>
+                                </ModalManualSearch>
+                            }
+                        </div>
 
-                                                            <input
-                                                                type="text"
-                                                                disabled={true}
-                                                                className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2",
-                                                                    "bg-gray-100")}
-                                                                placeholder="Rejected word"
-                                                            />
-                                                        </div>
-                                                    )
-                                                }
-                                                <button type="button"
-                                                        className="w-full inline-flex justify-center items-center px-4 py-2 rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                                        onClick={() => {
-                                                            rejectWords.push({pre:"", suf:""});
-                                                            setRejectWords([...rejectWords]);
-                                                        }}>
-                                                    <HiPlus className="w-6 h-6"/> Add Rejected Word
-                                                </button>
-                                            </div>
-
-                                            <button type="button" className="w-24  bg-orange-200">
-                                                Add
-                                            </button>
-                                        </div>
-                                     </>
-                                }
-                            </div>
+                        {
+                            //                        <SortableWordBubbles value={undefined} orderedList={undefined} disabled={undefined} valueModifier={undefined} updateCallback={undefined} />
                         }
-
-
-
-
-
-
-
-
 
                     </div>
 

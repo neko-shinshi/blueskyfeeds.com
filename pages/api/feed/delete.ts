@@ -1,32 +1,25 @@
 import {userPromise} from "features/utils/apiUtils";
-import {rebuildAgentFromSession} from "features/utils/feedUtils";
+import {feedRKeyToUri, feedUriToUrl, rebuildAgentFromSession} from "features/utils/feedUtils";
+import {deleteFeed} from "features/utils/bsky";
 
 export default async function handler(req, res) {
     return userPromise(req, res, "DELETE", true, true,
         ({rkey, captcha}) => !!rkey && !!captcha,
         async ({db, session}) => {
-        console.log('delete');
         const agent = await rebuildAgentFromSession(session);
         if (!agent) {res.status(401).send(); return;}
 
+        const did = agent.session.did;
         const {rkey} = req.body;
-        const record = {
-            repo: agent.session.did,
-            collection: 'app.bsky.feed.generator',
-            rkey,
-        };
-        console.log("try delete",record);
+        if (await deleteFeed(agent, rkey)) {
+            const uri = feedRKeyToUri(rkey, did);
+            db.allFeeds.deleteOne({_id: uri});
+            db.feeds.deleteOne({_id: uri}); // This one
+            res.status(200).send();
 
-        try {
-            const result = await agent.api.com.atproto.repo.deleteRecord(record);
-            if (result.success) {
-                res.status(200).send();
-                return;
-            }
-            console.log(result);
-        } catch (e) {
-            console.log(e);
+            return;
         }
+
         res.status(400).send();
     });
 }

@@ -17,6 +17,7 @@ export default function InputTextButton(
         autoComplete="none",
         buttonDisabled=false,
         isButtonSubmit=false,
+        maxLength=100,
         classNameLabel="text-sm font-medium text-gray-700"
     }:{
         fieldName: string,
@@ -32,6 +33,7 @@ export default function InputTextButton(
         autoComplete?:string,
         buttonDisabled?:boolean,
         isButtonSubmit?:boolean
+        maxLength?:number
         classNameLabel?:string
     }) {
     const {
@@ -56,6 +58,7 @@ export default function InputTextButton(
                             dotObjectStringPath(errors, fieldName)? "pr-10 focus:border-red-500 focus:ring-red-500 border-red-300 text-red-900 placeholder-red-300"
                                 :"focus:border-gray-500 focus:ring-gray-500 border-gray-300 text-gray-900 placeholder-gray-300")}
                         aria-invalid="true"
+                        maxLength={maxLength}
                         autoComplete={autoComplete}
                         placeholder={placeholder}
                         {...register(fieldName, options)}
