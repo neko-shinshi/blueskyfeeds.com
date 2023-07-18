@@ -11,6 +11,7 @@ declare module "next-auth" {
         refreshJwt: string
         accessJwt: string
         handle: string
+        sk: string
         email?: string
     }
 

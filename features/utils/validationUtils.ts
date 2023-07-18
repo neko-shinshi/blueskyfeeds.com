@@ -3,6 +3,9 @@ export const emailPattern = /\S+@\S+\.\S+/;
 export const isValidEmail = (email:string) => {
     return emailPattern.test(email);
 }
+export const isValidDomain = (s:string) => {
+    return /^(\*\.)?([a-z\d][a-z\d-]*[a-z\d]\.)+[a-z]+$/.test(s);
+}
 
 
 export function removeUndefined(obj, nullInstead=false) {

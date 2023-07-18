@@ -18,6 +18,7 @@ const connectToDatabase = async () => {
             let db = client.db('anime');
             global.cachedDb = {
                 db: db,
+                sessions: db.collection("sessions"), // session keys for rollover
                 data: db.collection("data"),
                 allFeeds: db.collection("allFeeds"),
                 allHandles: db.collection("allHandles"),

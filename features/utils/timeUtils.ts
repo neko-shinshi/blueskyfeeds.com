@@ -1,6 +1,6 @@
-export const timeAfter = ms => {
+export const secondsAfter = seconds => {
     const expireAt = new Date();
-    expireAt.setTime(expireAt.getTime() + ms);
+    expireAt.setTime(expireAt.getTime() + seconds*1000);
     return expireAt;
 }
 

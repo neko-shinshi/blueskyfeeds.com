@@ -134,7 +134,17 @@ export default function InputMultiWord(
                             {
                                 dotObjectStringPath(errors, fieldName) && <div className="text-red-700">{dotObjectStringPath(errors, fieldName).message as unknown as string}</div>
                             }
-                            <SortableWordBubbles value={value} orderedList={orderedList} disabled={disabled} valueModifier={valueModifier.current} updateCallback={onChange}/>
+                            <SortableWordBubbles
+                                value={value} orderedList={orderedList} disabled={disabled} valueModifier={valueModifier.current}
+                                buttonCallback={(val, action) => {
+                                    if (action === "x") {
+                                        const toDelete = valueModifier.current(val);
+                                        onChange(value.filter(x => valueModifier.current(x) !== toDelete));
+                                    } else if (action === "<") {
+                                        const toMove = valueModifier.current(val);
+                                        onChange([val, ...value.filter(x => valueModifier.current(x) !== toMove)]);
+                                    }
+                                }}/>
                         </div>
                     )
                 }}

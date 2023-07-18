@@ -1,11 +1,11 @@
 import {userPromise} from "features/utils/apiUtils";
-import {rebuildAgentFromSession} from "features/utils/feedUtils";
+import {rebuildAgentFromToken} from "features/utils/feedUtils";
 
 export default async function handler(req, res) {
     return userPromise(req, res, "GET", true, false,
         ({user, captcha}) => !!user && !!captcha,
-        async ({session}) => {
-            const agent = await rebuildAgentFromSession(session);
+        async ({token}) => {
+            const agent = await rebuildAgentFromToken(token);
             if (!agent) {res.status(401).send(); return;}
 
             const {user:actor} = req.query;

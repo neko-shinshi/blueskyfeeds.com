@@ -1,37 +1,34 @@
 import {useEffect, useState} from "react";
 import HeadExtended from "features/layout/HeadExtended";
 import PageHeader from "features/components/PageHeader";
-import {getSessionData} from "features/network/session";
-import {rebuildAgentFromSession} from "features/utils/feedUtils";
 import {timeText} from "features/utils/timeUtils";
 import { BiMessage, BiRepost} from "react-icons/bi";
 import {AiFillHeart, AiOutlineHeart} from "react-icons/ai";
 import {BsPinFill} from "react-icons/bs";
 import FormSignIn from "features/login/FormSignIn";
-import {useSession} from "next-auth/react";
+import {signIn, useSession} from "next-auth/react";
 import BlueskyAvatar from "features/components/specific/BlueskyAvatar";
+import {getLoggedInData} from "features/network/session";
+import {APP_SESSION} from "features/auth/authUtils";
 
 export async function getServerSideProps({req, res, query}) {
     const {feed} = query;
     if (!feed) {return { redirect: { destination: '/', permanent: false } };}
+    const {updateSession, session, agent, redirect} = await getLoggedInData(req, res);
+    if (redirect) {return {redirect};}
+    let feedItems = [], feedDescription={};
 
-    const session = await getSessionData(req, res);
-    if (!session) {
-        return {props:{session, feedItems:[], feedDescription:{}}};
+    if (agent) {
+        const {data} = await agent.api.app.bsky.feed.getFeed({feed, limit:10});
+        // The return value is a non-serializable JSON for some reason
+        feedItems = data.feed.map(x =>  JSON.parse(JSON.stringify(x.post)));
+        feedDescription = (await agent.api.app.bsky.feed.getFeedGenerators({feeds:[feed]}))?.data?.feeds[0] || {};
     }
 
-    const agent = await rebuildAgentFromSession(session);
-    if (!agent) {return { redirect: { destination: '/signout', permanent: false } };}
-
-    const {data} = await agent.api.app.bsky.feed.getFeed({feed, limit:10});
-
-    // The return value is a non-serializable JSON for some reason
-    const feedItems = data.feed.map(x =>  JSON.parse(JSON.stringify(x.post)));
-    const feedDescription = (await agent.api.app.bsky.feed.getFeedGenerators({feeds:[feed]}))?.data?.feeds[0] || {};
-    return {props: {session, feedItems, feedDescription}};
+    return {props: {feedItems, feedDescription, updateSession, session}};
 }
 
-export default function Home({feedItems:_feedItems, feedDescription}) {
+export default function Home({feedItems:_feedItems, feedDescription, updateSession}) {
     const title = "Preview Feed";
     const description = "See what appears in this feed for you";
     const [feedItems, setFeedItems] = useState<any>();
@@ -39,7 +36,16 @@ export default function Home({feedItems:_feedItems, feedDescription}) {
 
     useEffect(() => {
         setFeedItems(_feedItems);
-    }, [_feedItems])
+    }, [_feedItems]);
+
+    useEffect(() => {
+        if (updateSession && session) {
+            console.log("update session");
+            signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
+                console.log(r);
+            });
+        }
+    }, [updateSession, session]);
 
     return <>
         <HeadExtended title={title}

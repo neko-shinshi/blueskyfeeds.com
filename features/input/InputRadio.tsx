@@ -9,23 +9,27 @@ export default function InputRadio(
         fieldName,
         fieldReadableName,
         cleanName,
+        className="",
         useFormReturn,
         items,
         hiddenOrInvisible,
         disabled=false,
         unregistered=false,
         modifyText=(text) => text,
+        subtext="",
         entriesPerRow=4,
     }:{
         fieldName: string,
         fieldReadableName: string,
         cleanName?:string,
+        className?:string
         useFormReturn: UseFormReturn<any>
         items: Array<{id:string, txt:string}>
         hiddenOrInvisible?: boolean,
         disabled?:boolean,
         unregistered?:boolean,
         modifyText?:(string) => string,
+        subtext?:string
         entriesPerRow?:number
     }) {
     const {
@@ -41,10 +45,13 @@ export default function InputRadio(
     }, [entriesPerRow])
 
     return (
-        <div className={hiddenOrInvisible === undefined? "" : hiddenOrInvisible? "hidden" : "invisible"}>
+        <div className={clsx(hiddenOrInvisible === undefined? "" : hiddenOrInvisible? "hidden" : "invisible", className)}>
             <label htmlFor={fieldName} className={clsx(modifyText("block text-sm font-medium text-gray-700"))}>
                 { fieldReadableName }
             </label>
+            {
+                subtext && <div className="text-sm font-light text-gray-600">{subtext}</div>
+            }
 
             <div className={clsx("sm:space-y-0 space-y-2 sm:grid sm:items-center sm:gap-2 mt-2", entries)}>
                 {

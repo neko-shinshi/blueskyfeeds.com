@@ -1,9 +1,8 @@
 import {useEffect, useRef, useState} from "react";
 import HeadExtended from "features/layout/HeadExtended";
-import {useSession} from "next-auth/react";
+import {signIn, useSession} from "next-auth/react";
 import FormSignIn from "features/login/FormSignIn";
 import {useForm} from "react-hook-form";
-import InputTextBasic from "features/input/InputTextBasic";
 import RHForm from "features/input/RHForm";
 import clsx from "clsx";
 import InputRadio from "features/input/InputRadio";
@@ -11,61 +10,88 @@ import InputTextAreaBasic from "features/input/InputTextAreaBasic";
 import InputFileDropzone from "features/input/InputFileDropzone";
 import {useRouter} from "next/router";
 import PageHeader from "features/components/PageHeader";
-import {getSessionData} from "features/network/session";
-import {getFeedDetails, rebuildAgentFromSession} from "features/utils/feedUtils";
+import {getFeedDetails} from "features/utils/feedUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
-import {localGet} from "features/network/network";
+import {localDelete, localGet} from "features/network/network";
 import InputTextButton from "features/input/InputTextButton";
 import Image from "next/image";
 import InputMultiWord from "features/input/InputMultiWord";
-import ModalManualSearch from "features/components/specific/ModeManualSearch";
-import {connectToDatabase} from "features/utils/dbUtils";
+import KeywordParser from "features/components/specific/KeywordParser";
 import {serializeFile} from "features/utils/fileUtils";
-import {SIGNATURE} from "features/utils/constants";
+import {
+    FeedKeyword,
+    KEYWORD_SETTING,
+    KEYWORD_TYPES,
+    KeywordType,
+    PICS_SETTING,
+    POST_LEVELS,
+    SIGNATURE,
+    SORT_ORDERS
+} from "features/utils/constants";
 import {SUPPORTED_LANGUAGES} from "features/utils/constants";
+import SortableWordBubbles from "features/components/SortableWordBubbles";
+import {getLoggedInData} from "features/network/session";
+import {HiTrash} from "react-icons/hi";
+import PopupConfirmation from "features/components/PopupConfirmation";
+import {APP_SESSION} from "features/auth/authUtils";
+import {stat} from "fs";
+import {isValidDomain} from "features/utils/validationUtils";
 
 export async function getServerSideProps({req, res, query}) {
-    const db = await connectToDatabase();
-    if (!db) { return { redirect: { destination: '/500', permanent: false } } }
-    const session = await getSessionData(req, res);
     let feed = null;
-    if (session) {
-        const agent = await rebuildAgentFromSession(session);
-        if (!agent) {return { redirect: { destination: '/signout', permanent: false } };}
 
-        const {feed:_feed} = query;
+    const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
+    if (redirect) {return {redirect};}
+
+    if (agent) {
+        const {feed: _feed} = query;
         if (_feed) {
-            const feedData:any = await getFeedDetails(agent, db, _feed);
+            const feedData: any = await getFeedDetails(agent, db, _feed);
             if (feedData) {
                 let {allowList, blockList} = feedData;
                 const actors = [...allowList, ...blockList];
-                const {data:{profiles}} = await agent.api.app.bsky.actor.getProfiles({actors});
-                const findAndMatch = (acc, did) => {
-                    const profile = profiles.find(x => x.did === did);
-                    if (profile) {
-                        const {did, handle, displayName} = profile;
-                        acc.push({did, handle, displayName});
-                    }
-                    return acc;
-                };
-                allowList = allowList.reduce(findAndMatch, []);
-                blockList = blockList.reduce(findAndMatch, []);
+                if (actors.length > 0) {
+                    const {data: {profiles}} = await agent.api.app.bsky.actor.getProfiles({actors});
+                    const findAndMatch = (acc, did) => {
+                        const profile = profiles.find(x => x.did === did);
+                        if (profile) {
+                            const {did, handle, displayName} = profile;
+                            acc.push({did, handle, displayName});
+                        }
+                        return acc;
+                    };
+                    allowList = allowList.reduce(findAndMatch, []);
+                    blockList = blockList.reduce(findAndMatch, []);
+                }
+
                 feed = {...feedData, allowList, blockList};
             } else {
-                return { redirect: { destination: '/404', permanent: false } }
+                return {redirect: {destination: '/404', permanent: false}}
             }
         }
     }
 
-    return {props: {session, feed}};
+    // TODO
+    /*
+    <div>
+        Minimum likes
+        Max age of search
+        Search children for keywords and upload parent
+        Create public Feed Description Page to show internal workings of feed
+    </div>
+     */
+
+    return {props: {updateSession, session, feed}};
 }
 
 
 
 
-export default function Home({feed}) {
+export default function Home({feed, updateSession}) {
+    const title = "Make a Feed for Bluesky Social";
+    const description = "";
     const router = useRouter();
     const languageNames = new Intl.DisplayNames([router.locale], {type: 'language'});
     const SUPPORTED_LANG = SUPPORTED_LANGUAGES.map(id => {
@@ -79,15 +105,20 @@ export default function Home({feed}) {
             id, txt
         }
     });
-    const { data: session } = useSession();
+    const { data: session, status } = useSession();
     const [languages, setLanguages] = useState<string[]>([]);
-    const [tokenSearch, setTokenSearch] = useState<string[]>([]);
-    const [manualSearch, setManualSearch] = useState<{w:string, pre:string[], suf:string[]}[]>([]);
-    const [newKeywordMode, setNewKeywordMode] = useState<"token"|"character">("token");
+    const [newKeywordMode, setNewKeywordMode] = useState<KeywordType>("token");
     const [shortNameLocked, setShortNameLocked] = useState(false);
+    const [postLevels, setPostLevels] = useState<string[]>([]);
+    const [keywordSetting, setKeywordSetting] = useState<string[]>([]);
+    const [keywords, setKeywords] = useState<FeedKeyword[]>([]);
+    const [popupState, setPopupState] = useState<"delete"|false>(false);
+    const [pics, setPics] = useState<string[]>([]);
+    const [busy, setBusy] = useState(false);
 
     const recaptcha = useRecaptcha();
     const imageRef = useRef(null);
+    const formRef = useRef(null);
 
     const useFormReturn = useForm();
     const {
@@ -98,17 +129,36 @@ export default function Home({feed}) {
         setError,
         clearErrors,
     } = useFormReturn;
+    const watchFile = watch("file");
+    const watchShortName = watch("shortName");
+
+
+    useEffect(() => {
+        if (session && status === "authenticated" && updateSession && !busy) {
+            console.log("update session");
+            setBusy(true);
+            signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
+                console.log(r);
+                setBusy(false);
+            });
+        }
+    }, [session]);
+
+
 
     useEffect(() => {
         if (!feed) {
-            reset({sort:"chronological", allowList:[], blockList:[]});
+            reset({sort:"chronological", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[]});
             setLanguages(SUPPORTED_LANGUAGES);
+            setPostLevels(POST_LEVELS.map(x => x.id));
+            setKeywordSetting(["text"]);
+            setPics(["text", "pics"])
         } else {
-            const {avatar, sort, uri, displayName, description, blockList, allowList, languages} = feed;
+            const {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords} = feed;
 
             let o:any = {
                 sort,displayName, description: description.replaceAll(SIGNATURE, ""),
-                shortName: uri.split("/").at(-1), blockList, allowList
+                shortName: uri.split("/").at(-1), blockList, allowList, everyList, mustUrl: mustUrl || [], blockUrl: blockUrl || [],
             };
 
             if (avatar) {
@@ -118,28 +168,25 @@ export default function Home({feed}) {
 
             reset(o);
             setShortNameLocked(true);
-            if (languages) {
-                setLanguages(languages);
-            } else {
-                setLanguages(SUPPORTED_LANGUAGES);
-            }
-
+            setLanguages(languages || SUPPORTED_LANGUAGES);
+            setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
+            setKeywordSetting(keywordSetting || ["text"]);
+            setPics(pics || ["text", "pics"]);
+            setKeywords(keywords || []);
         }
     }, [feed]);
 
-
-    const title = "Make a Feed for Bluesky Social";
-    const description = "";
-    const watchFile = watch("file");
 
     const multiWordCallback = (fieldName:string) => {
         return async(val, callback) => {
             if (val.startsWith("@") || val.startsWith("did:plc:")) {
                 const user = val.startsWith("@")? val.slice(1) : val;
-                console.log("user", user);
+                const everyList = getValues("everyList");
                 const allowList = getValues("allowList");
                 const blockList = getValues("blockList");
-                if (blockList.find(x => x.did === user || x.handle === user)) {
+                if (everyList.find(x => x.did === user || x.handle === user)) {
+                    setError(fieldName, {type:'custom', message:`${user} is already in Every List`});
+                } else if (blockList.find(x => x.did === user || x.handle === user)) {
                     setError(fieldName, {type:'custom', message:`${user} is already in Block List`});
                 } else if (allowList.find(x => x.did === user || x.handle === user)) {
                     setError(fieldName, {type:'custom', message:`${user} is already in Allow List`});
@@ -170,8 +217,45 @@ export default function Home({feed}) {
         }
     }
 
+    const validateKeyword = (term, rejectWords) => {
+        if (keywords.find(y => y.w === term)) {
+            return "Term is already in keywords";
+        }
+        let set = new Set();
+        for (const r of rejectWords) {
+            const term = `${r.p}|${r.s}`;
+            if (set.has(term)) {
+                return "Duplicate Ignore Combination";
+            }
+            set.add(term);
+        }
+        return null;
+    }
+
 
     return <>
+        <PopupConfirmation
+            isOpen={popupState === "delete"}
+            setOpen={setPopupState}
+            title={`Confirm deletion of ${feed?.displayName}`}
+            message="This cannot be reversed"
+            yesCallback={async() => {
+                if (typeof recaptcha !== 'undefined' && !busy) {
+                    recaptcha.ready(async () => {
+                        setBusy(true);
+                        //@ts-ignore
+                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                        const result = await localDelete("/feed/delete", {captcha, rkey: feed.uri.split("/").slice(-1)[0]});
+                        if (result.status === 200) {
+                            await router.push("/my-feeds");
+                        } else {
+                            console.log(result);
+                        }
+                        setBusy(false);
+                    });
+                }
+            }
+            }/>
         <HeadExtended title={title} description={description}/>
         {
             !session && <FormSignIn/>
@@ -181,13 +265,15 @@ export default function Home({feed}) {
             session && <div className="bg-sky-200 w-full max-w-5xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} />
                 <RHForm
+                    formRef={formRef}
                     recaptcha={recaptcha}
                     useFormReturn={useFormReturn}
                     cleanUpData={async (data) => {
                         console.log(data);
-                        const {sort, file, displayName, shortName, description, allowList:_allowList, blockList:_blockList} = data;
+                        const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl} = data;
                         const allowList = _allowList.map(x => x.did);
                         const blockList = _blockList.map(x => x.did);
+                        const everyList = _everyList.map(x => x.did);
                         let imageObj:any = {};
                         if (file) {
                             const {type:encoding, changed, url} = file;
@@ -198,23 +284,35 @@ export default function Home({feed}) {
                                 imageObj = {encoding, imageUrl:url};
                             }
                         }
-                        const result = {...imageObj, displayName, shortName, description, allowList, blockList, languages, sort};
+
+                        const result = {...imageObj, languages,  postLevels, pics, keywordSetting, keywords,
+                            sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl};
                         console.log(result);
 
                         return result;
                     }}
                     postUrl="/feed/submit" postCallback={async (result) => {
-                        console.log(result);
                         if (result.status === 200) {
                            await router.push("/my-feeds");
                         }
                     }}
                     className="space-y-4">
                     <div className="bg-white p-2">
-                        <div>Feed Settings</div>
+                        <div className="flex justify-between">
+                            <div className="flex place-items-center gap-2">
+                                <div className="font-bold text-lg">Bluesky Feed Settings</div>
+                                <div>(This info is submitted to Bluesky)</div>
+                            </div>
+                            <button type="button"
+                                    onClick={() => setPopupState("delete")}
+                                    className="p-1 inline-flex items-center rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                <HiTrash className="w-6 h-6"/>
+                                <div className="text-lg font-medium">Delete this feed</div>
+                            </button>
+                        </div>
                         <div className="flex w-full place-items-center gap-4">
                             <div>
-                                <div className="text-center">Avatar</div>
+                                <div className="text-center">Feed Avatar</div>
                                 <div className="w-40 h-40 aspect-square relative rounded-xl overflow-hidden">
                                     <InputFileDropzone
                                         fieldName="file"
@@ -232,7 +330,7 @@ export default function Home({feed}) {
                                 <InputTextButton
                                     maxLength={24}
                                     fieldName="displayName"
-                                    fieldReadableName="Full Name (Max 24 characters)"
+                                    fieldReadableName="Feed Full Name (Max 24 characters)"
                                     options={{}}
                                     useFormReturn={useFormReturn}
                                     placeholder="My Amazing Feed"
@@ -243,239 +341,417 @@ export default function Home({feed}) {
                                     const name = getValues("displayName");
                                     setValue("shortName", name.toLowerCase().replaceAll(" ", "-").replaceAll(/[^a-z0-9-]/g, ""));
                                 }} />
-                                <InputTextBasic maxLength={15} fieldName="shortName" disabled={shortNameLocked} fieldReadableName="Unique Short Name among all your feeds (CANNOT be changed once submitted)" subtext="(lowercase alphanumeric and dashes only max 15 characters) [0-9a-zA-z-]" options={{}} useFormReturn={useFormReturn} placeholder="my-amazing-feed" />
-                                <InputTextAreaBasic fieldName="description" fieldReadableName="Description" options={{}} useFormReturn={useFormReturn} placeholder="This is an amazing feed, please use it" />
+                                <InputTextButton
+                                    maxLength={15} fieldName="shortName" disabled={shortNameLocked}
+                                    fieldReadableName="Unique Short Name among all your feeds (CANNOT be changed once submitted)"
+                                    subtext="(lowercase alphanumeric and dashes only max 15 characters) [0-9a-zA-z-]"
+                                    options={{}} useFormReturn={useFormReturn} placeholder="my-amazing-feed"
+                                    buttonText={`${15-(watchShortName?.length || 0)}`}
+                                    buttonCallback={() => {}}
+                                    buttonDisabled={true}
+                                />
+                                <InputTextAreaBasic fieldName="description" fieldReadableName="Description (Max 300 characters)" options={{}} useFormReturn={useFormReturn} placeholder="This is an amazing feed, please use it" />
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-2">
+                        <div className="font-bold text-lg">Feed Settings</div>
+                        <div className="bg-sky-100 p-2 space-y-2">
+                            <InputRadio entriesPerRow={2} modifyText={_ => {
+                                return "text-base font-semibold";
+                            }} fieldName="sort" fieldReadableName="Sort Order" subtext="Determines which post is at top" useFormReturn={useFormReturn} items={SORT_ORDERS}/>
+                            <a href="https://medium.com/hacking-and-gonzo/how-hacker-news-ranking-algorithm-works-1d9b0cf2c08d" target="_blank" rel="noreferrer">
+                                <div className="p-2 hover:underline text-blue-500 hover:text-blue-800 inline-flex place-items-center text-sm gap-2">
+                                    <BsFillInfoCircleFill className="h-4 w-4"/>
+                                    <span>What is the Hacker News sorting algorithm?</span>
+                                </div>
+                            </a>
+                        </div>
+                        <div className="bg-lime-100 p-2 space-y-2">
+                            <div className="font-semibold">Post Type Filter</div>
+                            <div className="grid grid-cols-2 gap-2">
+                                {
+                                    POST_LEVELS.map(x =>
+                                        <div key={x.id}
+                                             className="flex place-items-center bg-yellow-400 hover:bg-yellow-200 gap-2 p-1"
+                                             onClick={() => {
+                                                 if (postLevels.indexOf(x.id) >= 0) {
+                                                     setPostLevels([...postLevels.filter(y => y !== x.id)]);
+                                                 } else {
+                                                     postLevels.push(x.id);
+                                                     setPostLevels([...postLevels]);
+                                                 }
+                                             }}>
+                                            <input type="checkbox"
+                                                   onChange={() => {}}
+                                                   onClick={(e) => {
+                                                       e.stopPropagation();
+                                                       if (postLevels.indexOf(x.id) >= 0) {
+                                                           setPostLevels([...postLevels.filter(y => y !== x.id)]);
+                                                       } else {
+                                                           postLevels.push(x.id);
+                                                           setPostLevels([...postLevels]);
+                                                       }
+                                                   }}
+                                                   checked={postLevels.indexOf(x.id) >= 0}
+                                                   className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                            />
+                                            <div>{x.txt}</div>
+                                        </div>)
+                                }
+                            </div>
+                            {
+                                postLevels.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
+                            }
+                        </div>
+
+                        <div className="bg-lime-100 p-2 space-y-2">
+                            <div className="font-semibold">Picture Posts Filter</div>
+                            <div className="grid grid-cols-2 gap-2">
+                                {
+                                    PICS_SETTING.map(x =>
+                                        <div key={x.id}
+                                             className="flex place-items-center bg-yellow-400 hover:bg-yellow-200 gap-2 p-1"
+                                             onClick={() => {
+                                                 if (pics.indexOf(x.id) >= 0) {
+                                                     setPics([...pics.filter(y => y !== x.id)]);
+                                                 } else {
+                                                     setPics([...pics, x.id]);
+                                                 }
+                                             }}>
+                                            <input type="checkbox"
+                                                   onChange={() => {}}
+                                                   onClick={(e) => {
+                                                       e.stopPropagation();
+                                                       if (pics.indexOf(x.id) >= 0) {
+                                                           setPics([...pics.filter(y => y !== x.id)]);
+                                                       } else {
+                                                           setPics([...pics, x.id]);
+                                                       }
+                                                   }}
+                                                   checked={pics.indexOf(x.id) >= 0}
+                                                   className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                            />
+                                            <div>{x.txt}</div>
+                                        </div>)
+                                }
+                            </div>
+                            {
+                                pics.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
+                            }
                         </div>
 
 
 
+                        <div className="bg-lime-100 p-2">
+                            <div className="font-semibold">Language Filters</div>
+                            <div>Note: These may not work well as language is self reported in the website/app</div>
+                            <div className="grid grid-cols-2">
+                                <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                     onClick={() => {
+                                         if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
+                                             setLanguages([]);
+                                         } else {
+                                             setLanguages(SUPPORTED_LANG.map(x => x.id));
+                                         }
+                                     }}>
+                                    <div className="flex items-center p-2">
+                                        <input type="checkbox"
+                                               onChange={() => {}}
+                                               onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
+                                                       setLanguages([]);
+                                                   } else {
+                                                       setLanguages(SUPPORTED_LANG.map(x => x.id));
+                                                   }
+                                               }}
+                                               checked={SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)}
+                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-md")}
+                                        />
+                                        <div className={clsx("ml-3 text-gray-700")}>
+                                            {
+                                                SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
+                                                    Deselect All
+                                                    <RxCross2 className="w-6 h-6 text-red-600"/>
+                                                </div>: <div className="flex place-items-center">
+                                                    Select All
+                                                    <RxCheck className="w-6 h-6 text-green-600"/>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                {
+                                    SUPPORTED_LANG.map(({txt, id}) => {
+                                        const onClick = (e) => {
+                                            e.stopPropagation();
+                                            if (languages.indexOf(id) < 0) {
+                                                const lang = [...languages];
+                                                lang.push(id)
+                                                setLanguages(lang);
+                                            } else {
+                                                setLanguages(languages.filter(x => x !== id));
+                                            }
+                                        }
+                                        return <div key={id}
+                                                    className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                    onClick={onClick}>
+                                            <div className="flex items-center p-2">
+                                                <input type="checkbox"
+                                                       checked={languages.indexOf(id) >= 0}
+                                                       onClick={onClick}
+                                                       onChange={()=>{}}
+                                                       className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-md")}
+                                                />
+                                                <div className={clsx("ml-3 text-gray-700")}>
+                                                    {txt}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    })
+                                }
+                            </div>
+                        </div>
+
                     </div>
 
-                    <div className="bg-white p-2 space-y-2">
-                        <InputRadio entriesPerRow={2} modifyText={_ => {
-                            return "text-lg font-bold";
-                        }} fieldName="sort" fieldReadableName="Sort Order" useFormReturn={useFormReturn} items={[
-                            {id:"chronological", txt:"Chronological - Most recent post at top"},
-                            {id:"score", txt:"Hot - Use Hacker News sorting algorithm"}
-                        ]}/>
-                        <a href="https://medium.com/hacking-and-gonzo/how-hacker-news-ranking-algorithm-works-1d9b0cf2c08d" target="_blank" rel="noreferrer">
-                            <div className="p-2 hover:underline text-blue-500 hover:text-blue-800 inline-flex place-items-center text-sm gap-2">
-                                <BsFillInfoCircleFill className="h-4 w-4"/>
-                                <span>What is the Hacker News sorting algorithm?</span>
-                            </div>
-                        </a>
-                    </div>
+
 
                     <div className="bg-white p-2 space-y-2">
                         <div className="text-lg font-bold">User Filters</div>
-
-                        <InputMultiWord
-                            className="border border-2 border-green-700 p-2 rounded-xl bg-lime-100"
-                            labelText="Allow List: Show all posts from these Users"
-                            placeHolder="@handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
-                            fieldName="allowList"
-                            handleItem={(item, value, onChange) => {
-                                value.push(item);
-                                value.sort((a,b) => {
-                                    return a.handle.localeCompare(b.handle);
-                                })
-                                onChange(value);
-                            }}
-                            valueModifier={item => {
-                                return `${item.displayName} @${item.handle}`
-                            }}
-                            useFormReturn={useFormReturn}
-                            check={multiWordCallback("allowList")}/>
-
-                        <InputMultiWord
-                            className="border border-2 border-red-700 p-2 rounded-xl bg-pink-100"
-                            labelText="Block List: Block all posts from these Users"
-                            placeHolder="@handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
-                            fieldName="blockList"
-                            handleItem={(item, value, onChange) => {
-                                value.push(item);
-                                value.sort((a,b) => {
-                                    return a.handle.localeCompare(b.handle);
-                                })
-                                onChange(value);
-                            }}
-                            valueModifier={item => {
-                                return `${item.displayName} @${item.handle}`
-                            }}
-                            useFormReturn={useFormReturn}
-                            check={multiWordCallback("blockList")}/>
+                        {
+                            [
+                                {id:"everyList", c:"bg-lime-100", t:"Every List: Show all posts from these users"},
+                                {id:"allowList", c:"bg-yellow-100", t:"Allow List: Only search posts from these Users, if empty, will search all users for keywords"},
+                                {id:"blockList", c:"bg-pink-100", t:"Block List: Block all posts from these Users"}].map(({id, t,c})=>
+                                <InputMultiWord
+                                    key={id}
+                                    className={clsx("border border-2 border-black p-2 rounded-xl", c)}
+                                    labelText={t}
+                                    placeHolder="@handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
+                                    fieldName={id}
+                                    handleItem={(item, value, onChange) => {
+                                        value.push(item);
+                                        value.sort((a,b) => {
+                                            return a.handle.localeCompare(b.handle);
+                                        })
+                                        onChange(value);
+                                    }}
+                                    valueModifier={item => {
+                                        return `${item.displayName} @${item.handle}`
+                                    }}
+                                    useFormReturn={useFormReturn}
+                                    check={multiWordCallback(id)}/>
+                            )
+                        }
                     </div>
 
-                    <div className="bg-white p-2">
-                        <div>Language Filters</div>
-                        <div>Note: These may not work well as language is self reported in the website/app</div>
-                        <div className="grid grid-cols-2">
-                            <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                 onClick={() => {
-                                     if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
-                                         setLanguages([]);
-                                     } else {
-                                         setLanguages(SUPPORTED_LANG.map(x => x.id));
-                                     }
-                                 }}>
-                                <div className="flex items-center p-2">
-                                    <input type="checkbox"
-                                           onChange={() => {}}
-                                           onClick={() => {
-                                               if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
-                                                   setLanguages([]);
-                                               } else {
-                                                   setLanguages(SUPPORTED_LANG.map(x => x.id));
-                                               }
-                                           }}
-                                           checked={SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)}
-                                           className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-md")}
-                                    />
-                                    <div className={clsx("ml-3 text-gray-700")}>
-                                        {
-                                            SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
-                                                Deselect All
-                                                <RxCross2 className="w-6 h-6 text-red-600"/>
-                                            </div>: <div className="flex place-items-center">
-                                                Select All
-                                                <RxCheck className="w-6 h-6 text-green-600"/>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                            {
-                                SUPPORTED_LANG.map(({txt, id}) => {
-                                    const onClick = () => {
-                                        if (languages.indexOf(id) < 0) {
-                                            const lang = [...languages];
-                                            lang.push(id)
-                                            setLanguages(lang);
-                                        } else {
-                                            setLanguages(languages.filter(x => x !== id));
-                                        }
-                                    }
-                                    return <div key={id}
-                                                className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                                onClick={onClick}>
-                                        <div className="flex items-center p-2">
+                    <div className="bg-white p-2 space-y-2">
+                        <div className="text-lg font-bold">Keyword Filters</div>
+                        <div>A post is blocked if it contains at least one blocked keyword, and is allowed only if it has no blocked keywords and at least one search keyword</div>
+                        <div className="bg-sky-200 p-2">
+                            <div className="font-semibold">Search location</div>
+                            <div className="grid grid-cols-2 gap-2">
+                                {
+                                    KEYWORD_SETTING.map(x =>
+                                        <div key={x.id}
+                                             className="flex place-items-center bg-yellow-400 hover:bg-yellow-200 gap-2 p-1"
+                                             onClick={() => {
+                                                 if (keywordSetting.indexOf(x.id) >= 0) {
+                                                     setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
+                                                 } else {
+                                                     setKeywordSetting([...keywordSetting, x.id]);
+                                                 }
+                                                 console.log(keywordSetting);
+                                             }}>
                                             <input type="checkbox"
-                                                   checked={languages.indexOf(id) >= 0}
-                                                   onClick={onClick}
-                                                   onChange={()=>{}}
-                                                   className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-md")}
+                                                   onChange={() => {}}
+                                                   onClick={(e) => {
+                                                       e.stopPropagation();
+                                                       if (keywordSetting.indexOf(x.id) >= 0) {
+                                                           setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
+                                                       } else {
+                                                           keywordSetting.push(x.id);
+                                                           setKeywordSetting([...keywordSetting]);
+                                                       }
+                                                   }}
+                                                   checked={keywordSetting.indexOf(x.id) >= 0}
+                                                   className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
                                             />
-                                            <div className={clsx("ml-3 text-gray-700")}>
-                                                {txt}
-                                            </div>
-                                        </div>
-                                    </div>
-                                })
+                                            <div>{x.txt}</div>
+                                        </div>)
+                                }
+                            </div>
+                            {
+                                keywordSetting.length === 0 && <div className="text-red-700">Please select at least one keyword search method</div>
                             }
+                        </div>
+                        <div>
+                            <div className={clsx("grid grid-cols-3")}>
+                                {
+                                    KEYWORD_TYPES.map((x, i) =>
+                                        <div key={x} className={clsx(
+                                            ["bg-pink-100 hover:bg-pink-200", "bg-yellow-100 hover:bg-yellow-200", "bg-sky-100 hover:bg-sky-200"][i],
+                                            "flex items-center p-2 border border-x-2 border-t-2 border-b-0 border-black")}
+                                             onClick={() => {
+                                                 setNewKeywordMode(x);
+                                             }}>
+                                            <input
+                                                id='keyword-filter-type'
+                                                type="radio"
+                                                value={x}
+                                                checked={newKeywordMode === x}
+                                                onChange={() => {}}
+                                                onClick={() => {setNewKeywordMode(x)}}
+                                                className="mr-2 focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
+                                            />
+                                            {x.slice(0,1).toUpperCase()+x.slice(1)}
+                                        </div>)
+                                }
+                            </div>
+                            <div className={clsx("p-2 border border-l-2 border-r-2 border-y-0 border-black",
+                                newKeywordMode === "token" && "bg-pink-100",
+                                newKeywordMode === "segment" && "bg-yellow-100",
+                                newKeywordMode === "hashtag" && "bg-sky-100"
+                            )}>
+                                <div className="font-semibold">{`${newKeywordMode.slice(0,1).toUpperCase()}${newKeywordMode.slice(1)} Search`}</div>
+                                {
+                                    newKeywordMode === "token" &&
+                                    <KeywordParser
+                                        keyword="Token"
+                                        handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join(" ")}
+                                        validateKeyword={validateKeyword}
+                                        submitKeyword={(w, r, a) => {
+                                            setKeywords([...keywords, {t:"t", w:w.toLowerCase(), a, r}]);
+                                        }}>
+                                        <ul className="list-disc pl-4">
+                                            <li>Posts and search terms are split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is ok` becomes `this` `is` `ok`</li>
+                                            <li>Terms with spaces like `Quick Draw` will also find `#quickdraw`</li>
+                                            <li>Works for terms with accents like `Bon Appétit`</li>
+                                            <li>Might not work well if the searched term is combined with other terms, e.g. searching for `cat` will not find `caturday`</li>
+                                            <li>Does not work for well for non-latin languages like Korean, Mandarin or Japanese</li>
+                                        </ul>
+                                    </KeywordParser>
+                                }
+                                {
+                                    newKeywordMode === "segment" && <KeywordParser
+                                        keyword="Segment"
+                                        handleTokenization={(r, term) => `${r.p || ""}${term}${r.s || ""}`}
+                                        validateKeyword={validateKeyword}
+                                        submitKeyword={(w, r, a) => {
+                                            setKeywords([...keywords, {t:"s", w:w.toLowerCase(), a, r}]);
+                                        }}>
+                                        <ul className="list-disc pl-4">
+                                            <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>
+                                            <li>For example: `act` is inside both `action` and `react`</li>
+                                            <li>To prevent it, add the prefix and suffix of common terms to reject</li>
+                                            <li>This is the preferred way to search for non-latin words like アニメ</li>
+                                        </ul>
+                                    </KeywordParser>
+                                }
+
+                                {
+                                    newKeywordMode === "hashtag" && <KeywordParser
+                                        keyword="Hashtag"
+                                        prefix="#"
+                                        handleTokenization={null}
+                                        validateKeyword={term => {
+                                            if (term.startsWith("#")) {
+                                                return "Hashtag does not need to start with #, already handled by server";
+                                            } else if (keywords.find(x => x.t === "#" && x.w === term)) {
+                                                return "Hashtag already in list";
+                                            }
+                                            return null;
+                                        }} submitKeyword={(w, rejectWords, a) => {
+                                            setKeywords([...keywords, {t:"#", w:w.toLowerCase(), a}]);
+                                        }}
+                                    >
+                                        <ul className="list-disc pl-4">
+                                            <li>Posts are searched for hashtags</li>
+                                        </ul>
+                                    </KeywordParser>
+                                }
+                                <SortableWordBubbles
+                                    className="mt-4"
+                                    value={keywords}
+                                    selectable={true}
+                                    valueModifier={(val) => {
+                                        switch (val.t) {
+                                            case "#":
+                                                return `#${val.w}`;
+                                            case "s":
+                                                return `[${val.w}] [${val.r.map(x =>  `${x.p}${val.w}${x.s}`).join(",")}]`;
+                                            case "t":
+                                                return `${val.w} [${val.r.map(x => [x.p, val.w, x.s].filter(x => x).join(" ")).join(",")}]`;
+                                        }
+                                        return `#${JSON.stringify(val)}`;
+                                    }}
+                                    classModifier={(val, index, original) => {
+                                        if (val.a) {
+                                            return original.replace("bg-white", "bg-lime-100 hover:bg-lime-300");
+                                        } else {
+                                            return original.replace("bg-white", "bg-red-300 hover:bg-red-500");
+                                        }
+                                    }}
+                                    buttonCallback={(val, action) => {
+                                        if (action === "x") {
+                                            setKeywords([...keywords.filter(x => !(x.t === val.t && x.w === val.w))]);
+                                        } else if (action === "o") {
+                                            // change type to match tag, fill up form, remove from list
+                                        }
+                                    }} />
+                            </div>
                         </div>
                     </div>
 
-                    <div className="bg-white p-2">
-                        <div>Keyword Filters</div>
-
-                        <div className={clsx("grid grid-cols-2")}>
-                            <div className="flex items-center bg-blue-100 hover:bg-blue-200 p-2 rounded-tl-md border border-t-2 border-l-2 border-b-0 border-black"
-                                 onClick={() => {
-                                     setNewKeywordMode("token");
-                                 }}>
-                                <input
-                                    id='keyword-filter-type'
-                                    type="radio"
-                                    value="token"
-                                    checked={newKeywordMode === "token"}
-                                    onChange={() => {}}
-                                    onClick={() => {setNewKeywordMode("token")}}
-                                    className="mr-2 focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
-                                />
-                                Tokenized Term Filter
-                            </div>
-                            <div className="flex items-center bg-yellow-100 hover:bg-yellow-200 p-2 rounded-tr-md border border-t-2 border-r-2 border-b-0 border-black"
-                                 onClick={() => {
-                                     setNewKeywordMode("character");
-                                 }}>
-                                <input
-                                    id='keyword-filter-type'
-                                    type="radio"
-                                    value="manual"
-                                    checked={newKeywordMode === "character"}
-                                    onChange={() => {}}
-                                    onClick={() => {setNewKeywordMode("character")}}
-                                    className="mr-2 focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
-                                />
-                                Character-by-Character Term Filter
-                            </div>
-                        </div>
-                        <div className={clsx("p-2 border border-l-2 border-r-2 border-y-0 border-black", newKeywordMode === "token"? "bg-blue-100" : "bg-yellow-100")}>
-                            <div className="font-semibold">{`${newKeywordMode.slice(0,1).toUpperCase()}${newKeywordMode.slice(1)} Search`}</div>
-                            {
-                                newKeywordMode === "token" &&
-                                <ModalManualSearch
-                                    keyword="Token"
-                                    handleTokenization={(rejectWords, term) => {
-                                        let word = "";
-                                        if (rejectWords.pre) {
-                                            word += rejectWords.pre + " ";
-                                        }
-                                        word += term;
-                                        if (rejectWords.suf) {
-                                            word += " " + rejectWords.suf;
-                                        }
-                                        return word;
-                                    }}
-                                    validateKeyword={term => {
-                                        return true;
-                                    }}
-                                    submitKeyword={undefined}>
-                                    <ul className="list-disc pl-4">
-                                        <li>Posts and search terms are split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is ok` becomes `this` `is` `ok`</li>
-                                        <li>Terms with spaces like `Quick Draw` will also find `#quickdraw`</li>
-                                        <li>Works for terms with accents slike `Bon Appétit`</li>
-                                        <li>Might not work well if the searched term is combined with other terms, e.g. searching for `cat` will not find `caturday`</li>
-                                        <li>Does not work for well for non-latin languages like Korean, Mandarin or Japanese</li>
-                                    </ul>
-                                </ModalManualSearch>
-                            }
-                            {
-                                newKeywordMode === "character" && <ModalManualSearch
-                                    keyword="Term"
-                                    handleTokenization={(rejectWords, term) => `${rejectWords.pre || ""}${term}${rejectWords.suf || ""}`}
-                                    validateKeyword={term => {
-                                        return true;
-                                    }} submitKeyword={undefined}
-                                >
-
-                                    <ul className="list-disc pl-4">
-                                        <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>
-                                        <li>For example: `act` is inside both `action` and `react`</li>
-                                        <li>To prevent it, add the prefix and suffix of common terms to reject</li>
-                                        <li>This is the preferred way to search for non-latin words like アニメ</li>
-                                    </ul>
-                                </ModalManualSearch>
-                            }
-                        </div>
+                    <div className="bg-white p-2 space-y-2">
+                        <div className="text-lg font-bold">URL Filters</div>
+                        <div>Use *.domain.tld to get all subdomains for domain.tld</div>
 
                         {
-                            //                        <SortableWordBubbles value={undefined} orderedList={undefined} disabled={undefined} valueModifier={undefined} updateCallback={undefined} />
+                            [
+                                {id:"mustUrl", t:"Posts must have links from one of these domains", c:"bg-yellow-100"},
+                                {id:"blockUrl", t:"Block all post with links from these domains", c:"bg-pink-100"}
+                            ].map(({id, t, c}) => <InputMultiWord key={id}
+                                className={clsx("border border-2 border-yellow-700 p-2 rounded-xl", c)}
+                                labelText={t}
+                                placeHolder="skip http://... or https://..."
+                                fieldName={id}
+                                handleItem={(item, value, onChange) => {
+                                    value.push(item);
+                                    value.sort(); // sorting algo
+                                    onChange(value);
+                                }}
+                                useFormReturn={useFormReturn}
+                                check={(val, callback) => {
+                                    if (val.startsWith("https://") || val.startsWith("http://")) {
+                                        setError(id, {type:'custom', message:`${val} must not start with https:// or http://`});
+                                    } else if (!isValidDomain(val)) {
+                                        setError(id, {type:'custom', message:`Invalid domain`});
+                                    } else {
+                                        const mustUrls = getValues("mustUrl");
+                                        const blockUrls = getValues("blockUrl");
+                                        if (mustUrls.indexOf(val) >= 0) {
+                                            setError(id, {type:'custom', message:`${val} is already in required url list`});
+                                        } else if (blockUrls.indexOf(val) >= 0) {
+                                            setError(id, {type:'custom', message:`${val} is already in blocked url list`});
+                                        } else {
+                                            callback(val);
+                                        }
+                                    }
+                                }}/>)
                         }
-
                     </div>
 
-                    <button type="submit"
+                    <button type="button"
+                            onClick={() => {formRef.current.requestSubmit();}}
                             className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                        Submit
                     </button>
                 </RHForm>
             </div>
         }
-
-
-
-
     </>
 }

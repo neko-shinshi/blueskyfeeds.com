@@ -9,7 +9,7 @@ export default function InputTextButton(
         placeholder,
         options,
         useFormReturn,
-        optional,
+        optional=false,
         specialType,
         hiddenOrInvisible,
         buttonText,
@@ -18,13 +18,15 @@ export default function InputTextButton(
         buttonDisabled=false,
         isButtonSubmit=false,
         maxLength=100,
+        disabled=false,
+        subtext="",
         classNameLabel="text-sm font-medium text-gray-700"
     }:{
         fieldName: string,
         fieldReadableName: string,
         options: Object,
         useFormReturn: any,
-        optional: boolean,
+        optional?: boolean,
         placeholder: string,
         specialType?: string,
         hiddenOrInvisible?: boolean,
@@ -34,6 +36,8 @@ export default function InputTextButton(
         buttonDisabled?:boolean,
         isButtonSubmit?:boolean
         maxLength?:number
+        disabled?:boolean
+        subtext?:string
         classNameLabel?:string
     }) {
     const {
@@ -50,11 +54,15 @@ export default function InputTextButton(
                 </label>
                 { optional && <span className="text-sm text-gray-500">Optional</span> }
             </div>
+            {
+                subtext && <div className="text-sm font-light text-gray-600">{subtext}</div>
+            }
             <div className="mt-1 flex rounded-md shadow-sm">
                 <div className="relative flex flex-grow items-stretch focus-within:z-10">
                     <input
                         type={specialType || "text"}
                         className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2",
+                            disabled && "cursor-not-allowed bg-gray-200",
                             dotObjectStringPath(errors, fieldName)? "pr-10 focus:border-red-500 focus:ring-red-500 border-red-300 text-red-900 placeholder-red-300"
                                 :"focus:border-gray-500 focus:ring-gray-500 border-gray-300 text-gray-900 placeholder-gray-300")}
                         aria-invalid="true"

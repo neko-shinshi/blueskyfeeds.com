@@ -1,4 +1,4 @@
-const { BskyAgent }  = require ("@atproto/api");
+const { BskyAgent }  = require ("@nekoshinshi/atproto-api");
 const {connectToDatabase} = require("../features/utils/dbUtils");
 
 const getAgent = async () => {

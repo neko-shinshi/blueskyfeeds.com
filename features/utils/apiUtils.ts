@@ -4,6 +4,7 @@ import {getServerSession} from "next-auth";
 import {authOptions} from "pages/api/auth/[...nextauth]";
 import {removeUndefined} from "features/utils/validationUtils";
 import {testRecaptcha} from "features/utils/recaptchaUtils";
+import {getToken} from "next-auth/jwt";
 
 export const getSession = async (req, res) => {
     const session = await getServerSession(req, res, authOptions);
@@ -40,25 +41,25 @@ export const userPromise = (req, res, type:"POST"|"GET"|"DELETE", captcha, getDB
     if (req.method === type) {
         if (captcha) {
             return deduplicatedPromise(req, res, validation, getDB, async ({db}) => {
-                const session = await getSession(req, res)
-                if (!session) {
+                const token = await getToken({req});
+                if (!token) {
                     res.status(401).send(); return;
                 }
-                callback({db, session});
+                callback({db, token});
             });
         } else {
             return new Promise(async resolve => {
-                const session = await getSession(req, res);
-                if (!session) {
+                const token = await getToken({req});
+                if (!token) {
                     res.status(401).send(); return;
                 }
 
                 if (getDB) {
                     const db = await connectToDatabase();
                     if (!db) { console.log("NO DB"); res.status(500).send(); return; }
-                    callback({db, session});
+                    callback({db, token});
                 } else {
-                    callback({session});
+                    callback({token});
                 }
             });
         }

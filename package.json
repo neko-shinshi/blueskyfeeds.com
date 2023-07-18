@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@atproto/api": "^0.3.12",
+    "@nekoshinshi/atproto-api": "^0.0.15",
     "@headlessui/react": "^1.7.4",
     "@tailwindcss/forms": "^0.5.3",
     "add": "^2.0.6",

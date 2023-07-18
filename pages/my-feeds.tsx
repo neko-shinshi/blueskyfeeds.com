@@ -1,37 +1,32 @@
 import HeadExtended from "features/layout/HeadExtended";
-import {useSession} from "next-auth/react";
+import {signIn, useSession} from "next-auth/react";
 import FormSignIn from "features/login/FormSignIn";
 import {RiTestTubeLine} from "react-icons/ri";
 import Link from "next/link";
 import {useEffect, useState} from "react";
 import PageHeader from "features/components/PageHeader";
-import {rebuildAgentFromSession, getMyFeeds} from "features/utils/feedUtils";
-import {connectToDatabase} from "features/utils/dbUtils";
+import {getMyFeeds} from "features/utils/feedUtils";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {localDelete} from "features/network/network"
-import {getSessionData} from "features/network/session";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
+import {getLoggedInData} from "features/network/session";
+import {APP_SESSION} from "features/auth/authUtils";
 
 export async function getServerSideProps({req, res}) {
-    const db = await connectToDatabase();
-    if (!db) { return { redirect: { destination: '/500', permanent: false } } }
+    const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
+    if (redirect) {return {redirect};}
     let myFeeds = [];
-
-    const session = await getSessionData(req, res);
-    if (session) {
-        const agent = await rebuildAgentFromSession(session);
-        if (!agent) {return { redirect: { destination: '/signout', permanent: false } };}
-
+    if (agent) {
         myFeeds = await getMyFeeds(agent, db);
     }
 
-    return {props: {session, myFeeds}};
+    return {props: {updateSession, session, myFeeds}};
 }
 
 
-export default function Home({myFeeds}) {
+export default function Home({updateSession, myFeeds}) {
     const title = "My BlueSky Custom Feeds";
     const description = "";
     const { data: session } = useSession();
@@ -40,6 +35,15 @@ export default function Home({myFeeds}) {
     const [busy, setBusy] = useState(false);
     const recaptcha = useRecaptcha();
     const router = useRouter();
+
+    useEffect(() => {
+        if (updateSession && session) {
+            console.log("update session");
+            signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
+                console.log(r);
+            });
+        }
+    }, [updateSession, session]);
 
     return <>
         <PopupConfirmation

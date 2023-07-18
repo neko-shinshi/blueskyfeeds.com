@@ -1,9 +1,9 @@
 import {getCustomFeeds, getSavedFeedIds, getSavedFeeds, rebuildAgent} from "features/utils/bsky";
 
-export const rebuildAgentFromSession = async (session) => {
-    const {id:did, refreshJwt, accessJwt, handle, email, service} = session.user;
+export const rebuildAgentFromToken = async (token) => {
+    const {sub:_did, did:__did, refreshJwt, accessJwt, service} = token;
     try {
-        return await rebuildAgent(service, {did, refreshJwt, accessJwt, handle, email});
+        return await rebuildAgent(service, {did: __did || _did, refreshJwt, accessJwt});
     } catch (e) {
         return false;
     }
@@ -56,6 +56,6 @@ export const feedUriToUrl = (uri) => {
     return uri.slice(5).replace("app.bsky.feed.generator", "feed");
 }
 
-export const feedRKeyToUri = (did, rkey) => {
+export const feedRKeyToUri = (rkey, did) => {
     return `at://${did}/app.bsky.feed.generator/${rkey}`;
 }

@@ -1,4 +1,4 @@
-import { BskyAgent }  from "@atproto/api";
+import { BskyAgent }  from "@nekoshinshi/atproto-api";
 import {SIGNATURE} from "features/utils/constants";
 
 export const getAgent = async (service, identifier, password) => {
@@ -11,11 +11,10 @@ export const getAgent = async (service, identifier, password) => {
     }
 }
 
-export const rebuildAgent = async (service, {did,refreshJwt, accessJwt, handle, email:_email=""}:
-                                       {did:string,refreshJwt:string, accessJwt:string, handle:string, email?:string}) => {
+export const rebuildAgent = async (service, {did,refreshJwt, accessJwt}:
+                                       {did:string,refreshJwt:string, accessJwt:string}) => {
     const agent = new BskyAgent({ service: `https://${service}/` });
-    let email = _email? {email: _email} : {};
-    await agent.resumeSession({did,refreshJwt, accessJwt, handle, ...email});
+    await agent.resumeSession({did, refreshJwt, accessJwt, handle:"", email:""});
     return agent;
 }
 

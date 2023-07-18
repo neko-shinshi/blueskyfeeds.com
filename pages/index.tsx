@@ -1,22 +1,21 @@
 import HeadExtended from "features/layout/HeadExtended";
-import {connectToDatabase} from "features/utils/dbUtils";
 import {useEffect, useRef, useState} from "react";
 import Link from "next/link";
 import {SiBuzzfeed} from "react-icons/si";
 import PageHeader from "features/components/PageHeader";
-import {rebuildAgentFromSession, getMyFeedIds, feedUriToUrl} from "features/utils/feedUtils";
-import {getSessionData} from "features/network/session";
-import {multipleIndexOf} from "features/utils/textUtils";
+import {getMyFeedIds} from "features/utils/feedUtils";
 import {localDelete, urlWithParams} from "features/network/network";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
-import clsx from "clsx";
 import {useRouter} from "next/router";
+import {signIn, useSession} from "next-auth/react";
+import {getLoggedInData} from "features/network/session";
+import {APP_SESSION} from "features/auth/authUtils";
 
 export async function getServerSideProps({req, res, query}) {
-    const db = await connectToDatabase();
-    if (!db) { return { redirect: { destination: '/500', permanent: false } } }
+    const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
+    if (redirect) {return {redirect};}
 
     const PAGE_SIZE = 20;
     let {t, q, p} = query;
@@ -107,20 +106,16 @@ export async function getServerSideProps({req, res, query}) {
     const feeds = await db.allFeeds.aggregate(agg).toArray();
     let myFeeds = [];
 
-    let session = await getSessionData(req, res);
-    if (session) {
-        const agent = await rebuildAgentFromSession(session);
-        if (!agent) {return { redirect: { destination: '/signout', permanent: false } };}
-
+    if (agent) {
         myFeeds = await getMyFeedIds(agent);
     }
 
 
-    return {props: {session, myFeeds, feeds}};
+    return {props: {updateSession, session, myFeeds, feeds}};
 }
 
 
-export default function Home({feeds, myFeeds}) {
+export default function Home({updateSession, feeds, myFeeds}) {
     const title = "BlueskyFeeds.com";
     const description = "Find your perfect feed algorithm for Bluesky Social App, or build one yourself";
     const [popupState, setPopupState] = useState<"delete"|false>(false);
@@ -129,6 +124,7 @@ export default function Home({feeds, myFeeds}) {
     const [searchUser, setSearchUser] = useState(false);
     const recaptcha = useRecaptcha();
     const router = useRouter();
+    const {data:session} = useSession();
     const searchTextRef = useRef(null);
     const startSearch = async () => {
         const q = searchTextRef.current.value;
@@ -149,6 +145,15 @@ export default function Home({feeds, myFeeds}) {
             searchTextRef.current.value = q;
         }
     }, [router]);
+
+    useEffect(() => {
+        if (updateSession && session) {
+            console.log("update session");
+            signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
+                console.log(r);
+            });
+        }
+    }, [updateSession, session]);
 
     return (
         <>
@@ -182,7 +187,9 @@ export default function Home({feeds, myFeeds}) {
                 <Link href="/my-feeds">
                     <button type="button"
                             className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        <SiBuzzfeed className="w-6 h-6"/> <div className="text-lg font-medium">Login to create and manage your Feeds</div> <SiBuzzfeed className="w-6 h-6"/>
+                        <SiBuzzfeed className="w-6 h-6"/>
+                        <div className="text-lg font-medium">{session? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
+                        <SiBuzzfeed className="w-6 h-6"/>
                     </button>
                 </Link>
 

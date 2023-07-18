@@ -1,19 +1,12 @@
 import HeadExtended from "features/layout/HeadExtended";
-import {connectToDatabase} from "features/utils/dbUtils";
-import {FaInstagram, FaMastodon,FaTumblr, FaTwitter} from "react-icons/fa";
-import {useEffect} from "react";
-import Table from "features/components/table/Table";
-import Link from "next/link";
-import {SiBuzzfeed} from "react-icons/si";
 import Image from "next/image";
 import AppPasswordLink from "features/components/AppPasswordLink";
 import PageHeader from "features/components/PageHeader";
 
 
 export default function Home({feedsDefault}) {
-    const title = "Bluesky Social App Password FAQ";
-    const description = "Frequently asked questions about Bluesky Social App Passwords";
-
+    const title = "BlueskyFeeds App Password FAQ";
+    const description = "Frequently asked questions about App Passwords in Bluesky social";
 
     return (
         <>
@@ -140,12 +133,8 @@ export default function Home({feedsDefault}) {
 
                 <div className="p-2 bg-white rounded-xl border-2 border-black space-y-1" id="what-access">
                     <div className="font-bold text-lg">What access an App Password provide? How can I keep myself safe?</div>
-                    <div>App Passwords give almost full account access to a 3rd party provider, and can be used to, but are not limited to:</div>
-                    <ul className="pl-8 list-disc">
-                        <li>Create and Delete your Posts</li>
-                        <li>Search feeds, posts and user profiles</li>
-                        <li>And many more...</li>
-                    </ul>
+                    <div>App passwords have most of the same abilities as the user`s account password, but they`re restricted from destructive actions such as account deletion or account migration. They are also restricted from creating additional app passwords.</div>
+
                     <div><span className="text-red-600 uppercase">Be careful</span> when providing your App Password to 3rd party providers, as they may use your app password for activities without your permission, and may even store your app password for future use!</div>
                     <div>You can trust us, as we have Open Sourced this website on <a className="underline text-blue-500 hover:text-blue-800" href="https://github.com/neko-shinshi/blueskyfeeds.com">GitHub</a></div>
                 </div>

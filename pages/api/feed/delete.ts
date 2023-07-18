@@ -1,12 +1,12 @@
 import {userPromise} from "features/utils/apiUtils";
-import {feedRKeyToUri, feedUriToUrl, rebuildAgentFromSession} from "features/utils/feedUtils";
+import {feedRKeyToUri, feedUriToUrl, rebuildAgentFromToken} from "features/utils/feedUtils";
 import {deleteFeed} from "features/utils/bsky";
 
 export default async function handler(req, res) {
     return userPromise(req, res, "DELETE", true, true,
         ({rkey, captcha}) => !!rkey && !!captcha,
-        async ({db, session}) => {
-        const agent = await rebuildAgentFromSession(session);
+        async ({db, token}) => {
+        const agent = await rebuildAgentFromToken(token);
         if (!agent) {res.status(401).send(); return;}
 
         const did = agent.session.did;
@@ -14,7 +14,7 @@ export default async function handler(req, res) {
         if (await deleteFeed(agent, rkey)) {
             const uri = feedRKeyToUri(rkey, did);
             db.allFeeds.deleteOne({_id: uri});
-            db.feeds.deleteOne({_id: uri}); // This one
+            db.feeds.deleteOne({_id: uri});
             res.status(200).send();
 
             return;
