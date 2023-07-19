@@ -69,7 +69,7 @@ export const authOptions: NextAuthOptions = {
                     throw makeCustomException('401', {code: 400});
                 }
                 const user = await getUserFromAgent(agent, db, service, _id);
-                console.log(user);
+                console.log("user", user);
                 return user;
             }
         }),
@@ -85,6 +85,7 @@ export const authOptions: NextAuthOptions = {
                     password:string
                     captcha:string
                 };
+                console.log('start login', credentials);
 
                 // Using same window strategy as applyRateLimit
                 // Window of 1 minute
@@ -102,28 +103,35 @@ export const authOptions: NextAuthOptions = {
                 // Update window
                 sameRequest.push(secondsAfter(60 * 1000));
                 global.logins.set(usernameOrEmail, sameRequest);
-
+                console.log("pre check")
                 // Reject if > 10 requests
                 if (totalRequests >= 10) {
+                    console.log("1")
                     throw makeCustomException('429', {code: 429});
                 }
 
                 // Add artificial delay
                 if (totalRequests >= 3) {
+                    console.log(2);
                     await new Promise(r => setTimeout(r, 500 + 300 * (totalRequests-3)));
                 }
+
+                console.log("clear")
 
                 if (!(await testRecaptcha(captcha))) {
                     throw makeCustomException('400', {code: 400});
                 }
 
+                console.log("get db")
                 const db = await connectToDatabase();
                 if (!db) {console.log("authorize 500");throw makeCustomException('500', {code: 500});}
 
                 const agent = await getAgent(service, usernameOrEmail, password);
                 if (!agent) {console.log("no agent");throw makeCustomException('401', {code: 400});}
 
-                return await getUserFromAgent(agent, db, service);
+                const r = await getUserFromAgent(agent, db, service);
+                console.log(r);
+                return r;
             }
         }),
     ],
@@ -139,6 +147,7 @@ export const authOptions: NextAuthOptions = {
                     // Use from login to skip database access
                     const {service, handle, refreshJwt, accessJwt, email, sk} = user;
                     token = {...token, id:sk, service, handle, refreshJwt, accessJwt, email};
+                    console.log("create token", token);
                 }
             }
             return token;
@@ -146,7 +155,9 @@ export const authOptions: NextAuthOptions = {
         async session({session, token, user}) {
             // Transfer data from token to session
             const {id:sk, handle} = token;
-            return {...session, user: {...session.user, sk, handle}} as Session;
+            const ss = {...session, user: {...session.user, sk, handle}} as Session;
+            console.log("session", ss);
+            return ss;
         },
 
     },

@@ -124,7 +124,7 @@ export default function Home({updateSession, feeds, myFeeds}) {
     const [searchUser, setSearchUser] = useState(false);
     const recaptcha = useRecaptcha();
     const router = useRouter();
-    const {data:session} = useSession();
+    const {data:session, status} = useSession();
     const searchTextRef = useRef(null);
     const startSearch = async () => {
         const q = searchTextRef.current.value;
@@ -147,13 +147,13 @@ export default function Home({updateSession, feeds, myFeeds}) {
     }, [router]);
 
     useEffect(() => {
-        if (updateSession && session) {
-            console.log("update session");
+        console.log("status", status);
+        if (session && status === "authenticated" && updateSession) {
             signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
                 console.log(r);
             });
         }
-    }, [updateSession, session]);
+    }, [status]);
 
     return (
         <>

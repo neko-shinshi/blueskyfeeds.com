@@ -29,7 +29,7 @@ export async function getServerSideProps({req, res}) {
 export default function Home({updateSession, myFeeds}) {
     const title = "My BlueSky Custom Feeds";
     const description = "";
-    const { data: session } = useSession();
+    const { data: session, status } = useSession();
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
@@ -37,13 +37,13 @@ export default function Home({updateSession, myFeeds}) {
     const router = useRouter();
 
     useEffect(() => {
-        if (updateSession && session) {
-            console.log("update session");
+        console.log("status", status);
+        if (session && status === "authenticated" && updateSession) {
             signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
                 console.log(r);
             });
         }
-    }, [updateSession, session]);
+    }, [status]);
 
     return <>
         <PopupConfirmation

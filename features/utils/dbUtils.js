@@ -34,6 +34,7 @@ const connectToDatabase = async () => {
 /*
 // Indexes
 db.allFeeds.createIndex( { likeCount: -1, indexedAt:1 } )
+db.feeds.createIndex({keywords:1})
  */
 
 module.exports = {

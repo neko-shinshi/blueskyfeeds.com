@@ -32,7 +32,8 @@ export default async function handler(req, res) {
                 res.status(400).send("missing levels"); return;
             }
             const languages = _languages.filter(x => SUPPORTED_LANGUAGES.indexOf(x) >= 0);
-            if (languages.length === 0 || languages.length !== _languages.length) {
+            if (languages.length !== _languages.length) {
+                // Empty lanuages means skip filtering language
                 console.log("d")
                 res.status(400).send("missing languages"); return;
             }

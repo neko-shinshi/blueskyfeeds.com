@@ -5,6 +5,7 @@ export const rebuildAgentFromToken = async (token) => {
     try {
         return await rebuildAgent(service, {did: __did || _did, refreshJwt, accessJwt});
     } catch (e) {
+        console.log(e);
         return false;
     }
 }

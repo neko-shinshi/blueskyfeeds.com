@@ -11,6 +11,8 @@ const getSessionData = (req, res) => {
     return session? removeUndefined(session) : null;
 }
 
+
+
 export const getLoggedInData = async (req, res) => {
     const db = await connectToDatabase();
     if (!db) { return { redirect: { destination: '/500', permanent: false } } }
@@ -19,13 +21,11 @@ export const getLoggedInData = async (req, res) => {
         getToken({ req }),
         getSessionData(req, res)
     ]);
-    console.log("token", token);
-    console.log("session", session);
-
 
     if (token) {
         agent = await rebuildAgentFromToken(token);
         if (!agent) {
+            console.log("failed to rebuild agent");
             return {redirect: {destination: '/signout', permanent: false}};
         }
         if (agent.session.accessJwt !== token.accessJwt) {
@@ -35,5 +35,5 @@ export const getLoggedInData = async (req, res) => {
             console.log("session updated");
         }
     }
-    return {session, updateSession, agent, db};
+    return {session, updateSession, agent, db, token};
 }

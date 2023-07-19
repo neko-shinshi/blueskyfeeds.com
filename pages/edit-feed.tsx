@@ -36,14 +36,15 @@ import {getLoggedInData} from "features/network/session";
 import {HiTrash} from "react-icons/hi";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {APP_SESSION} from "features/auth/authUtils";
-import {stat} from "fs";
 import {isValidDomain} from "features/utils/validationUtils";
 
 export async function getServerSideProps({req, res, query}) {
     let feed = null;
 
-    const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
+    const {updateSession, session, agent, redirect, db, token} = await getLoggedInData(req, res);
     if (redirect) {return {redirect};}
+    console.log("token", token);
+    console.log("session", session);
 
     if (agent) {
         const {feed: _feed} = query;
@@ -83,13 +84,26 @@ export async function getServerSideProps({req, res, query}) {
     </div>
      */
 
-    return {props: {updateSession, session, feed}};
+    return {props: {updateSession, session, feed, token}};
 }
 
 
 
 
-export default function Home({feed, updateSession}) {
+export default function Home({feed, updateSession, token}) {
+    useEffect(() => {
+        if (token) {
+            var base64Url = token.accessJwt.split('.')[1];
+            var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+
+            console.log(JSON.parse(jsonPayload));
+        }
+    }, [token])
+
+
     const title = "Make a Feed for Bluesky Social";
     const description = "";
     const router = useRouter();
@@ -134,15 +148,13 @@ export default function Home({feed, updateSession}) {
 
 
     useEffect(() => {
-        if (session && status === "authenticated" && updateSession && !busy) {
-            console.log("update session");
-            setBusy(true);
+        console.log("status", status);
+        if (session && status === "authenticated" && updateSession) {
             signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
                 console.log(r);
-                setBusy(false);
             });
         }
-    }, [session]);
+    }, [status]);
 
 
 
@@ -218,6 +230,9 @@ export default function Home({feed, updateSession}) {
     }
 
     const validateKeyword = (term, rejectWords) => {
+        if (term.trim().length === 0) {
+            return "Term is empty";
+        }
         if (keywords.find(y => y.w === term)) {
             return "Term is already in keywords";
         }
@@ -624,7 +639,7 @@ export default function Home({feed, updateSession}) {
                                         handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join(" ")}
                                         validateKeyword={validateKeyword}
                                         submitKeyword={(w, r, a) => {
-                                            setKeywords([...keywords, {t:"t", w:w.toLowerCase(), a, r}]);
+                                            setKeywords([...keywords, {t:"t", w:w.toLowerCase().trim(), a, r}]);
                                         }}>
                                         <ul className="list-disc pl-4">
                                             <li>Posts and search terms are split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is ok` becomes `this` `is` `ok`</li>
@@ -641,7 +656,7 @@ export default function Home({feed, updateSession}) {
                                         handleTokenization={(r, term) => `${r.p || ""}${term}${r.s || ""}`}
                                         validateKeyword={validateKeyword}
                                         submitKeyword={(w, r, a) => {
-                                            setKeywords([...keywords, {t:"s", w:w.toLowerCase(), a, r}]);
+                                            setKeywords([...keywords, {t:"s", w:w.toLowerCase().trim(), a, r}]);
                                         }}>
                                         <ul className="list-disc pl-4">
                                             <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>

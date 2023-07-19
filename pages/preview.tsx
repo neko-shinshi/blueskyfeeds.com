@@ -32,20 +32,20 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
     const title = "Preview Feed";
     const description = "See what appears in this feed for you";
     const [feedItems, setFeedItems] = useState<any>();
-    const { data: session } = useSession();
+    const { data: session, status} = useSession();
 
     useEffect(() => {
         setFeedItems(_feedItems);
     }, [_feedItems]);
 
     useEffect(() => {
-        if (updateSession && session) {
-            console.log("update session");
+        console.log("status", status);
+        if (session && status === "authenticated" && updateSession) {
             signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
                 console.log(r);
             });
         }
-    }, [updateSession, session]);
+    }, [status]);
 
     return <>
         <HeadExtended title={title}
