@@ -40,6 +40,11 @@ const getServer = (secure) => {
 }
 
 app.prepare().then(async () => {
+    console.log(JSON.stringify(process.env, null, 2));
+    fs.readdirSync("./").forEach(file => {
+        console.log("file", file);
+    });
+
     // Environment params are only accessible after app.prepare
     const secure = dev; // https is provided by load balancer and cloudflare
     const server = getServer(secure);
