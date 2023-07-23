@@ -86,6 +86,7 @@ export default async function handler(req, res) {
             }
             keywords = keywords.map(x => {
                 const {a, ...y} = x;
+                y.w = y.w.toLowerCase();
                 if (Array.isArray(y.r)) {
                     if (y.r.length === 0) {
                         delete y.r;
@@ -93,9 +94,13 @@ export default async function handler(req, res) {
                         y.r.forEach(z => {
                             if (z.p === "") {
                                 delete z.p;
+                            } else {
+                                z.p = z.p.toLowerCase();
                             }
                             if (z.s === "") {
                                 delete z.s;
+                            } else {
+                                z.s = z.s.toLowerCase();
                             }
                         });
                         y.r.sort((a,b) => {
