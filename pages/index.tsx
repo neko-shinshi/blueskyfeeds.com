@@ -12,6 +12,7 @@ import {useRouter} from "next/router";
 import {signIn, useSession} from "next-auth/react";
 import {getLoggedInData} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
+import PopupLoading from "features/components/PopupLoading";
 
 export async function getServerSideProps({req, res, query}) {
     // TODO if no query, show most popular feeds made here
@@ -159,6 +160,7 @@ export default function Home({updateSession, feeds, myFeeds}) {
         <>
             <HeadExtended title={title}
                           description={description}/>
+            <PopupLoading isOpen={busy} setOpen={setBusy}/>
             <PopupConfirmation
                 isOpen={popupState === "delete"}
                 setOpen={setPopupState}
@@ -194,19 +196,23 @@ export default function Home({updateSession, feeds, myFeeds}) {
                 </Link>
 
                 <div className="bg-white border border-black border-2 p-4 rounded-xl space-y-2">
-                    <div className="text-lg font-medium">Existing Feeds (Update once daily)</div>
+                    <div className="text-lg font-medium">Existing Feeds (Updated Irregularly)</div>
 
                     <div className="flex place-items-center gap-2 bg-sky-200 w-fit p-2 rounded-xl">
                         <div className="flex">
                             <input ref={searchTextRef} className="rounded-l-md p-1" type="text" onKeyDown={async (event)  => {
                                 if (event.key === "Enter") {
+                                    setBusy(true);
                                     await startSearch();
                                 }
                             }} />
                             <button
                                 type="button"
                                 className={"relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"}
-                                onClick={() => startSearch}
+                                onClick={async () => {
+                                    setBusy(true);
+                                    await startSearch();
+                                }}
                             >
                             <span>Search</span>
                             </button>
