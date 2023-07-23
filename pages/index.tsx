@@ -194,7 +194,7 @@ export default function Home({updateSession, feeds, myFeeds}) {
                 </Link>
 
                 <div className="bg-white border border-black border-2 p-4 rounded-xl space-y-2">
-                    <div className="text-lg font-medium">Existing Feeds</div>
+                    <div className="text-lg font-medium">Existing Feeds (Update once daily)</div>
 
                     <div className="flex place-items-center gap-2 bg-sky-200 w-fit p-2 rounded-xl">
                         <div className="flex">
