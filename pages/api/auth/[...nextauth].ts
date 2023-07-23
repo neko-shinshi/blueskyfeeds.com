@@ -156,7 +156,6 @@ export const authOptions: NextAuthOptions = {
             // Transfer data from token to session
             const {id:sk, handle} = token;
             const ss = {...session, user: {...session.user, sk, handle}} as Session;
-            console.log("update session", ss);
             return ss;
         },
 
