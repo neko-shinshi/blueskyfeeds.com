@@ -80,8 +80,9 @@ export default async function handler (req, res) {
             }
 
             if (everyList.length > 0) {
-                query = {author: {$in: everyList}, $or: query}
+                query = {$or: [{author: {$in: everyList}}, query]};
             }
+
             const sortMethod = getSortMethod(sort);
             let result:any[];
             let cursor:string;
