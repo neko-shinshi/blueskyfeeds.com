@@ -7,7 +7,6 @@ export const isValidDomain = (s:string) => {
     return /^(\*\.)?([a-z\d][a-z\d-]*[a-z\d]\.)+[a-z]+$/.test(s);
 }
 
-
 export function removeUndefined(obj, nullInstead=false) {
     if (typeof obj === "object") {
         Object.keys(obj).forEach(function (key) {
@@ -34,9 +33,4 @@ export function removeUndefined(obj, nullInstead=false) {
         });
     }
     return obj;
-}
-const DEBUG_MODE = process.env.NEXT_PUBLIC_DEBUG_MODE === "1";
-
-export const animeIdHasValidScene = async (db, idAniList:number) => {
-    return DEBUG_MODE || !!(await db.scenes.findOne({idAniList, time: {$lt: (new Date()).toISOString()}}));
 }

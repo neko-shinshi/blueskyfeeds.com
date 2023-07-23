@@ -20,7 +20,7 @@ function RecaptchaProvider ({children}) {
 function useRecaptcha() {
     const context = useContext(RecaptchaContext);
     if (context === undefined) {
-        throw new Error('useCount must be used within a CountProvider')
+        throw new Error('useRecaptcha must be used within a RecaptchaProvider')
     }
     return context;
 }

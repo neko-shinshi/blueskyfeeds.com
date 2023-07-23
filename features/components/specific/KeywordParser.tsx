@@ -1,10 +1,10 @@
 import clsx from "clsx";
 import {HiMinus, HiPlus} from "react-icons/hi";
-import {useRef, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 
-export default function KeywordParser({keyword, children, validateKeyword, handleTokenization, submitKeyword, prefix=""}) {
+export default function KeywordParser({keyword, children, validateKeyword, handleTokenization, submitKeyword, prefix="", editTag}) {
     const [manualKeyword, setManualKeyword] = useState("");
-    const [rejectWords, setRejectWords] = useState<{p:string, s:string}[]>([]);
+    const [rejectWords, setRejectWords] = useState<{p?:string, s?:string}[]>([]);
     const [error, setError] = useState("");
     const validateAndHandleError = (val, rejectWords) => {
         const err = validateKeyword(val, rejectWords);
@@ -15,7 +15,20 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
             setError(""); return true;
         }
     }
-    const ref = useRef(null);
+    const keywordRef = useRef(null);
+
+    useEffect(() => {
+        if (editTag) {
+            setManualKeyword(editTag.w);
+            keywordRef.current.value = editTag.w;
+            setRejectWords(editTag.r || []);
+        } else {
+            setManualKeyword("");
+            keywordRef.current.value = "";
+            setRejectWords([]);
+        }
+    }, [editTag]);
+
     return <>
         {children}
         <div className="flex justify-between">
@@ -28,7 +41,7 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
                         </div>
                     }
                     <input
-                        ref={ref}
+                        ref={keywordRef}
                         type="text"
                         className={clsx("block w-full focus:outline-none sm:text-sm p-2",
                             prefix? "rounded-r-md" : "rounded-md",
@@ -39,16 +52,16 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
                         placeholder={keyword}
                         onKeyDown={async (e) => {
                             if (e.key === "Enter") {
-                                const val = ref.current.value;
+                                const val = keywordRef.current.value;
                                 if (!validateAndHandleError(val, rejectWords)) {return;}
                                 submitKeyword(val, rejectWords, true);
                                 setRejectWords([]);
-                                ref.current.value = "";
+                                keywordRef.current.value = "";
                             }
                         }}
                         onFocus={() => {setError("");}}
                         onChange={() => {
-                            const val = ref.current.value;
+                            const val = keywordRef.current.value;
                             setManualKeyword(val);
                             validateAndHandleError(val, rejectWords);
                         }}
@@ -86,7 +99,7 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
                                         onChange={(e) => {
                                             rejectWords[i].p = e.target.value.toLowerCase();
                                             setRejectWords([...rejectWords]);
-                                            const val = ref.current.value;
+                                            const val = keywordRef.current.value;
                                             validateAndHandleError(val, rejectWords);
                                         }}
                                     />
@@ -112,7 +125,7 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
                                         onChange={(e) => {
                                             rejectWords[i].s = e.target.value.toLowerCase();
                                             setRejectWords([...rejectWords]);
-                                            const val = ref.current.value;
+                                            const val = keywordRef.current.value;
                                             validateAndHandleError(val, rejectWords);
                                         }}
                                     />
@@ -132,7 +145,7 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
                         <button type="button"
                                 className="w-full inline-flex justify-center items-center px-4 py-2 rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                                 onClick={() => {
-                                    rejectWords.push({p: "", s: ""});
+                                    rejectWords.push({});
                                     setRejectWords([...rejectWords]);
                                 }}>
                             <HiPlus className="w-6 h-6"/> Append Ignore Combination
@@ -144,20 +157,20 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
 
             <div className="w-24 flex flex-col ">
                 <button type="button" className="w-full flex-1  bg-lime-200 hover:bg-lime-300" onClick={() => {
-                    const val = ref.current.value;
+                    const val = keywordRef.current.value;
                     if (!validateAndHandleError(val, rejectWords)) {return;}
                     submitKeyword(val, rejectWords, true);
                     setRejectWords([]);
-                    ref.current.value = "";
+                    keywordRef.current.value = "";
                 }}>
                     Add
                 </button>
                 <button type="button" className="w-full flex-1 bg-red-200 hover:bg-red-300" onClick={() => {
-                    const val = ref.current.value;
+                    const val = keywordRef.current.value;
                     if (!validateAndHandleError(val, rejectWords)) {return;}
                     submitKeyword(val, rejectWords, false);
                     setRejectWords([]);
-                    ref.current.value = "";
+                    keywordRef.current.value = "";
                 }}>
                     Block
                 </button>

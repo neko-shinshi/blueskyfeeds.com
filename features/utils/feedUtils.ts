@@ -1,14 +1,5 @@
-import {getCustomFeeds, getSavedFeedIds, getSavedFeeds, rebuildAgent} from "features/utils/bsky";
+import {getCustomFeeds, getSavedFeedIds, getSavedFeeds} from "features/utils/bsky";
 
-export const rebuildAgentFromToken = async (token) => {
-    const {sub:_did, did:__did, refreshJwt, accessJwt, service} = token;
-    try {
-        return await rebuildAgent(service, {did: __did || _did, refreshJwt, accessJwt});
-    } catch (e) {
-        console.log(e);
-        return false;
-    }
-}
 
 export const getMyFeeds = async (agent, db) => {
     let my = await getCustomFeeds(agent);
@@ -51,6 +42,11 @@ export const getFeedDetails = async (agent, db, feedId) => {
      if (!dbData) { return false; }
      delete dbData._id;
      return {...foundFeed, ...dbData};
+}
+
+export const getMyCustomFeedIds = async (agent, db) => {
+    const regex = new RegExp(`^at://${agent.session.did}`);
+    return (await db.feeds.find({_id: regex}).project({_id: 1}).toArray()).map(x => x._id);
 }
 
 export const feedUriToUrl = (uri) => {

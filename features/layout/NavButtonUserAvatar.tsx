@@ -5,10 +5,7 @@ import {useRouter} from "next/router";
 import {signOut, useSession} from "next-auth/react";
 import {Fragment, useEffect, useState} from "react";
 import PopupSignIn from "features/login/PopupSignIn";
-import Link from "next/link";
 import Image from "next/image";
-
-const DEBUG_MODE = process.env.NEXT_PUBLIC_DEBUG_MODE === "1";
 
 export default function NavButtonUserAvatar({navPosition}) {
     const router = useRouter();
@@ -25,7 +22,7 @@ export default function NavButtonUserAvatar({navPosition}) {
     return (
         <>
             {
-                DEBUG_MODE && session &&
+                session &&
                 <Menu as="div" className="relative inline-block text-left">
                     <Menu.Button
                         className="inline-block justify-center h-8 w-8 rounded-full overflow-hidden bg-gray-500 shadow-inner ring-1 ring-white">
@@ -90,7 +87,7 @@ export default function NavButtonUserAvatar({navPosition}) {
                 </Menu>
             }
             {
-                DEBUG_MODE && !session &&
+                !session &&
                 <>
                     <PopupSignIn isOpen={isOpen} setOpen={setOpen}/>
                     <button className={clsx("inline-block h-8 w-8 rounded-full overflow-hidden bg-gray-100 ",

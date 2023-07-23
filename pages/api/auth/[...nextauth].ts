@@ -7,7 +7,7 @@ import {testRecaptcha} from "features/utils/recaptchaUtils";
 import {getAgent} from "features/utils/bsky";
 import {connectToDatabase} from "features/utils/dbUtils";
 import {randomUuid} from "features/utils/randomUtils";
-import {rebuildAgentFromToken} from "features/utils/feedUtils";
+import {rebuildAgentFromToken} from "features/utils/bsky";
 
 const MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
@@ -156,7 +156,7 @@ export const authOptions: NextAuthOptions = {
             // Transfer data from token to session
             const {id:sk, handle} = token;
             const ss = {...session, user: {...session.user, sk, handle}} as Session;
-            console.log("session", ss);
+            console.log("update session", ss);
             return ss;
         },
 

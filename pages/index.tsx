@@ -14,6 +14,7 @@ import {getLoggedInData} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
 
 export async function getServerSideProps({req, res, query}) {
+    // TODO if no query, show most popular feeds made here
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
     if (redirect) {return {redirect};}
 
@@ -147,7 +148,6 @@ export default function Home({updateSession, feeds, myFeeds}) {
     }, [router]);
 
     useEffect(() => {
-        console.log("status", status);
         if (session && status === "authenticated" && updateSession) {
             signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
                 console.log(r);

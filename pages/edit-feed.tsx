@@ -10,7 +10,7 @@ import InputTextAreaBasic from "features/input/InputTextAreaBasic";
 import InputFileDropzone from "features/input/InputFileDropzone";
 import {useRouter} from "next/router";
 import PageHeader from "features/components/PageHeader";
-import {getFeedDetails} from "features/utils/feedUtils";
+import {getFeedDetails, getMyCustomFeedIds} from "features/utils/feedUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
@@ -24,7 +24,7 @@ import {
     FeedKeyword,
     KEYWORD_SETTING,
     KEYWORD_TYPES,
-    KeywordType,
+    KeywordType, KeywordTypeToShort, MAX_FEEDS_PER_USER, MAX_KEYWORDS_PER_FEED,
     PICS_SETTING,
     POST_LEVELS,
     SIGNATURE,
@@ -37,15 +37,17 @@ import {HiTrash} from "react-icons/hi";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {APP_SESSION} from "features/auth/authUtils";
 import {isValidDomain} from "features/utils/validationUtils";
+import {parseJwt} from "features/utils/jwtUtils";
+import {isVIP} from "features/utils/bsky";
+import PopupLoading from "features/components/PopupLoading";
+import {compressedToJsonString} from "features/utils/textUtils";
 
 export async function getServerSideProps({req, res, query}) {
-    let feed = null;
-
     const {updateSession, session, agent, redirect, db, token} = await getLoggedInData(req, res);
     if (redirect) {return {redirect};}
-    console.log("token", token);
-    console.log("session", session);
 
+    let feed = null;
+    const VIP = agent && isVIP(agent);
     if (agent) {
         const {feed: _feed} = query;
         if (_feed) {
@@ -71,10 +73,13 @@ export async function getServerSideProps({req, res, query}) {
             } else {
                 return {redirect: {destination: '/404', permanent: false}}
             }
+        } else {
+            const feedIds = (await getMyCustomFeedIds(agent, db)).map(x => x.split("/").at(-1));
+            if (feedIds.indexOf(_feed) < 0 && feedIds.length >= MAX_FEEDS_PER_USER && !isVIP(agent)) {
+                res.status(400).send("too many feeds"); return;
+            }
         }
     }
-
-    // TODO
     /*
     <div>
         Minimum likes
@@ -84,22 +89,16 @@ export async function getServerSideProps({req, res, query}) {
     </div>
      */
 
-    return {props: {updateSession, session, feed, token}};
+    return {props: {updateSession, session, feed, token, VIP}};
 }
 
 
 
 
-export default function Home({feed, updateSession, token}) {
+export default function Home({feed, updateSession, token, VIP}) {
     useEffect(() => {
         if (token) {
-            var base64Url = token.accessJwt.split('.')[1];
-            var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-
-            console.log(JSON.parse(jsonPayload));
+            parseJwt(token);
         }
     }, [token])
 
@@ -111,13 +110,15 @@ export default function Home({feed, updateSession, token}) {
     const SUPPORTED_LANG = SUPPORTED_LANGUAGES.map(id => {
         let txt;
         if (id === "") {
-            txt = "Blank (many users have not set their language)";
+            txt = "Blank (when language detection failed)";
         } else {
             txt = `${languageNames.of(id)} (${id})`;
         }
         return {
             id, txt
         }
+    }).sort((a, b) => {
+        return a.txt.localeCompare(b.txt);
     });
     const { data: session, status } = useSession();
     const [languages, setLanguages] = useState<string[]>([]);
@@ -129,6 +130,7 @@ export default function Home({feed, updateSession, token}) {
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [pics, setPics] = useState<string[]>([]);
     const [busy, setBusy] = useState(false);
+    const [editTag, setEditTag] = useState<any>(null);
 
     const recaptcha = useRecaptcha();
     const imageRef = useRef(null);
@@ -148,7 +150,6 @@ export default function Home({feed, updateSession, token}) {
 
 
     useEffect(() => {
-        console.log("status", status);
         if (session && status === "authenticated" && updateSession) {
             signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
                 console.log(r);
@@ -157,11 +158,10 @@ export default function Home({feed, updateSession, token}) {
     }, [status]);
 
 
-
     useEffect(() => {
         if (!feed) {
-            reset({sort:"chronological", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[]});
-            setLanguages(SUPPORTED_LANGUAGES);
+            reset({sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[]});
+            setLanguages([]);
             setPostLevels(POST_LEVELS.map(x => x.id));
             setKeywordSetting(["text"]);
             setPics(["text", "pics"])
@@ -180,11 +180,19 @@ export default function Home({feed, updateSession, token}) {
 
             reset(o);
             setShortNameLocked(true);
-            setLanguages(languages || SUPPORTED_LANGUAGES);
+            setLanguages(languages || []);
             setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
             setKeywordSetting(keywordSetting || ["text"]);
             setPics(pics || ["text", "pics"]);
-            setKeywords(keywords || []);
+            setKeywords(keywords.map(x => {
+                const {t, a} = x;
+                let o = JSON.parse(compressedToJsonString(t));
+                o.a = a;
+                if ((o.t === "t" || o.t === "s") && !o.r) {
+                    o.r = [];
+                }
+                return o;
+            }) || []);
         }
     }, [feed]);
 
@@ -217,7 +225,6 @@ export default function Home({feed, updateSession, token}) {
                             } else if (result.status === 401) {
                                 await router.reload();
                             } else {
-                                console.log(result);
                                 setError(fieldName, {type:'custom', message:"Error"});
                             }
                         });
@@ -233,12 +240,17 @@ export default function Home({feed, updateSession, token}) {
         if (term.trim().length === 0) {
             return "Term is empty";
         }
-        if (keywords.find(y => y.w === term)) {
+        if (!VIP && keywords.length >= MAX_KEYWORDS_PER_FEED) {
+            return `Too many keywords, max ${MAX_KEYWORDS_PER_FEED}`;
+        }
+
+        const modeShort = KeywordTypeToShort(newKeywordMode)
+        if (keywords.find(y => y.w === term && y.t === modeShort)) {
             return "Term is already in keywords";
         }
         let set = new Set();
         for (const r of rejectWords) {
-            const term = `${r.p}|${r.s}`;
+            const term = `${r.p||""}|${r.s||""}`;
             if (set.has(term)) {
                 return "Duplicate Ignore Combination";
             }
@@ -249,6 +261,7 @@ export default function Home({feed, updateSession, token}) {
 
 
     return <>
+        <PopupLoading isOpen={busy} setOpen={setBusy}/>
         <PopupConfirmation
             isOpen={popupState === "delete"}
             setOpen={setPopupState}
@@ -284,7 +297,7 @@ export default function Home({feed, updateSession, token}) {
                     recaptcha={recaptcha}
                     useFormReturn={useFormReturn}
                     cleanUpData={async (data) => {
-                        console.log(data);
+                        setBusy(true);
                         const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl} = data;
                         const allowList = _allowList.map(x => x.did);
                         const blockList = _blockList.map(x => x.did);
@@ -310,6 +323,7 @@ export default function Home({feed, updateSession, token}) {
                         if (result.status === 200) {
                            await router.push("/my-feeds");
                         }
+                        setBusy(false);
                     }}
                     className="space-y-4">
                     <div className="bg-white p-2">
@@ -461,7 +475,8 @@ export default function Home({feed, updateSession, token}) {
 
                         <div className="bg-lime-100 p-2">
                             <div className="font-semibold">Language Filters</div>
-                            <div>Note: These may not work well as language is self reported in the website/app</div>
+                            <div className="text-sm">Note: This is calculated using cld2, which is not perfect and may be unable to process short posts</div>
+                            <div className="text-sm">Leave this empty to accept posts of all languages including those not listed</div>
                             <div className="grid grid-cols-2">
                                 <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
                                      onClick={() => {
@@ -564,7 +579,7 @@ export default function Home({feed, updateSession, token}) {
                     </div>
 
                     <div className="bg-white p-2 space-y-2">
-                        <div className="text-lg font-bold">Keyword Filters</div>
+                        <div className="text-lg font-bold">Keyword Filters {VIP? "" : `(max ${MAX_KEYWORDS_PER_FEED})`}</div>
                         <div>A post is blocked if it contains at least one blocked keyword, and is allowed only if it has no blocked keywords and at least one search keyword</div>
                         <div className="bg-sky-200 p-2">
                             <div className="font-semibold">Search location</div>
@@ -635,11 +650,13 @@ export default function Home({feed, updateSession, token}) {
                                 {
                                     newKeywordMode === "token" &&
                                     <KeywordParser
+                                        editTag={editTag}
                                         keyword="Token"
                                         handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join(" ")}
                                         validateKeyword={validateKeyword}
                                         submitKeyword={(w, r, a) => {
                                             setKeywords([...keywords, {t:"t", w:w.toLowerCase().trim(), a, r}]);
+                                            setEditTag(null);
                                         }}>
                                         <ul className="list-disc pl-4">
                                             <li>Posts and search terms are split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is ok` becomes `this` `is` `ok`</li>
@@ -652,11 +669,13 @@ export default function Home({feed, updateSession, token}) {
                                 }
                                 {
                                     newKeywordMode === "segment" && <KeywordParser
+                                        editTag={editTag}
                                         keyword="Segment"
-                                        handleTokenization={(r, term) => `${r.p || ""}${term}${r.s || ""}`}
+                                        handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join("")}
                                         validateKeyword={validateKeyword}
                                         submitKeyword={(w, r, a) => {
                                             setKeywords([...keywords, {t:"s", w:w.toLowerCase().trim(), a, r}]);
+                                            setEditTag(null);
                                         }}>
                                         <ul className="list-disc pl-4">
                                             <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>
@@ -669,18 +688,24 @@ export default function Home({feed, updateSession, token}) {
 
                                 {
                                     newKeywordMode === "hashtag" && <KeywordParser
+                                        editTag={editTag}
                                         keyword="Hashtag"
                                         prefix="#"
                                         handleTokenization={null}
                                         validateKeyword={term => {
+                                            if (!VIP && keywords.length >= MAX_KEYWORDS_PER_FEED) {
+                                                return `Too many keywords, max ${MAX_KEYWORDS_PER_FEED}`;
+                                            }
                                             if (term.startsWith("#")) {
                                                 return "Hashtag does not need to start with #, already handled by server";
-                                            } else if (keywords.find(x => x.t === "#" && x.w === term)) {
+                                            }
+                                            if (keywords.find(x => x.t === "#" && x.w === term)) {
                                                 return "Hashtag already in list";
                                             }
                                             return null;
                                         }} submitKeyword={(w, rejectWords, a) => {
                                             setKeywords([...keywords, {t:"#", w:w.toLowerCase(), a}]);
+                                            setEditTag(null);
                                         }}
                                     >
                                         <ul className="list-disc pl-4">
@@ -688,8 +713,9 @@ export default function Home({feed, updateSession, token}) {
                                         </ul>
                                     </KeywordParser>
                                 }
+                                <div className="mt-4 font-semibold">Keywords ({keywords.length}{!VIP && `/${MAX_KEYWORDS_PER_FEED}`})</div>
                                 <SortableWordBubbles
-                                    className="mt-4"
+                                    className="mt-2"
                                     value={keywords}
                                     selectable={true}
                                     valueModifier={(val) => {
@@ -697,14 +723,16 @@ export default function Home({feed, updateSession, token}) {
                                             case "#":
                                                 return `#${val.w}`;
                                             case "s":
-                                                return `[${val.w}] [${val.r.map(x =>  `${x.p}${val.w}${x.s}`).join(",")}]`;
+                                                return `[${val.w}] [${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
                                             case "t":
                                                 return `${val.w} [${val.r.map(x => [x.p, val.w, x.s].filter(x => x).join(" ")).join(",")}]`;
                                         }
                                         return `#${JSON.stringify(val)}`;
                                     }}
                                     classModifier={(val, index, original) => {
-                                        if (val.a) {
+                                        if (editTag && editTag.w === val.w) {
+                                            return original.replace("bg-white", "bg-gray-200 hover:bg-gray-300");
+                                        } else if (val.a) {
                                             return original.replace("bg-white", "bg-lime-100 hover:bg-lime-300");
                                         } else {
                                             return original.replace("bg-white", "bg-red-300 hover:bg-red-500");
@@ -714,6 +742,17 @@ export default function Home({feed, updateSession, token}) {
                                         if (action === "x") {
                                             setKeywords([...keywords.filter(x => !(x.t === val.t && x.w === val.w))]);
                                         } else if (action === "o") {
+                                            if (editTag && editTag.w === val.w) {
+                                                setEditTag(null)
+                                            } else {
+                                                switch (val.t) {
+                                                    case "t": {setNewKeywordMode('token'); break;}
+                                                    case "s": {setNewKeywordMode('segment'); break;}
+                                                    case "#": {setNewKeywordMode('hashtag'); break;}
+                                                }
+                                                setEditTag(val);
+                                            }
+
                                             // change type to match tag, fill up form, remove from list
                                         }
                                     }} />
@@ -721,7 +760,7 @@ export default function Home({feed, updateSession, token}) {
                         </div>
                     </div>
 
-                    <div className="bg-white p-2 space-y-2">
+                    <div className="bg-white p-2 space-y-2 hidden">
                         <div className="text-lg font-bold">URL Filters</div>
                         <div>Use *.domain.tld to get all subdomains for domain.tld</div>
 

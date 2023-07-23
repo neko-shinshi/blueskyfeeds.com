@@ -41,8 +41,7 @@ const getServer = (secure) => {
 
 app.prepare().then(async () => {
     // Environment params are only accessible after app.prepare
-    const DEBUG_MODE = process.env.NEXT_PUBLIC_DEBUG_MODE === "1";
-    const secure = dev && process.env.FORCE_NO_CERT !== '1';
+    const secure = dev; // https is provided by load balancer and cloudflare
     const server = getServer(secure);
     server.listen(port, async (err) => {
         if (err) throw err;

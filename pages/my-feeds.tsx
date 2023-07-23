@@ -13,20 +13,30 @@ import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
 import {getLoggedInData} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
+import {isVIP} from "features/utils/bsky";
+import {MAX_FEEDS_PER_USER} from "features/utils/constants";
 
 export async function getServerSideProps({req, res}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
     if (redirect) {return {redirect};}
     let myFeeds = [];
+    let canCreate = true;
     if (agent) {
         myFeeds = await getMyFeeds(agent, db);
+        if (!isVIP(agent)) {
+            const countCustomFeeds = myFeeds.reduce((acc, x) => {
+                if (x.edit) {acc++;}
+                return acc;
+            }, 0);
+            canCreate = countCustomFeeds < MAX_FEEDS_PER_USER;
+        }
     }
 
-    return {props: {updateSession, session, myFeeds}};
+    return {props: {updateSession, session, myFeeds, canCreate}};
 }
 
 
-export default function Home({updateSession, myFeeds}) {
+export default function Home({updateSession, myFeeds, canCreate}) {
     const title = "My BlueSky Custom Feeds";
     const description = "";
     const { data: session, status } = useSession();
@@ -80,14 +90,20 @@ export default function Home({updateSession, myFeeds}) {
             session && <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} />
 
-                <Link href="/edit-feed">
-                    <button type="button"
-                            className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        <RiTestTubeLine className="w-6 h-6"/> Make a new Feed
-                    </button>
-                </Link>
+                {
+                    canCreate && <Link href="/edit-feed">
+                        <button type="button"
+                                className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            <RiTestTubeLine className="w-6 h-6"/> Make a new Feed {`(max ${MAX_FEEDS_PER_USER})`}
+                        </button>
+                    </Link>
+                }
+                {
+                    !canCreate && <div>You have reached the maximum number of feeds your account can create</div>
+                }
+
                 <div className="border border-2 border-black p-4 bg-white rounded-xl">
-                    <div>Feeds Editable in BlueskyFeeds.com are in green</div>
+                    <div>Feeds Editable here are in green</div>
                     {
                         myFeeds && myFeeds.map(x =>
                             <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />

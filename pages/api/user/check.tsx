@@ -1,5 +1,5 @@
 import {userPromise} from "features/utils/apiUtils";
-import {rebuildAgentFromToken} from "features/utils/feedUtils";
+import {rebuildAgentFromToken} from "features/utils/bsky";
 
 export default async function handler(req, res) {
     return userPromise(req, res, "GET", true, false,

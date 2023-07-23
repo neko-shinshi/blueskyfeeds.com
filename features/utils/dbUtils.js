@@ -23,6 +23,8 @@ const connectToDatabase = async () => {
                 allFeeds: db.collection("allFeeds"),
                 allHandles: db.collection("allHandles"),
                 feeds: db.collection("feeds"),
+                posts: db.collection("posts"),
+                keywords: db.collection("keywords"),
             };
             return global.cachedDb;
         })
@@ -33,8 +35,17 @@ const connectToDatabase = async () => {
 
 /*
 // Indexes
+db.sessions.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
+db.data.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
+db.posts.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
+db.replies.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
+db.likes.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
+db.reposts.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
+
+
 db.allFeeds.createIndex( { likeCount: -1, indexedAt:1 } )
 db.feeds.createIndex({keywords:1})
+
  */
 
 module.exports = {

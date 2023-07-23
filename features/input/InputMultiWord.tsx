@@ -85,7 +85,6 @@ export default function InputMultiWord(
                         const text = field.value;
                         if (check) {
                             check(text, item => {
-                                console.log(item, value, onChange);
                                 handleItem.current(item, value, onChange);
                                 field.value = "";}
                             )

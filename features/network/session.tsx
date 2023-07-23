@@ -2,7 +2,7 @@ import {getServerSession} from "next-auth";
 import {authOptions} from "pages/api/auth/[...nextauth]";
 import {removeUndefined} from "features/utils/validationUtils";
 import {getToken} from "next-auth/jwt";
-import {rebuildAgentFromToken} from "features/utils/feedUtils";
+import {rebuildAgentFromToken} from "features/utils/bsky";
 import {connectToDatabase} from "features/utils/dbUtils";
 
 
@@ -25,14 +25,12 @@ export const getLoggedInData = async (req, res) => {
     if (token) {
         agent = await rebuildAgentFromToken(token);
         if (!agent) {
-            console.log("failed to rebuild agent");
             return {redirect: {destination: '/signout', permanent: false}};
         }
         if (agent.session.accessJwt !== token.accessJwt) {
             const {id: _id, service, sub: did, refreshJwt, accessJwt} = token;
             await db.sessions.updateOne({_id}, {$set: {service, did, refreshJwt, accessJwt}}); // Update user token info on the server
             updateSession = true;
-            console.log("session updated");
         }
     }
     return {session, updateSession, agent, db, token};

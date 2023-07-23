@@ -1,26 +1,46 @@
 import {userPromise} from "features/utils/apiUtils";
-import {rebuildAgentFromToken} from "features/utils/feedUtils";
-import {editFeed, getCustomFeeds} from "features/utils/bsky";
+import {editFeed, getCustomFeeds, isVIP, rebuildAgentFromToken} from "features/utils/bsky";
 import {serializeFile} from "features/utils/fileUtils";
-import {PICS_SETTING, POST_LEVELS, SORT_ORDERS, SUPPORTED_LANGUAGES} from "features/utils/constants";
+import {
+    KEYWORD_SETTING,
+    MAX_FEEDS_PER_USER,
+    MAX_KEYWORDS_PER_FEED,
+    PICS_SETTING,
+    POST_LEVELS,
+    SORT_ORDERS,
+    SUPPORTED_LANGUAGES
+} from "features/utils/constants";
 import {isValidDomain} from "features/utils/validationUtils";
+import {getMyCustomFeedIds} from "features/utils/feedUtils";
+
+// Regular users are restricted to MAX_FEEDS_PER_USER feeds and MAX_KEYWORDS_PER_FEED keywords
 
 export default async function handler(req, res) {
     return userPromise(req, res, "POST", true, true,
         ({captcha, shortName}) => !!captcha && !!shortName,
         async ({db, token}) => {
-
-            let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords,
-                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl} = req.body;
-
             const agent = await rebuildAgentFromToken(token);
             if (!agent) {res.status(401).send(); return;}
             console.log("received")
+
+            let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords,
+                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl} = req.body;
+            const did = agent.session.did;
+            const _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
+
+            if (!isVIP(agent)) {
+                const feedIds = await getMyCustomFeedIds(agent, db);
+                if (feedIds.indexOf(_id) < 0 && feedIds.length >= MAX_FEEDS_PER_USER && !isVIP(agent)) {
+                    res.status(400).send("too many feeds"); return;
+                }
+            }
+
             if (!SORT_ORDERS.find(x => x.id === sort)) {
                 console.log("a")
                 res.status(400).send("invalid sort"); return;
             }
 
+            keywordSetting = keywordSetting.filter(x => KEYWORD_SETTING.find(y => y.id === x));
             const pics = _pics.filter(x => PICS_SETTING.find(y => y.id === x));
             if (pics.length === 0 || pics.length !== _pics.length) {
                 console.log("b")
@@ -38,9 +58,8 @@ export default async function handler(req, res) {
                 res.status(400).send("missing languages"); return;
             }
 
-            const keywords = _keywords.filter(x => {
+            let keywords = _keywords.filter(x => {
                 const {w,t,r,a, ...other} = x;
-
                 if (Object.keys(other).length === 0 && (typeof w === 'string' || w instanceof String) && typeof a == "boolean" ) {
                     switch (t) {
                         case "t":
@@ -56,17 +75,47 @@ export default async function handler(req, res) {
 
                 return false;
             });
+
+            if (keywords.length > MAX_KEYWORDS_PER_FEED && !isVIP(agent)) {
+                res.status(400).send("too many keywords"); return;
+            }
+
             if (keywords.length !== _keywords.length) {
                 console.log("e")
                 res.status(400).send("missing keywords"); return;
             }
+            keywords = keywords.map(x => {
+                const {a, ...y} = x;
+                if (Array.isArray(y.r)) {
+                    if (y.r.length === 0) {
+                        delete y.r;
+                    } else {
+                        y.r.forEach(z => {
+                            if (z.p === "") {
+                                delete z.p;
+                            }
+                            if (z.s === "") {
+                                delete z.s;
+                            }
+                        });
+                        y.r.sort((a,b) => {
+                            const ll = [a.p, y.w, a.s].filter(l => l).join("");
+                            const rr = [b.p, y.w, b.s].filter(r => r).join("");
+                            return ll.localeCompare(rr);
+                        });
+                    }
+                }
+                return {
+                    t: JSON.stringify(y).replaceAll("\"", ""),
+                    a: x.a // This is not used by the firehose
+                };
+            });
             keywords.sort((a,b) => {
-               return a.w.localeCompare(b.w);
+               return a.t.localeCompare(b.t);
             });
 
             if ([...new Set([...mustUrl, ...blockUrl])]
                 .filter(x => isValidDomain(x)).length !== mustUrl.length + blockUrl.length) {
-                console.log("f")
                 res.status(400).send("missing urls"); return;
             }
 
@@ -74,7 +123,6 @@ export default async function handler(req, res) {
             const actors = [...new Set([...allowList, ...blockList, ...everyList])]; // dids
 
             if (actors.length !== allowList.length + blockList.length + everyList.length) {
-                console.log("duplicate")
                 res.status(400).send("duplicate"); return;
             }
             if (actors.length > 0) {
@@ -95,8 +143,7 @@ export default async function handler(req, res) {
                 img = {imageBlob, encoding};
             }
 
-            const did = agent.session.did;
-            const _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
+
 
             try {
                 // Update feed at Bluesky's side

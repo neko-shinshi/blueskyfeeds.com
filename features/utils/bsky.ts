@@ -11,13 +11,17 @@ export const getAgent = async (service, identifier, password) => {
     }
 }
 
-export const rebuildAgent = async (service, {did,refreshJwt, accessJwt}:
-                                       {did:string,refreshJwt:string, accessJwt:string}) => {
-    const agent = new BskyAgent({ service: `https://${service}/` });
-    await agent.resumeSession({did, refreshJwt, accessJwt, handle:"", email:""});
-    return agent;
+export const rebuildAgentFromToken = async (token) => {
+    const {sub:_did, did:__did, refreshJwt, accessJwt, service} = token;
+    try {
+        const agent = new BskyAgent({ service: `https://${service}/` });
+        await agent.resumeSession({did: __did || _did, refreshJwt, accessJwt, handle:"", email:""});
+        return agent;
+    } catch (e) {
+        console.log(e);
+        return false;
+    }
 }
-
 
 
 export const getCustomFeeds = async (agent) => {
@@ -119,4 +123,8 @@ export const editFeed = async (agent, {img, shortName, displayName, description}
     };
 
     return await agent.api.com.atproto.repo.putRecord(record);
+}
+
+export const isVIP = (agent) => {
+    return agent.session.did === "did:plc:tazrmeme4dzahimsykusrwrk";
 }

@@ -1,12 +1,15 @@
+export const MAX_FEEDS_PER_USER = 3;
+export const MAX_KEYWORDS_PER_FEED = 20;
+
 export const SIGNATURE = " //Made at BlueskyFeeds.com"
-export const SUPPORTED_LANGUAGES = ["", "en", "ja"];
+export const SUPPORTED_LANGUAGES = ["", "en", "pt", "ja", "ko", "uk", "es", "fa", "tr", "de", "nl", "fr", "id"];
 export const POST_LEVELS = [{id:"top", txt:"Top-level posts"}, {id:"reply", txt: "Quote Posts & Replies"}];
 export const SORT_ORDERS = [
-    {id:"chronological", txt:"Latest - Most recent post at top"},
+    {id:"new", txt:"Latest - Most recent post at top"},
+    {id:"like", txt:"Likes - Highest Likes at top"},
     {id:"ups", txt:"Engagement - Highest Likes, Reposts, & Quote Posts at top"},
-    {id:"likes", txt:"Likes - Highest Likes at top"},
-    {id:"scoreLikes", txt:"Hot (Likes) - Hacker News sorting algorithm using likes only"},
-    {id:"scoreUps", txt:"Hot (Engagement) - Hacker News sorting algorithm using engagement"},
+    {id:"sLike", txt:"Hot (Likes) - Hacker News sorting algorithm using likes only"},
+    {id:"sUps", txt:"Hot (Engagement) - Hacker News sorting algorithm using engagement"},
 ];
 export const PICS_SETTING = [
     {id:"text", txt: "Text-only posts"},
@@ -21,6 +24,13 @@ export const KEYWORD_SETTING = [
 
 export const KEYWORD_TYPES = ['token', 'segment', 'hashtag'] as const;
 export type KeywordType = typeof KEYWORD_TYPES[number];
+export const KeywordTypeToShort = (type:KeywordType) => {
+    switch (type) {
+        case "token": return "t";
+        case "segment": return "s";
+        case "hashtag": return "#";
+    }
+}
 
 export type FeedKeyword = {
     t:"t" // Token
