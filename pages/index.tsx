@@ -114,7 +114,7 @@ export async function getServerSideProps({req, res, query}) {
 
     let popularMadeHere = [];
     if (!q && (!p || p === "1")) {
-        popularMadeHere = await db.allFeeds.find({_id: {$in: feedsHere.map(x => x._id)}, likeCount: {$gt: 0}})
+        popularMadeHere = await db.allFeeds.find({_id: {$in: feedsHere.map(x => x._id)}, likeCount: {$gte: 2}})
             .sort({likeCount:-1}).limit(10).project(projection).toArray();
     }
 
