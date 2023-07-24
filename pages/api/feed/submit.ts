@@ -94,12 +94,12 @@ export default async function handler(req, res) {
                         y.r.forEach(z => {
                             if (z.p === "") {
                                 delete z.p;
-                            } else {
+                            } else if (z.p) {
                                 z.p = z.p.toLowerCase();
                             }
                             if (z.s === "") {
                                 delete z.s;
-                            } else {
+                            } else if (z.s) {
                                 z.s = z.s.toLowerCase();
                             }
                         });
