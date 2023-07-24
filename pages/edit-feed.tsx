@@ -139,7 +139,7 @@ export default function Home({feed, updateSession, token, VIP}) {
     const imageRef = useRef(null);
     const formRef = useRef(null);
 
-    const useFormReturn = useForm();
+    const useFormReturn = useForm({mode: "onChange"});
     const {
         reset,
         watch,
@@ -393,7 +393,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                         maxLength={24}
                                         fieldName="displayName"
                                         fieldReadableName="Feed Full Name (Max 24 characters)"
-                                        options={{}}
+                                        options={{required: "This is required"}}
                                         useFormReturn={useFormReturn}
                                         placeholder="My Amazing Feed"
                                         optional={false}
@@ -402,17 +402,21 @@ export default function Home({feed, updateSession, token, VIP}) {
                                         buttonCallback={() => {
                                             if (!shortNameLocked) {
                                                 const name = getValues("displayName");
-                                                setValue("shortName", name.toLowerCase().replaceAll(" ", "-").replaceAll(/[^a-z0-9-]/g, ""));
+                                                setValue("shortName", name.toLowerCase().replaceAll(" ", "-").replaceAll(/[^a-z0-9-_]/g, "").slice(0,15));
                                             }
                                         }} />
                                     <InputTextButton
                                         maxLength={15} fieldName="shortName" disabled={shortNameLocked}
                                         fieldReadableName="Unique Short Name among all your feeds (CANNOT be changed once submitted)"
                                         subtext="(alphanumeric and dashes only, max 15 characters) [0-9a-zA-z-]"
-                                        options={{pattern: {
-                                                value: /^[a-zA-Z0-9-]*$/,
+                                        options={
+                                        {
+                                            required: "This is required",
+                                            pattern: {
+                                                value: /^[a-zA-Z0-9_-]+$/,
                                                 message: 'Only alphanumeric and dashes allowed',
-                                            }}} useFormReturn={useFormReturn} placeholder="my-amazing-feed"
+                                            }
+                                        }} useFormReturn={useFormReturn} placeholder="my-amazing-feed"
                                         buttonText={`${15-(watchShortName?.length || 0)} left`}
                                         buttonCallback={() => {}}
                                         buttonDisabled={true}

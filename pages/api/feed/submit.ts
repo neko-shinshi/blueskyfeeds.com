@@ -25,6 +25,11 @@ export default async function handler(req, res) {
 
             let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords,
                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl} = req.body;
+
+            if (!/^[a-zA-Z0-9_-]+$/.test(shortName)) {
+                res.status(400).send("invalid short name"); return;
+            }
+
             const did = agent.session.did;
             const _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
 

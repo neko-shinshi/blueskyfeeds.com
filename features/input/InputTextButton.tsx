@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import {HiOutlineExclamationCircle} from "react-icons/hi";
 import {dotObjectStringPath} from "features/utils/objectUtils";
+import {useEffect} from "react";
 
 export default function InputTextButton(
     {
@@ -24,7 +25,7 @@ export default function InputTextButton(
     }:{
         fieldName: string,
         fieldReadableName: string,
-        options: Object,
+        options: any,
         useFormReturn: any,
         optional?: boolean,
         placeholder: string,
