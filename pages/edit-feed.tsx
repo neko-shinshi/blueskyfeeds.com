@@ -368,7 +368,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                 {
                                     shortNameLocked &&
                                     <button type="button"
-                                            onClick={() => setPopupState("delete")}
+                                            onClick={() => {if (shortNameLocked) {setPopupState("delete")}}}
                                             className="p-1 inline-flex items-center rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                                         <HiTrash className="w-6 h-6"/>
                                         <div className="text-lg font-medium">Delete this feed</div>
