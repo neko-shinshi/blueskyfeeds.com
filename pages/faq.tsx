@@ -16,10 +16,11 @@ export default function Home({feedsDefault}) {
                 <div className="p-2 bg-white rounded-xl border-2 border-black space-y-1" id="what-is">
                     <div className="font-bold text-lg">What is a Bluesky App Password?</div>
                     <div className="block md:flex md:justify-center p-4">
-                        <div className="w-80 h-64 relative aspect-[10/8]">
+                        <div className="w-80 h-64 aspect-[10/8]">
                             {/* 10 x 8 ratio*/}
                             <Image
-                                unoptimized fill
+                                width={300}
+                                height={240}
                                 src="/app-password/step-4.webp"
                                 alt="Screenshot of app password page of app"
                             />
@@ -39,10 +40,11 @@ export default function Home({feedsDefault}) {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                         <div className="p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Step 1</div>
-                            <div className="w-70 h-56 relative aspect-[10/8]">
+                            <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
                                 <Image
-                                    unoptimized fill
+                                    width={300}
+                                    height={240}
                                     src="/app-password/step-1.webp"
                                     alt="Screenshot of main page of Bluesky app"
                                 />
@@ -52,10 +54,11 @@ export default function Home({feedsDefault}) {
 
                         <div className="p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Step 2</div>
-                            <div className="w-70 h-56 relative aspect-[10/8]">
+                            <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
                                 <Image
-                                    unoptimized fill
+                                    width={300}
+                                    height={240}
                                     src="/app-password/step-2.webp"
                                     alt="Screenshot of side panel of Bluesky app"
                                 />
@@ -64,10 +67,11 @@ export default function Home({feedsDefault}) {
                         </div>
                         <div className="p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Step 3</div>
-                            <div className="w-70 h-56 relative aspect-[10/8]">
+                            <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
                                 <Image
-                                    unoptimized fill
+                                    width={300}
+                                    height={240}
                                     src="/app-password/step-3.webp"
                                     alt="Screenshot of settings page of Bluesky app"
                                 />
@@ -78,10 +82,11 @@ export default function Home({feedsDefault}) {
                              id="step-4"
                         >
                             <div className="font-semibold text-lg">Step 4</div>
-                            <div className="w-70 h-56 relative aspect-[10/8]">
+                            <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
                                 <Image
-                                    unoptimized fill
+                                    width={300}
+                                    height={240}
                                     src="/app-password/step-4.webp"
                                     alt="Screenshot of App Passwords page of Bluesky app"
                                 />
@@ -90,10 +95,11 @@ export default function Home({feedsDefault}) {
                         </div>
                         <div className="p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Step 5</div>
-                            <div className="w-70 h-56 relative aspect-[10/8]">
+                            <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
                                 <Image
-                                    unoptimized fill
+                                    width={300}
+                                    height={240}
                                     src="/app-password/step-5.webp"
                                     alt="Screenshot of naming a new App Password page of Bluesky app"
                                 />
@@ -102,10 +108,11 @@ export default function Home({feedsDefault}) {
                         </div>
                         <div className="p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Step 6</div>
-                            <div className="w-70 h-56 relative aspect-[10/8]">
+                            <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
                                 <Image
-                                    unoptimized fill
+                                    width={300}
+                                    height={240}
                                     src="/app-password/step-6.webp"
                                     alt="Screenshot of a new App Password in the Bluesky app"
                                 />
@@ -119,10 +126,11 @@ export default function Home({feedsDefault}) {
                         <div className="bg-red-100 p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Deleting the App Password</div>
                                 <div className="p-2">To Delete the app password, go back to <a href="#step-4" className="underline text-blue-600 hover:text-blue-800">Step 4</a> and tap the bin icon next to the password</div>
-                                <div className="w-70 h-56 relative aspect-[10/8]">
+                                <div className="w-70 h-56 aspect-[10/8]">
                                     {/* 10 x 8 ratio*/}
                                 <Image
-                                    unoptimized fill
+                                    width={300}
+                                    height={240}
                                     src="/app-password/step-delete.webp"
                                     alt="Screenshot of App Passwords page of Bluesky app"
                                 />

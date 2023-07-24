@@ -27,7 +27,9 @@ export default function NavButtonUserAvatar({navPosition}) {
                     <Menu.Button
                         className="inline-block justify-center h-8 w-8 rounded-full overflow-hidden bg-gray-500 shadow-inner ring-1 ring-white">
                         {
-                            session.user.image ? <div className="relative h-8 w-8"><Image unoptimized fill src={session.user.image} alt="user-avatar"/></div> :
+                            session.user.image ?
+                                <div className="h-8 w-8">
+                                    <Image width={50} height={50} src={session.user.image} alt="user-avatar"/></div> :
                                 <span className="text-sm font-medium leading-none text-white select-none">
                                     {session.user.name.charAt(0)}
                                 </span>
