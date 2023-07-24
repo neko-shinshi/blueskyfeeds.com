@@ -128,7 +128,7 @@ export async function getServerSideProps({req, res, query}) {
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 export default function Home({updateSession, feeds, popularMadeHere}) {
-    const title = "BlueskyFeeds.com";
+    const title = "Bluesky Social Feeds @ BlueskyFeeds.com";
     const description = "Find your perfect feed algorithm for Bluesky Social App, or build one yourself";
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
