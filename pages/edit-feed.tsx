@@ -365,12 +365,16 @@ export default function Home({feed, updateSession, token, VIP}) {
                                     <div className="font-bold text-lg">Bluesky Feed Settings</div>
                                     <div>(This info is submitted to Bluesky)</div>
                                 </div>
-                                <button type="button"
-                                        onClick={() => setPopupState("delete")}
-                                        className="p-1 inline-flex items-center rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                    <HiTrash className="w-6 h-6"/>
-                                    <div className="text-lg font-medium">Delete this feed</div>
-                                </button>
+                                {
+                                    shortNameLocked &&
+                                    <button type="button"
+                                            onClick={() => setPopupState("delete")}
+                                            className="p-1 inline-flex items-center rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                        <HiTrash className="w-6 h-6"/>
+                                        <div className="text-lg font-medium">Delete this feed</div>
+                                    </button>
+                                }
+
                             </div>
                             <div className="flex w-full place-items-center gap-4">
                                 <div>
