@@ -301,7 +301,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                         <div className="font-bold">Your Feed has been saved.</div>
                         <ul className="list-disc pl-4 py-4">
                             <li>It will take a while for new posts to update as we do not store any post text in our servers.<br/>We only process new posts as they arrive via the API. </li>
-                            <li><div className="flex">It costs money to operate BlueskyFeeds.com, if you would like to contribute, please visit my <a className="ml-1 flex underline text-blue-500 hover:text-blue-800" href="https://ko-fi.com/anianimalsmoe">Ko-Fi <img alt="ko-fi icon" className="h-6 w-6" src="/ko-fi.png"/></a></div></li>
+                            <li><div className="flex">It costs money to operate BlueskyFeeds.com, if you would like to contribute, please visit my <a className="ml-1 flex underline text-blue-500 hover:text-blue-800" href="https://ko-fi.com/anianimalsmoe">Ko-Fi <div className="h-6 w-6 relative"><Image unoptimized fill alt="ko-fi icon" className="inset-0" src="/ko-fi.png"/></div></a></div></li>
                         </ul>
 
                         <Link href={"/my-feeds"}>
