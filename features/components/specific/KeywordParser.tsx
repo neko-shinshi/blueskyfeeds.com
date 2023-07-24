@@ -43,7 +43,7 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
                     <input
                         ref={keywordRef}
                         type="text"
-                        className={clsx("block w-full focus:outline-none sm:text-sm p-2",
+                        className={clsx("block w-full focus:outline-none sm:text-sm p-2 lowercase",
                             prefix? "rounded-r-md" : "rounded-md",
                             "focus:border-gray-500 focus:ring-gray-500 border-gray-300 text-gray-900 placeholder-gray-300")}
                         aria-invalid="true"
@@ -87,7 +87,7 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
                                     </button>
                                     <input
                                         type="text"
-                                        className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2",
+                                        className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2 lowercase",
                                             "focus:border-gray-500 focus:ring-gray-500 border-gray-300 text-gray-900 placeholder-gray-300")}
                                         aria-invalid="true"
                                         autoComplete="off"
@@ -107,13 +107,13 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
                                         type="text"
                                         disabled={true}
                                         value={manualKeyword}
-                                        className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2",
+                                        className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2 lowercase",
                                             "bg-gray-300")}
                                         placeholder="Keyword"
                                     />
                                     <input
                                         type="text"
-                                        className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2",
+                                        className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2 lowercase",
                                             "focus:border-gray-500 focus:ring-gray-500 border-gray-300 text-gray-900 placeholder-gray-300")}
                                         aria-invalid="true"
                                         autoComplete="off"
