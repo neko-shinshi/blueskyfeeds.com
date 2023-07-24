@@ -436,7 +436,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                     {
                                         POST_LEVELS.map(x =>
                                             <div key={x.id}
-                                                 className="flex place-items-center bg-yellow-400 hover:bg-yellow-200 gap-2 p-1"
+                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
                                                  onClick={() => {
                                                      if (postLevels.indexOf(x.id) >= 0) {
                                                          setPostLevels([...postLevels.filter(y => y !== x.id)]);
@@ -474,7 +474,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                     {
                                         PICS_SETTING.map(x =>
                                             <div key={x.id}
-                                                 className="flex place-items-center bg-yellow-400 hover:bg-yellow-200 gap-2 p-1"
+                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
                                                  onClick={() => {
                                                      if (pics.indexOf(x.id) >= 0) {
                                                          setPics([...pics.filter(y => y !== x.id)]);
@@ -529,7 +529,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                                        }
                                                    }}
                                                    checked={SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)}
-                                                   className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-md")}
+                                                   className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
                                             />
                                             <div className={clsx("ml-3 text-gray-700")}>
                                                 {
@@ -564,7 +564,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                                            checked={languages.indexOf(id) >= 0}
                                                            onClick={onClick}
                                                            onChange={()=>{}}
-                                                           className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-md")}
+                                                           className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
                                                     />
                                                     <div className={clsx("ml-3 text-gray-700")}>
                                                         {txt}
@@ -618,7 +618,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                     {
                                         KEYWORD_SETTING.map(x =>
                                             <div key={x.id}
-                                                 className="flex place-items-center bg-yellow-400 hover:bg-yellow-200 gap-2 p-1"
+                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
                                                  onClick={() => {
                                                      if (keywordSetting.indexOf(x.id) >= 0) {
                                                          setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
