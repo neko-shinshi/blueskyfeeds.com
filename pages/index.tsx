@@ -3,7 +3,6 @@ import {useEffect, useRef, useState} from "react";
 import Link from "next/link";
 import {SiBuzzfeed} from "react-icons/si";
 import PageHeader from "features/components/PageHeader";
-import {getMyFeedIds} from "features/utils/feedUtils";
 import {localDelete, urlWithParams} from "features/network/network";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
@@ -13,6 +12,7 @@ import {signIn, useSession} from "next-auth/react";
 import {getLoggedInData} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
 import PopupLoading from "features/components/PopupLoading";
+import BackAndForwardButtons from "features/components/BackAndForwardButtons";
 
 export async function getServerSideProps({req, res, query}) {
     // TODO if no query, show most popular feeds made here
@@ -23,7 +23,7 @@ export async function getServerSideProps({req, res, query}) {
     let {t, q, p} = query;
     let $search, $skip;
     if (p) {
-        $skip = parseInt(p) * PAGE_SIZE;
+        $skip = Math.max(0,parseInt(p)-1) * PAGE_SIZE;
         if (isNaN($skip)) {
             return { redirect: { destination: '/400', permanent: false } };
         }
@@ -92,32 +92,42 @@ export async function getServerSideProps({req, res, query}) {
         };
     }
 
+    const projection = {
+        _id: 0, uri: "$_id",
+        cid:1, did:1, creator:1, avatar:1,
+        displayName:1, description:1, likeCount:1, indexedAt:1
+    };
+
     const agg = [
         $search && {$search},
         { $sort : { likeCount:-1, indexedAt:1 } },
         $skip && { $skip },
         { $limit: PAGE_SIZE },
         {
-            $project: {
-                _id: 0, uri: "$_id",
-                cid:1, did:1, creator:1, avatar:1,
-                displayName:1, description:1, likeCount:1, indexedAt:1
-            },
+            $project: projection,
         },
     ].filter(x => x);
-    const feeds = await db.allFeeds.aggregate(agg).toArray();
-    let myFeeds = [];
+    const [feeds, feedsHere] = await Promise.all([
+        db.allFeeds.aggregate(agg).toArray(),
+        db.feeds.find({}).project({_id:1}).toArray()
+    ]);
+
+    let popularMadeHere = [];
+    if (!q && (!p || p === "1")) {
+        popularMadeHere = await db.allFeeds.find({_id: {$in: feedsHere.map(x => x._id)}, likeCount: {$gt: 0}})
+            .sort({likeCount:-1}).limit(10).project(projection).toArray();
+    }
+
+   /* let myFeeds = [];
 
     if (agent) {
         myFeeds = await getMyFeedIds(agent);
-    }
-
-
-    return {props: {updateSession, session, myFeeds, feeds}};
+    }*/
+    return {props: {updateSession, session, feeds, popularMadeHere}};
 }
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
-
-export default function Home({updateSession, feeds, myFeeds}) {
+export default function Home({updateSession, feeds, popularMadeHere}) {
     const title = "BlueskyFeeds.com";
     const description = "Find your perfect feed algorithm for Bluesky Social App, or build one yourself";
     const [popupState, setPopupState] = useState<"delete"|false>(false);
@@ -195,8 +205,22 @@ export default function Home({updateSession, feeds, myFeeds}) {
                     </button>
                 </Link>
 
+                {
+                    popularMadeHere && popularMadeHere.length > 0 &&
+                    <div className="bg-lime-100 border border-black border-2 p-4 rounded-xl space-y-2">
+                        <div className="text-lg font-medium">Highlights of Feeds made here</div>
+                        {
+                            popularMadeHere.map(x =>
+                                <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />
+                            )
+                        }
+                    </div>
+                }
+
+
                 <div className="bg-white border border-black border-2 p-4 rounded-xl space-y-2">
                     <div className="text-lg font-medium">Existing Feeds (Updated Irregularly)</div>
+
 
                     <div className="flex place-items-center gap-2 bg-sky-200 w-fit p-2 rounded-xl">
                         <div className="flex">
@@ -221,12 +245,19 @@ export default function Home({updateSession, feeds, myFeeds}) {
                             <input type="checkbox" checked={searchUser} onChange={() => {}} onKeyDown={async e => {if (e.key === "Enter") {await startSearch()}}}/>Search User
                         </div>
                     </div>
+                    <BackAndForwardButtons  basePath={`${BASE_URL}`} params={router.query}/>
 
                     {
                         feeds.map(x =>
                             <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />
                         )
                     }
+
+                    {
+                        feeds.length > 0 && <BackAndForwardButtons  basePath={`${BASE_URL}`} params={router.query}/>
+                    }
+
+
                 </div>
             </div>
         </>
