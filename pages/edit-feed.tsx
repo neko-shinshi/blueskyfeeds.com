@@ -306,7 +306,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                     <a className="ml-1 flex underline text-blue-500 hover:text-blue-800" href="https://ko-fi.com/anianimalsmoe">
                                         Ko-Fi
                                         <div className="h-6 w-6">
-                                            <Image width={20} height={20} alt="ko-fi icon" src="/ko-fi.png"/>
+                                            <Image width={25} height={25} alt="ko-fi icon" src="/ko-fi.png"/>
                                         </div>
                                     </a>
                                 </div>
@@ -400,15 +400,20 @@ export default function Home({feed, updateSession, token, VIP}) {
                                         buttonDisabled={shortNameLocked}
                                         buttonText="Make Short Name"
                                         buttonCallback={() => {
-                                            const name = getValues("displayName");
-                                            setValue("shortName", name.toLowerCase().replaceAll(" ", "-").replaceAll(/[^a-z0-9-]/g, ""));
+                                            if (!shortNameLocked) {
+                                                const name = getValues("displayName");
+                                                setValue("shortName", name.toLowerCase().replaceAll(" ", "-").replaceAll(/[^a-z0-9-]/g, ""));
+                                            }
                                         }} />
                                     <InputTextButton
                                         maxLength={15} fieldName="shortName" disabled={shortNameLocked}
                                         fieldReadableName="Unique Short Name among all your feeds (CANNOT be changed once submitted)"
-                                        subtext="(lowercase alphanumeric and dashes only max 15 characters) [0-9a-zA-z-]"
-                                        options={{}} useFormReturn={useFormReturn} placeholder="my-amazing-feed"
-                                        buttonText={`${15-(watchShortName?.length || 0)}`}
+                                        subtext="(alphanumeric and dashes only, max 15 characters) [0-9a-zA-z-]"
+                                        options={{pattern: {
+                                                value: /^[a-zA-Z0-9-]*$/,
+                                                message: 'Only alphanumeric and dashes allowed',
+                                            }}} useFormReturn={useFormReturn} placeholder="my-amazing-feed"
+                                        buttonText={`${15-(watchShortName?.length || 0)} left`}
                                         buttonCallback={() => {}}
                                         buttonDisabled={true}
                                     />
@@ -507,7 +512,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                             <div className="bg-lime-100 p-2">
                                 <div className="font-semibold">Language Filters</div>
                                 <div className="text-sm">Note: This is calculated using cld2, which is not perfect and may be unable to process short posts</div>
-                                <div className="text-sm">Leave this empty to accept posts of all languages including those not listed</div>
+                                <div className="text-sm">Leave this completely empty to accept posts of all languages including those not listed</div>
                                 <div className="grid grid-cols-2">
                                     <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
                                          onClick={() => {
