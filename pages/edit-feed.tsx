@@ -66,7 +66,7 @@ export async function getServerSideProps({req, res, query}) {
                         const profile = profiles.find(x => x.did === did);
                         if (profile) {
                             const {did, handle, displayName} = profile;
-                            acc.push({did, handle, displayName});
+                            acc.push({did, handle, displayName: displayName || ""});
                         }
                         return acc;
                     };
