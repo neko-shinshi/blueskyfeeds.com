@@ -1,5 +1,5 @@
 import {connectToDatabase} from "features/utils/dbUtils";
-
+import {randomInt} from "crypto";
 const getSortMethod = (sort) => {
     switch (sort) {
         case "like": return {likes:-1, createdAt:-1};
@@ -136,7 +136,7 @@ export default async function handler (req, res) {
                     if (sticky) {limit = limit -1;}
                     result = await db.posts.find(query).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
                     if (result.length === 0) {res.status(200).json({cursor:"", feed:[]}); return;}
-                    if (sticky) {result.splice(1,0, {_id: sticky.p})}
+                    if (sticky) {result.splice(randomInt(0, 2),0, {_id: sticky.p})}
                     cursor = `${limit}`;
                 }
             }
