@@ -55,8 +55,11 @@ export async function getServerSideProps({req, res, query}) {
         if (_feed) {
             const feedData: any = await getFeedDetails(agent, db, _feed);
             if (feedData) {
-                let {allowList, blockList} = feedData;
-                const actors = [...allowList, ...blockList];
+                let {allowList, blockList, everyList} = feedData;
+                allowList = allowList || [];
+                blockList = blockList || [];
+                everyList = everyList || [];
+                const actors = [...allowList, ...blockList, ...everyList];
                 if (actors.length > 0) {
                     const {data: {profiles}} = await agent.api.app.bsky.actor.getProfiles({actors});
                     const findAndMatch = (acc, did) => {
@@ -69,9 +72,10 @@ export async function getServerSideProps({req, res, query}) {
                     };
                     allowList = allowList.reduce(findAndMatch, []);
                     blockList = blockList.reduce(findAndMatch, []);
+                    everyList = everyList.reduce(findAndMatch, []);
                 }
 
-                feed = {...feedData, allowList, blockList};
+                feed = {...feedData, allowList, blockList, everyList};
             } else {
                 return {redirect: {destination: '/404', permanent: false}}
             }
@@ -163,16 +167,16 @@ export default function Home({feed, updateSession, token, VIP}) {
 
     useEffect(() => {
         if (!feed) {
-            reset({sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[]});
+            reset({sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[]});
             setLanguages([]);
             setPostLevels(POST_LEVELS.map(x => x.id));
             setKeywordSetting(["text"]);
             setPics(["text", "pics"])
         } else {
-            const {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords} = feed;
+            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy} = feed;
 
             let o:any = {
-                sort,displayName, description: description.replaceAll(SIGNATURE, ""),
+                sort,displayName, description: description.replaceAll(SIGNATURE, ""), copy: copy || [],
                 shortName: uri.split("/").at(-1), blockList, allowList, everyList, mustUrl: mustUrl || [], blockUrl: blockUrl || [],
             };
 
@@ -181,13 +185,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                 o.file = {changed: false, url: avatar, type}
             }
 
-            reset(o);
-            setShortNameLocked(true);
-            setLanguages(languages || []);
-            setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
-            setKeywordSetting(keywordSetting || ["text"]);
-            setPics(pics || ["text", "pics"]);
-            setKeywords(keywords.map(x => {
+            keywords = keywords?.map(x => {
                 const {t, a} = x;
                 let o = JSON.parse(compressedToJsonString(t));
                 o.a = a;
@@ -195,46 +193,50 @@ export default function Home({feed, updateSession, token, VIP}) {
                     o.r = [];
                 }
                 return o;
-            }) || []);
+            }) || [];
+
+            reset(o);
+            setShortNameLocked(true);
+            setLanguages(languages || []);
+            setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
+            setKeywordSetting(keywordSetting || ["text"]);
+            setPics(pics || ["text", "pics"]);
+            setKeywords(keywords);
         }
     }, [feed]);
 
 
     const multiWordCallback = (fieldName:string) => {
         return async(val, callback) => {
-            if (val.startsWith("@") || val.startsWith("did:plc:")) {
-                const user = val.startsWith("@")? val.slice(1) : val;
-                const everyList = getValues("everyList");
-                const allowList = getValues("allowList");
-                const blockList = getValues("blockList");
-                if (everyList.find(x => x.did === user || x.handle === user)) {
-                    setError(fieldName, {type:'custom', message:`${user} is already in Every List`});
-                } else if (blockList.find(x => x.did === user || x.handle === user)) {
-                    setError(fieldName, {type:'custom', message:`${user} is already in Block List`});
-                } else if (allowList.find(x => x.did === user || x.handle === user)) {
-                    setError(fieldName, {type:'custom', message:`${user} is already in Allow List`});
-                } else {
-                    if (typeof recaptcha !== 'undefined') {
-                        recaptcha.ready(async () => {
-                            //@ts-ignore
-                            const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                            //@ts-ignore
-                            const result = await localGet("/user/check", {captcha, user});
-                            if (result.status === 200) {
-                                clearErrors(fieldName);
-                                callback(result.data);
-                            } else if (result.status === 400) {
-                                setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
-                            } else if (result.status === 401) {
-                                await router.reload();
-                            } else {
-                                setError(fieldName, {type:'custom', message:"Error"});
-                            }
-                        });
-                    }
-                }
+            const user = val.startsWith("@")? val.slice(1) : val;
+            const everyList = getValues("everyList");
+            const allowList = getValues("allowList");
+            const blockList = getValues("blockList");
+            if (everyList.find(x => x.did === user || x.handle === user)) {
+                setError(fieldName, {type:'custom', message:`${user} is already in Every List`});
+            } else if (blockList.find(x => x.did === user || x.handle === user)) {
+                setError(fieldName, {type:'custom', message:`${user} is already in Block List`});
+            } else if (allowList.find(x => x.did === user || x.handle === user)) {
+                setError(fieldName, {type:'custom', message:`${user} is already in Allow List`});
             } else {
-                setError(fieldName, {type:'custom', message:"User must follow the format"});
+                if (typeof recaptcha !== 'undefined') {
+                    recaptcha.ready(async () => {
+                        //@ts-ignore
+                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                        //@ts-ignore
+                        const result = await localGet("/user/check", {captcha, user});
+                        if (result.status === 200) {
+                            clearErrors(fieldName);
+                            callback(result.data);
+                        } else if (result.status === 400) {
+                            setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
+                        } else if (result.status === 401) {
+                            await router.reload();
+                        } else {
+                            setError(fieldName, {type:'custom', message:"Error"});
+                        }
+                    });
+                }
             }
         }
     }
@@ -332,9 +334,9 @@ export default function Home({feed, updateSession, token, VIP}) {
                         cleanUpData={async (data) => {
                             setBusy(true);
                             const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl} = data;
-                            const allowList = _allowList.map(x => x.did);
-                            const blockList = _blockList.map(x => x.did);
-                            const everyList = _everyList.map(x => x.did);
+                            const allowList = (_allowList || []).map(x => x.did);
+                            const blockList = (_blockList || []).map(x => x.did);
+                            const everyList = (_everyList || []).map(x => x.did);
                             let imageObj:any = {};
                             if (file) {
                                 const {type:encoding, changed, url} = file;
@@ -346,7 +348,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                 }
                             }
 
-                            const result = {...imageObj, languages,  postLevels, pics, keywordSetting, keywords,
+                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords,
                                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl};
                             console.log(result);
 
@@ -588,7 +590,6 @@ export default function Home({feed, updateSession, token, VIP}) {
                                     }
                                 </div>
                             </div>
-
                         </div>
 
 
@@ -604,7 +605,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                         key={id}
                                         className={clsx("border border-2 border-black p-2 rounded-xl", c)}
                                         labelText={t}
-                                        placeHolder="@handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
+                                        placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
                                         fieldName={id}
                                         handleItem={(item, value, onChange) => {
                                             value.push(item);
@@ -662,6 +663,39 @@ export default function Home({feed, updateSession, token, VIP}) {
                                     keywordSetting.length === 0 && <div className="text-red-700">Please select at least one keyword search method</div>
                                 }
                             </div>
+
+                            {
+                                process.env.NEXT_PUBLIC_DEV === "1" &&
+                                <div>
+                                    <div>Copy keywords from: </div>
+                                    <InputMultiWord
+                                        key="feed id"
+                                        className={clsx("border border-2 border-yellow-700 p-2 rounded-xl")}
+                                        labelText="Feed Id"
+                                        placeHolder="bsky.app/profile/did:plc:<user>/feed/<id>"
+                                        orderedList={false}
+                                        fieldName="copy"
+                                        handleItem={(item, value, onChange) => {
+                                            value.push(item);
+                                            value.sort(); // sorting algo
+                                            onChange(value);
+                                        }}
+                                        useFormReturn={useFormReturn}
+                                        check={(val, callback) => {
+                                            const v = val.startsWith("https://")? val.slice(8) : val;
+                                            if (!v.startsWith("bsky.app/profile/did:plc:") || !v.includes("/feed/")) {
+                                                setError("copy", {type:'custom', message:`${val} is not following the feed url format`});
+                                            } else if (getValues("copy").indexOf(v) >= 0){
+                                                setError("copy", {type:'custom', message:`${val} is already in the list`});
+                                            } else {
+                                                callback(v);
+                                            }
+                                        }}/>
+                                </div>
+                            }
+
+
+
                             <div>
                                 <div className={clsx("grid grid-cols-3")}>
                                     {
