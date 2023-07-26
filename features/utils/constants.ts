@@ -1,5 +1,5 @@
 export const MAX_FEEDS_PER_USER = 3;
-export const MAX_KEYWORDS_PER_FEED = 20;
+export const MAX_KEYWORDS_PER_FEED = 40;
 
 export const SIGNATURE = " //Made at BlueskyFeeds.com"
 export const SUPPORTED_LANGUAGES = ["", "en", "pt", "ja", "ko", "uk", "es", "fa", "tr", "de", "nl", "fr", "id"];

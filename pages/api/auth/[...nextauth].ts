@@ -13,16 +13,19 @@ const MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 const getUserFromAgent = async (agent, db, service, oldKey="") => {
     if (!agent) {console.log("no agent");throw makeCustomException('401', {code: 400});}
-
     const {did, handle, refreshJwt, accessJwt, email} = agent.session;
     const {success, data} = await agent.getProfile({actor:did});
+
     if (!success) {throw makeCustomException('400', {code: 400});}
     const sk = randomUuid();
     let commands:any = [{insertOne: {_id: sk, did, expireAt: secondsAfter(MAX_AGE_SECONDS)}}]; // Expire same time as token
     if (oldKey !== "") {
         commands.push({ deleteOne : {filter: {_id: oldKey}} });
     }
+
     await db.sessions.bulkWrite(commands);
+
+
     const {displayName, avatar} = data;
     return { id:did, name:displayName||"", image:avatar||"", service, handle, refreshJwt, accessJwt, email:email || "", sk} as unknown as User;
 }
@@ -67,7 +70,6 @@ export const authOptions: NextAuthOptions = {
                     throw makeCustomException('401', {code: 400});
                 }
                 const user = await getUserFromAgent(agent, db, service, _id);
-                console.log("user", user);
                 return user;
             }
         }),
@@ -83,7 +85,6 @@ export const authOptions: NextAuthOptions = {
                     password:string
                     captcha:string
                 };
-                console.log('start login', credentials);
 
                 // Using same window strategy as applyRateLimit
                 // Window of 1 minute
@@ -124,10 +125,12 @@ export const authOptions: NextAuthOptions = {
                 const db = await connectToDatabase();
                 if (!db) {console.log("authorize 500");throw makeCustomException('500', {code: 500});}
 
+                console.log("got db");
                 const agent = await getAgent(service, usernameOrEmail, password);
                 if (!agent) {console.log("no agent");throw makeCustomException('401', {code: 400});}
-
+                console.log("got agent");
                 const r = await getUserFromAgent(agent, db, service);
+                console.log("got user");
                 return r;
             }
         }),

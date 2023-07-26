@@ -1,4 +1,4 @@
-import { BskyAgent }  from "@nekoshinshi/atproto-api";
+import { BskyAgent }  from "@atproto/api";
 import {SIGNATURE} from "features/utils/constants";
 
 export const getAgent = async (service, identifier, password) => {
