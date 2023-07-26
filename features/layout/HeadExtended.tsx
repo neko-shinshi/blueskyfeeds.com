@@ -23,7 +23,7 @@ export default function HeadExtended(
     }) {
     const router = useRouter();
     const path = (canonicalPath && `${process.env.NEXT_PUBLIC_BASE_URL}/${canonicalPath}`) || // locale already considered
-        `${process.env.NEXT_PUBLIC_BASE_URL}/${router.locale || "en"}${router.pathname == "/"? "": router.pathname}`; // router pathname starts with '/'
+        `${process.env.NEXT_PUBLIC_BASE_URL}${router.pathname == "/"? "": router.pathname}`; // router pathname starts with '/'
     return (
         <Head>
             <title>{title}</title>
