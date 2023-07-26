@@ -167,16 +167,16 @@ export default function Home({feed, updateSession, token, VIP}) {
 
     useEffect(() => {
         if (!feed) {
-            reset({sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[]});
+            reset({sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes"});
             setLanguages([]);
             setPostLevels(POST_LEVELS.map(x => x.id));
             setKeywordSetting(["text"]);
             setPics(["text", "pics"])
         } else {
-            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy} = feed;
+            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight} = feed;
 
             let o:any = {
-                sort,displayName, description: description.replaceAll(SIGNATURE, ""), copy: copy || [],
+                sort,displayName, description: description.replaceAll(SIGNATURE, ""), copy: copy || [], highlight: highlight || "yes",
                 shortName: uri.split("/").at(-1), blockList, allowList, everyList, mustUrl: mustUrl || [], blockUrl: blockUrl || [],
             };
 
@@ -302,10 +302,10 @@ export default function Home({feed, updateSession, token, VIP}) {
                     <div className="bg-white p-4">
                         <div className="font-bold">Your Feed has been saved.</div>
                         <ul className="list-disc pl-4 py-4">
-                            <li>It will take a while for new posts to update as we do not store any post text in our servers.<br/>We only process new posts as they arrive via the API. </li>
+                            <li>It will take a while for posts to populate a new feed as we do not store any post text in our servers.<br/>We only process new posts as they arrive via the API. </li>
                             <li>
-                                <div className="flex">It costs money to operate BlueskyFeeds.com, if you would like to contribute, please visit my
-                                    <a className="ml-1 flex underline text-blue-500 hover:text-blue-800" href="https://ko-fi.com/anianimalsmoe">
+                                <div className="">It costs money to operate BlueskyFeeds.com, if you would like to contribute, please visit my
+                                    <a className="ml-1 inline-flex underline text-blue-500 hover:text-blue-800" href="https://ko-fi.com/anianimalsmoe">
                                         Ko-Fi
                                         <div className="h-6 w-6">
                                             <Image width={25} height={25} alt="ko-fi icon" src="/ko-fi.png"/>
@@ -333,7 +333,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                         useFormReturn={useFormReturn}
                         cleanUpData={async (data) => {
                             setBusy(true);
-                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl} = data;
+                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight} = data;
                             const allowList = (_allowList || []).map(x => x.did);
                             const blockList = (_blockList || []).map(x => x.did);
                             const everyList = (_everyList || []).map(x => x.did);
@@ -348,7 +348,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                 }
                             }
 
-                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords,
+                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, copy, highlight,
                                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl};
                             console.log(result);
 
@@ -434,6 +434,12 @@ export default function Home({feed, updateSession, token, VIP}) {
 
                         <div className="bg-white p-2">
                             <div className="font-bold text-lg">Feed Settings</div>
+                            <div className="bg-lime-100 p-2 space-y-2">
+                                <InputRadio entriesPerRow={2} modifyText={_ => {
+                                    return "text-base font-semibold";
+                                }} fieldName="highlight" fieldReadableName="Show in Highlights on BlueskyFeeds.com?" subtext="Your feed will still publicly available in other feed directories" useFormReturn={useFormReturn} items={[{id:"yes", txt:"Yes"}, {id:"no", txt:"No"}]}/>
+                            </div>
+
                             <div className="bg-sky-100 p-2 space-y-2">
                                 <InputRadio entriesPerRow={2} modifyText={_ => {
                                     return "text-base font-semibold";

@@ -21,10 +21,10 @@ export default async function handler(req, res) {
         async ({db, token}) => {
             const agent = await rebuildAgentFromToken(token);
             if (!agent) {res.status(401).send(); return;}
-            console.log("received")
+            console.log("received");
 
             let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords,
-                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl} = req.body;
+                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight} = req.body;
 
             if (!/^[a-zA-Z0-9_-]+$/.test(shortName)) {
                 res.status(400).send("invalid short name"); return;
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
             }
             const languages = _languages.filter(x => SUPPORTED_LANGUAGES.indexOf(x) >= 0);
             if (languages.length !== _languages.length) {
-                // Empty lanuages means skip filtering language
+                // Empty languages means skip filtering language
                 console.log("d")
                 res.status(400).send("missing languages"); return;
             }
@@ -153,14 +153,12 @@ export default async function handler(req, res) {
                 img = {imageBlob, encoding};
             }
 
-
-
             try {
                 // Update feed at Bluesky's side
+                console.log("submit to bsky")
                 await editFeed(agent, {img, shortName, displayName, description});
 
-
-                const o = {languages,  postLevels, pics, keywordSetting, keywords,
+                const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight,
                     sort, allowList, blockList, everyList, mustUrl, blockUrl};
 
                 // Update current feed
