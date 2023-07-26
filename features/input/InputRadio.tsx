@@ -2,7 +2,6 @@ import clsx from "clsx";
 import {UseFormReturn} from "react-hook-form";
 import {useEffect, useState} from "react";
 import {dotObjectStringPath} from "features/utils/objectUtils";
-import $ from 'jquery'
 
 export default function InputRadio(
     {
@@ -42,7 +41,7 @@ export default function InputRadio(
 
     useEffect(() => {
         setEntries(`grid-cols-${entriesPerRow}`);
-    }, [entriesPerRow])
+    }, [entriesPerRow]);
 
     return (
         <div className={clsx(hiddenOrInvisible === undefined? "" : hiddenOrInvisible? "hidden" : "invisible", className)}>
@@ -62,7 +61,6 @@ export default function InputRadio(
                                  className="flex items-center bg-orange-100 hover:bg-gray-50 p-2 rounded-md"
                                  onClick={() => {
                                      setValue(fieldName, idComponent,{ shouldDirty: true });
-                                     $(`#r-${fieldName}-${idComponent}`).click();
                                  }}>
                                 {
                                     unregistered? <input
@@ -71,10 +69,10 @@ export default function InputRadio(
                                         className="cursor-not-allowed bg-gray-400 focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
                                         value={idComponent}
                                     /> : <input
-                                        id={`r-${fieldName}-${idComponent}`}
                                         type="radio"
                                         className={clsx(disabled && "cursor-not-allowed bg-gray-300", "focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300")}
                                         value={idComponent}
+                                        onChange={() => {}}
                                         disabled={disabled}
                                         {...register(fieldName, {required: `${fieldReadableName} is required`})}
                                     />
