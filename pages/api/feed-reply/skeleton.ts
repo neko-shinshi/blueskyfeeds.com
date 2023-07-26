@@ -60,6 +60,7 @@ export default async function handler (req, res) {
                 query.lang = {$in: languages};
             }
 
+
             let keywordSearch = [];
             const findKeywords = keywords.filter(x => x.a).map(x => x.t);
             const blockKeywords = keywords.filter(x => !x.a).map(x => x.t);
@@ -83,8 +84,20 @@ export default async function handler (req, res) {
             }
 
             if (everyList.length > 0) {
-                query = {$or: [{author: {$in: everyList}}, query]};
+                let authorQuery:any = {author: {$in: everyList}};
+                if (query.lang) {
+                    authorQuery.lang = query.lang;
+                }
+                if (query.hasImage) {
+                    authorQuery.hasImage = query.hasImage;
+                }
+                if (query.replyRoot) {
+                    authorQuery.replyRoot = query.replyRoot;
+                }
+
+                query = {$or: [authorQuery, query]};
             }
+
 
             const sortMethod = getSortMethod(sort);
             let result:any[];
