@@ -1,11 +1,12 @@
 import clsx from "clsx";
+import Link from "next/link";
+import Image from "next/image";
+import BlueskyAvatar from "features/components/specific/BlueskyAvatar";
 import {AiFillHeart} from "react-icons/ai";
 import {BsPinFill} from "react-icons/bs";
 import {HiPencil, HiTrash} from "react-icons/hi";
-import Link from "next/link";
 import {HiMagnifyingGlass} from "react-icons/hi2";
-import BlueskyAvatar from "features/components/specific/BlueskyAvatar";
-import Image from "next/image";
+import {FaUserGear} from "react-icons/fa6";
 
 export default function FeedItem ({item, setSelectedItem, setPopupState}) {
     return <div className={clsx("w-full border border-2 flex gap-2 p-1 -mt-0.5",
@@ -58,14 +59,23 @@ export default function FeedItem ({item, setSelectedItem, setPopupState}) {
                     <button type="button"
                             className="text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-xl p-1"
                     >
-                        <HiMagnifyingGlass className="w-6 h-6" title="Preview"/>
+                        <HiMagnifyingGlass className="w-6 h-6" title="Preview Feed"/>
                     </button>
                 </Link>
+                {
+                    item.custom && <Link href={`/personalize-feed?feed=${item.uri.split("/").at(-1)}`}>
+                        <button type="button"
+                                className="text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-xl p-1">
+                            <FaUserGear className="w-6 h-6" title="Personalize Feed"/>
+                        </button>
+                    </Link>
+                }
+
                 {
                     item.edit && <Link href={`/edit-feed?feed=${item.uri.split("/").at(-1)}`}>
                         <button type="button"
                                 className="text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-xl p-1">
-                            <HiPencil className="w-6 h-6" title="Edit"/>
+                            <HiPencil className="w-6 h-6" title="Edit My Feed"/>
                         </button>
                     </Link>
                 }
@@ -77,10 +87,9 @@ export default function FeedItem ({item, setSelectedItem, setPopupState}) {
                                     setSelectedItem(item);
                                     setPopupState("delete");
                                 }}>
-                            <HiTrash className="w-6 h-6" title="Delete"/>
+                            <HiTrash className="w-6 h-6" title="Delete Feed"/>
                         </button>
                     </div>
-
                 }
             </div>
         }

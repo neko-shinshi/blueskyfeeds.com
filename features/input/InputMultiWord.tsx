@@ -21,6 +21,7 @@ export default function InputMultiWord(
         check,
         handleItem:_handleItem,
         valueModifier:_valueModifier,
+        children=null
     }:{
         labelText:string,
         placeHolder:string,
@@ -34,6 +35,7 @@ export default function InputMultiWord(
         check?: (string, callback:any) => void
         handleItem?: any
         valueModifier?: any
+        children?:any
     }) {
     const {
         control,
@@ -133,6 +135,11 @@ export default function InputMultiWord(
                             {
                                 dotObjectStringPath(errors, fieldName) && <div className="text-red-700">{dotObjectStringPath(errors, fieldName).message as unknown as string}</div>
                             }
+
+                            {
+                                children && children
+                            }
+
                             <SortableWordBubbles
                                 value={value} orderedList={orderedList} disabled={disabled} valueModifier={valueModifier.current}
                                 buttonCallback={(val, action) => {
