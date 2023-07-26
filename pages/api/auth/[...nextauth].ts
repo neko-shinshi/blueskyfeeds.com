@@ -58,10 +58,8 @@ export const authOptions: NextAuthOptions = {
                 console.log("has db");
                 if (!db) {console.log("authorize 500");throw makeCustomException('500', {code: 500});}
                 const rollover = await db.sessions.findOne({_id});
-                console.log("found", rollover);
                 if (!rollover) {console.log("authorize 401");throw makeCustomException('401', {code: 401});}
                 const {service} = rollover;
-                console.log("before login");
                 const agent = await rebuildAgentFromToken(rollover);
                 if (!agent) {
                     console.log("no agent");
@@ -130,7 +128,6 @@ export const authOptions: NextAuthOptions = {
                 if (!agent) {console.log("no agent");throw makeCustomException('401', {code: 400});}
 
                 const r = await getUserFromAgent(agent, db, service);
-                console.log(r);
                 return r;
             }
         }),
@@ -147,7 +144,6 @@ export const authOptions: NextAuthOptions = {
                     // Use from login to skip database access
                     const {service, handle, refreshJwt, accessJwt, email, sk} = user;
                     token = {...token, id:sk, service, handle, refreshJwt, accessJwt, email};
-                    console.log("create token", token);
                 }
             }
             return token;
