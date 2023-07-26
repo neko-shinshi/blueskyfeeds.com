@@ -20,14 +20,17 @@ export default async function handler (req, res) {
                 res.status(400).send();
                 return;
             }
-            const limit = parseInt(_limit);
+            let limit = parseInt(_limit);
             if (limit > 100) {
                 res.status(400).json({error:"InvalidRequest", message:"Error: limit cannot be greater than 100"});
                 return;
             }
 
             const db = await connectToDatabase();
-            const feedObj = await db.feeds.findOne({_id: feedId});
+            const [feedObj, sticky] = await Promise.all([
+                db.feeds.findOne({_id: feedId}),
+                db.sticky.findOne({_id: feedId})
+            ]);
             if (!feedObj) {res.status(400).send();return;}
 
             const {allowList, blockList, everyList, keywordSetting,
@@ -119,10 +122,10 @@ export default async function handler (req, res) {
                 }
             } else {
                 if (sort === "new") {
+                    if (sticky) {limit = limit -1;}
                     result = await db.posts.find(query).sort(sortMethod).project({createdAt: 1}).limit(limit).toArray();
-                    if (result.length === 0) {
-                        res.status(200).json({cursor:"", feed:[]}); return;
-                    }
+                    if (result.length === 0) {res.status(200).json({cursor:"", feed:[]}); return;}
+                    if (sticky) {result.unshift({_id: sticky.p})}
                     // return last item + timestamp
                     const last = result.at(-1);
                     const ts = new Date(last.createdAt).getTime();
@@ -130,10 +133,10 @@ export default async function handler (req, res) {
                     const id = `${parts[2]}/${parts[4]}`;
                     cursor = `${id}::${ts}`;
                 } else {
+                    if (sticky) {limit = limit -1;}
                     result = await db.posts.find(query).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
-                    if (result.length === 0) {
-                        res.status(200).json({cursor:"", feed:[]}); return;
-                    }
+                    if (result.length === 0) {res.status(200).json({cursor:"", feed:[]}); return;}
+                    if (sticky) {result.unshift({_id: sticky.p})}
                     cursor = `${limit}`;
                 }
             }

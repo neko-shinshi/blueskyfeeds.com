@@ -1,6 +1,6 @@
-const {MongoClient} = require("mongodb");
+import {MongoClient} from "mongodb";
 
-const connectToDatabase = async () => {
+export const connectToDatabase = async () => {
     if (global.cachedDb) {
         return Promise.resolve(global.cachedDb);
     }
@@ -18,6 +18,7 @@ const connectToDatabase = async () => {
             let db = client.db('anime');
             global.cachedDb = {
                 db: db,
+                sticky: db.collection("sticky"),
                 sessions: db.collection("sessions"), // session keys for rollover
                 data: db.collection("data"),
                 allFeeds: db.collection("allFeeds"),
@@ -47,8 +48,3 @@ db.allFeeds.createIndex( { likeCount: -1, indexedAt:1 } )
 db.feeds.createIndex({keywords:1})
 
  */
-
-module.exports = {
-    connectToDatabase
-}
-
