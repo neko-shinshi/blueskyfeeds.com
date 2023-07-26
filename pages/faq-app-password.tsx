@@ -4,7 +4,7 @@ import AppPasswordLink from "features/components/AppPasswordLink";
 import PageHeader from "features/components/PageHeader";
 
 
-export default function Home({feedsDefault}) {
+export default function Home({}) {
     const title = "BlueskyFeeds App Password FAQ";
     const description = "Frequently asked questions about App Passwords in Bluesky social";
 
