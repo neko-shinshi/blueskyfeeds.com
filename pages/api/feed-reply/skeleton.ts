@@ -125,7 +125,7 @@ export default async function handler (req, res) {
                     if (sticky) {limit = limit -1;}
                     result = await db.posts.find(query).sort(sortMethod).project({createdAt: 1}).limit(limit).toArray();
                     if (result.length === 0) {res.status(200).json({cursor:"", feed:[]}); return;}
-                    if (sticky) {result.unshift({_id: sticky.p})}
+                    if (sticky) {result.splice(1,0, {_id: sticky.p})}
                     // return last item + timestamp
                     const last = result.at(-1);
                     const ts = new Date(last.createdAt).getTime();
@@ -136,7 +136,7 @@ export default async function handler (req, res) {
                     if (sticky) {limit = limit -1;}
                     result = await db.posts.find(query).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
                     if (result.length === 0) {res.status(200).json({cursor:"", feed:[]}); return;}
-                    if (sticky) {result.unshift({_id: sticky.p})}
+                    if (sticky) {result.splice(1,0, {_id: sticky.p})}
                     cursor = `${limit}`;
                 }
             }
