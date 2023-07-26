@@ -1,6 +1,5 @@
-import {setCookie, getCookie, hasCookie} from "cookies-next";
+import {setCookie, getCookie} from "cookies-next";
 
-const COOKIE_PREF_BANNER = "COOKIE_PREF_BANNER"
 const COOKIE_PREF_NAVBAR = "COOKIE_PREF_NAVBAR"
 
 
