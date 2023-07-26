@@ -68,7 +68,8 @@ export default function FormSignIn() {
                 recaptcha.ready(async () => {
                     //@ts-ignore
                     const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                    const usernameOrEmail = emailRef.current.value;
+                    let usernameOrEmail = emailRef.current.value;
+                    usernameOrEmail = usernameOrEmail.startsWith("@")? usernameOrEmail.slice(1) : usernameOrEmail;
                     const result = await signIn(APP_PASSWORD, {redirect:false, service:domain, usernameOrEmail, password, captcha});
                     if (result.status === 200) { // If signin successful
                         if (rememberMe) {
