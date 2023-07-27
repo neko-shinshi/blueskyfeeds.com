@@ -243,27 +243,22 @@ export default function Home({feed, updateSession, token, VIP}) {
     }
 
     const validateKeyword = (term, rejectWords, transform) => {
-        const trimmed = term.trim();
-        if (trimmed.length === 0) {
+        if (term.length === 0) {
             return "Term is empty";
         }
         if (!VIP && keywords.length >= MAX_KEYWORDS_PER_FEED) {
             return `Too many keywords, max ${MAX_KEYWORDS_PER_FEED}`;
         }
 
-        if (!isValidToken(trimmed)) {
-            return `Invalid keyword: Alphanumeric with accents and spaces only a-zA-ZÀ-ÖØ-öø-ÿ0-9`;
-        }
-
         const modeShort = KeywordTypeToShort(newKeywordMode)
-        if (keywords.find(y => y.w === trimmed && y.t === modeShort)) {
+        if (keywords.find(y => y.w === term && y.t === modeShort)) {
             return "Term is already in keywords";
         }
         let set = new Set();
-        set.add(trimmed);
+        set.add(term);
         console.log(set);
         for (const [i,r] of rejectWords.entries()) {
-            const combined = transform(r, trimmed);
+            const combined = transform(r, term);
             if (set.has(combined)) {
                 return `Duplicate or empty Ignore Combination at #${i+1}: ${combined}`;
             }
@@ -748,8 +743,12 @@ export default function Home({feed, updateSession, token, VIP}) {
                                             editTag={editTag}
                                             keyword="Token"
                                             handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join(" ")}
-                                            validateKeyword={(term, reject) => {
-                                                return validateKeyword(term, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(" "));
+                                            validateKeyword={(word, reject) => {
+                                                const trimmed = word.trim();
+                                                if (!isValidToken(trimmed)) {
+                                                    return `Invalid keyword: Alphanumeric with accents and spaces only a-zA-ZÀ-ÖØ-öø-ÿ0-9`;
+                                                }
+                                                return validateKeyword(trimmed, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(" "));
                                             }}
                                             submitKeyword={(w, r, a) => {
                                                 setKeywords([...keywords, {t:"t", w:w.toLowerCase().trim(), a, r}]);
@@ -771,8 +770,9 @@ export default function Home({feed, updateSession, token, VIP}) {
                                             editTag={editTag}
                                             keyword="Segment"
                                             handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join("")}
-                                            validateKeyword={(term, reject) => {
-                                                return validateKeyword(term, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(""));
+                                            validateKeyword={(word, reject) => {
+                                                const trimmed = word.trim();
+                                                return validateKeyword(trimmed, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(""));
                                             }}
                                             submitKeyword={(w, r, a) => {
                                                 setKeywords([...keywords, {t:"s", w:w.toLowerCase().trim(), a, r}]);
