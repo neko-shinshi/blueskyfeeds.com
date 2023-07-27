@@ -7,6 +7,10 @@ export const isValidDomain = (s:string) => {
     return /^(\*\.)?([a-z\d][a-z\d-]*[a-z\d]\.)+[a-z]+$/.test(s);
 }
 
+export const isValidToken = (s:string) => {
+    return /^[a-zA-ZÀ-ÖØ-öø-ÿ0-9 ]+$/.test(s);
+}
+
 export function removeUndefined(obj, nullInstead=false) {
     if (typeof obj === "object") {
         Object.keys(obj).forEach(function (key) {

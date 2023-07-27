@@ -36,7 +36,7 @@ import {getLoggedInData} from "features/network/session";
 import {HiTrash} from "react-icons/hi";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {APP_SESSION} from "features/auth/authUtils";
-import {isValidDomain} from "features/utils/validationUtils";
+import {isValidDomain, isValidToken} from "features/utils/validationUtils";
 import {parseJwt} from "features/utils/jwtUtils";
 import {isVIP} from "features/utils/bsky";
 import PopupLoading from "features/components/PopupLoading";
@@ -241,25 +241,32 @@ export default function Home({feed, updateSession, token, VIP}) {
         }
     }
 
-    const validateKeyword = (term, rejectWords) => {
-        if (term.trim().length === 0) {
+    const validateKeyword = (term, rejectWords, transform) => {
+        const trimmed = term.trim();
+        if (trimmed.length === 0) {
             return "Term is empty";
         }
         if (!VIP && keywords.length >= MAX_KEYWORDS_PER_FEED) {
             return `Too many keywords, max ${MAX_KEYWORDS_PER_FEED}`;
         }
 
+        if (!isValidToken(trimmed)) {
+            return `Invalid keyword: Alphanumeric with accents and spaces only a-zA-ZÀ-ÖØ-öø-ÿ0-9`;
+        }
+
         const modeShort = KeywordTypeToShort(newKeywordMode)
-        if (keywords.find(y => y.w === term && y.t === modeShort)) {
+        if (keywords.find(y => y.w === trimmed && y.t === modeShort)) {
             return "Term is already in keywords";
         }
         let set = new Set();
-        for (const r of rejectWords) {
-            const term = `${r.p||""}|${r.s||""}`;
-            if (set.has(term)) {
-                return "Duplicate Ignore Combination";
+        set.add(trimmed);
+        console.log(set);
+        for (const [i,r] of rejectWords.entries()) {
+            const combined = transform(r, trimmed);
+            if (set.has(combined)) {
+                return `Duplicate or empty Ignore Combination at #${i+1}: ${combined}`;
             }
-            set.add(term);
+            set.add(combined);
         }
         return null;
     }
@@ -703,6 +710,7 @@ export default function Home({feed, updateSession, token, VIP}) {
 
 
                             <div>
+                                <div className="font-semibold text-lg bg-lime-100 p-2">There are three ways keywords are filtered, tap the <span className="text-pink-600">different</span> <span className="text-yellow-600">colored</span> <span className="text-sky-600">tabs</span> below to see their differences</div>
                                 <div className={clsx("grid grid-cols-3")}>
                                     {
                                         KEYWORD_TYPES.map((x, i) =>
@@ -725,6 +733,8 @@ export default function Home({feed, updateSession, token, VIP}) {
                                             </div>)
                                     }
                                 </div>
+
+
                                 <div className={clsx("p-2 border border-l-2 border-r-2 border-y-0 border-black",
                                     newKeywordMode === "token" && "bg-pink-100",
                                     newKeywordMode === "segment" && "bg-yellow-100",
@@ -737,17 +747,21 @@ export default function Home({feed, updateSession, token, VIP}) {
                                             editTag={editTag}
                                             keyword="Token"
                                             handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join(" ")}
-                                            validateKeyword={validateKeyword}
+                                            validateKeyword={(term, reject) => {
+                                                return validateKeyword(term, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(" "));
+                                            }}
                                             submitKeyword={(w, r, a) => {
                                                 setKeywords([...keywords, {t:"t", w:w.toLowerCase().trim(), a, r}]);
                                                 setEditTag(null);
                                             }}>
                                             <ul className="list-disc pl-4">
-                                                <li>Posts and search terms are split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is ok` becomes `this` `is` `ok`</li>
-                                                <li>Terms with spaces like `Quick Draw` will also find `#quickdraw`</li>
-                                                <li>Works for terms with accents like `Bon Appétit`</li>
-                                                <li>Might not work well if the searched term is combined with other terms, e.g. searching for `cat` will not find `caturday`</li>
-                                                <li>Does not work for well for non-latin languages like Korean, Mandarin or Japanese</li>
+                                                <li ><span className="font-bold">Does not work for non-latin languages</span> like Korean, Mandarin or Japanese, use <span className="font-bold underline">Segment</span> Mode</li>
+                                                <li>In token mode, posts and search terms are set to lowercase, then split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is un-funny.jpg` becomes `this` `is` `un `funny` `jpg`</li>
+                                                <li>The search term is searched both separately e.g. `quickdraw` and `quick draw` will also find `#quickdraw`</li>
+                                                <li>Works for terms with accents like `bon appétit`</li>
+                                                <li>Might not work well if the term is combined with other terms, e.g. searching for `cat` will not find `caturday`, search for `caturday` separately or use Segment mode</li>
+                                                <li>A desired token might often appear with undesired terms, like `one piece swimsuit` when looking for the anime `one piece`</li>
+                                                <li>To prevent this, use an ignore combination to add `swimsuit` to reject `one piece swimsuit` if it appears but accept `one piece`</li>
                                             </ul>
                                         </KeywordParser>
                                     }
@@ -756,15 +770,17 @@ export default function Home({feed, updateSession, token, VIP}) {
                                             editTag={editTag}
                                             keyword="Segment"
                                             handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join("")}
-                                            validateKeyword={validateKeyword}
+                                            validateKeyword={(term, reject) => {
+                                                return validateKeyword(term, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(""));
+                                            }}
                                             submitKeyword={(w, r, a) => {
                                                 setKeywords([...keywords, {t:"s", w:w.toLowerCase().trim(), a, r}]);
                                                 setEditTag(null);
                                             }}>
                                             <ul className="list-disc pl-4">
                                                 <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>
-                                                <li>For example: `act` is inside both `action` and `react`</li>
-                                                <li>To prevent it, add the prefix and suffix of common terms to reject</li>
+                                                <li>For example: `cat` is inside both `concatenation` and `cataclysm`</li>
+                                                <li>To prevent this, add the prefix and suffix of common terms to reject</li>
                                                 <li>This is the preferred way to search for non-latin words like アニメ</li>
                                             </ul>
                                         </KeywordParser>
