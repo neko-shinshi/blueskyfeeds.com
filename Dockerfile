@@ -29,7 +29,7 @@ COPY --from=builder /opt/app/node_modules ./node_modules
 COPY --from=builder /opt/app/package.json ./
 
 RUN mkdir -p /opt/app/.next/cache/images
-RUN chmod -R 755 /opt/app/.next/cache/images
+RUN chmod -R 777 /opt/app/.next/cache/images
 
 USER node
 
