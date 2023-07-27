@@ -994,6 +994,9 @@ export default function Home({feed, updateSession, token, VIP}) {
                                                                     alert("error recovering data");
                                                                 }
                                                                 setBusy(false);
+                                                                setTimeout(() => {
+                                                                    input.remove();
+                                                                }, 100);
                                                             });
                                                         }
                                                     } catch (e) {
