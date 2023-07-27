@@ -29,9 +29,6 @@ COPY --from=builder /opt/app/node_modules ./node_modules
 COPY --from=builder /opt/app/package.json ./
 USER node
 
-RUN mkdir -p .next/cache/images
-RUN chmod -R 666 .next/cache/images
-
 EXPOSE 9123
 CMD ["yarn", "start"]
 
