@@ -73,7 +73,8 @@ export default function FormSignIn() {
                     //@ts-ignore
                     const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
                     let usernameOrEmail = emailRef.current.value;
-                    usernameOrEmail = usernameOrEmail.startsWith("@")? usernameOrEmail.slice(1) : usernameOrEmail.indexOf(".") < 0? `${usernameOrEmail}.${domain}` : usernameOrEmail;
+                    usernameOrEmail = usernameOrEmail.startsWith("@")? usernameOrEmail.slice(1) : usernameOrEmail;
+                    usernameOrEmail = usernameOrEmail.indexOf(".") < 0? `${usernameOrEmail}.${domain}` : usernameOrEmail;
                     const result = await signIn(APP_PASSWORD, {redirect:false, service:domain, usernameOrEmail, password, captcha});
                     if (result.status === 200) { // If signin successful
                         location.reload();
