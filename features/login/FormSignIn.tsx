@@ -54,6 +54,10 @@ export default function FormSignIn() {
             newErrors.push({msg:"Not a valid domain", part:"domain"});
         }
         setError(newErrors);
+        if (newErrors.length === 0 && rememberMe) {
+            setRememberEmail(username);
+        }
+
         return newErrors.length === 0;
     }
 
@@ -72,9 +76,6 @@ export default function FormSignIn() {
                     usernameOrEmail = usernameOrEmail.startsWith("@")? usernameOrEmail.slice(1) : usernameOrEmail;
                     const result = await signIn(APP_PASSWORD, {redirect:false, service:domain, usernameOrEmail, password, captcha});
                     if (result.status === 200) { // If signin successful
-                        if (rememberMe) {
-                            setRememberEmail(usernameOrEmail);
-                        }
                         location.reload();
                     }
                 });
