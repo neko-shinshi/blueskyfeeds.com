@@ -7,6 +7,7 @@ export const getAgent = async (service, identifier, password) => {
         await agent.login({identifier, password});
         return agent;
     } catch (e) {
+        console.log(e);
         return null;
     }
 }
