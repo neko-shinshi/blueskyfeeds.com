@@ -43,6 +43,7 @@ import PopupLoading from "features/components/PopupLoading";
 import {compressedToJsonString} from "features/utils/textUtils";
 import Link from "next/link";
 import {IoArrowBackSharp} from "react-icons/io5";
+import {compressKeyword} from "features/utils/objectUtils";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db, token} = await getLoggedInData(req, res);
@@ -224,10 +225,10 @@ export default function Home({feed, updateSession, token, VIP}) {
                         //@ts-ignore
                         const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
                         //@ts-ignore
-                        const result = await localGet("/user/check", {captcha, user});
-                        if (result.status === 200) {
+                        const result = await localGet("/user/check", {captcha, actors:[user]});
+                        if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
                             clearErrors(fieldName);
-                            callback(result.data);
+                            callback(result.data[0]);
                         } else if (result.status === 400) {
                             setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
                         } else if (result.status === 401) {
@@ -898,6 +899,116 @@ export default function Home({feed, updateSession, token, VIP}) {
                                             }
                                         }}/>)
                             }
+                        </div>
+
+                        <div className="p-2 bg-white">
+                            <div className="font-bold text-lg">File Backup</div>
+                            <div className="italic">Feed image is not included, please handle that yourself</div>
+                            <div className="w-full lg:flex justify-between gap-4">
+                                <button type="button"
+                                        onClick={() => {
+                                            const {sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight} = getValues();
+                                            const allowList = (_allowList || []).map(x => x.did);
+                                            const blockList = (_blockList || []).map(x => x.did);
+                                            const everyList = (_everyList || []).map(x => x.did);
+                                            const result = {languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), copy, highlight,
+                                                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl};
+                                            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
+                                            const dlAnchorElem = document.createElement('a');
+                                            dlAnchorElem.setAttribute("href",     dataStr     );
+                                            dlAnchorElem.setAttribute("download", `${shortName}.json`);
+                                            dlAnchorElem.click();
+                                        }}
+                                        className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Download JSON file backup
+                                </button>
+
+                                <button type="button"
+                                        onClick={() => {
+                                            const input = document.createElement('input');
+                                            input.type = 'file';
+                                            input.accept = "application/json"
+                                            input.onchange = () => {
+                                                // getting a hold of the file reference
+                                                var file = input.files[0];
+
+                                                // setting up the reader
+                                                var reader = new FileReader();
+                                                reader.readAsText(file,'UTF-8');
+
+                                                // here we tell the reader what to do when it's done reading...
+                                                reader.onload = (readerEvent) => {
+                                                    setBusy(true);
+                                                    try {
+                                                        var content = readerEvent.target.result as string; // this is the content!
+                                                        console.log( content );
+
+                                                        let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight} = JSON.parse(content);
+
+                                                        let o:any = {
+                                                            sort,displayName, description, copy: copy || [], highlight: highlight || "yes",
+                                                            shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [],
+                                                        };
+
+                                                        const actors = [...blockList, ...allowList, ...everyList]
+                                                        if (typeof recaptcha !== 'undefined') {
+                                                            recaptcha.ready(async () => {
+                                                                //@ts-ignore
+                                                                const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                                                                //@ts-ignore
+                                                                const result = await localGet("/user/check", {captcha, actors});
+                                                                if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
+                                                                    keywords = keywords?.map(x => {
+                                                                        const {t, a} = x;
+                                                                        let o = JSON.parse(compressedToJsonString(t));
+                                                                        o.a = a;
+                                                                        if ((o.t === "t" || o.t === "s") && !o.r) {
+                                                                            o.r = [];
+                                                                        }
+                                                                        return o;
+                                                                    }) || [];
+
+
+                                                                    setShortNameLocked(true);
+                                                                    setLanguages(languages || []);
+                                                                    setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
+                                                                    setKeywordSetting(keywordSetting || ["text"]);
+                                                                    setPics(pics || ["text", "pics"]);
+                                                                    setKeywords(keywords);
+
+                                                                    const findAndMatch = (acc, did) => {
+                                                                        const profile = result.data.find(x => x.did === did);
+                                                                        if (profile) {
+                                                                            const {did, handle, displayName} = profile;
+                                                                            acc.push({did, handle, displayName: displayName || ""});
+                                                                        }
+                                                                        return acc;
+                                                                    };
+                                                                    o.allowList = allowList.reduce(findAndMatch, []);
+                                                                    o.blockList = blockList.reduce(findAndMatch, []);
+                                                                    o.everyList = everyList.reduce(findAndMatch, []);
+                                                                    reset(o);
+
+                                                                } else {
+                                                                    console.log(result);
+                                                                    alert("error recovering data");
+                                                                }
+                                                                setBusy(false);
+                                                            });
+                                                        }
+                                                    } catch (e) {
+                                                        console.log(e);
+                                                        alert("error recovering data");
+                                                    }
+                                                }
+                                            }
+                                            input.click();
+                                        }}
+                                        className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-lime-600 hover:bg-lime-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime-500">
+                                    Recover from JSON backup
+                                </button>
+                            </div>
+
                         </div>
 
                         <button type="button"

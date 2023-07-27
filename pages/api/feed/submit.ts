@@ -12,6 +12,7 @@ import {
 } from "features/utils/constants";
 import {isValidDomain} from "features/utils/validationUtils";
 import {getMyCustomFeedIds} from "features/utils/feedUtils";
+import {compressKeyword} from "features/utils/objectUtils";
 
 // Regular users are restricted to MAX_FEEDS_PER_USER feeds and MAX_KEYWORDS_PER_FEED keywords
 
@@ -89,37 +90,7 @@ export default async function handler(req, res) {
                 console.log("e")
                 res.status(400).send("missing keywords"); return;
             }
-            keywords = keywords.map(x => {
-                const {a, ...y} = x;
-                y.w = y.w.toLowerCase();
-                if (Array.isArray(y.r)) {
-                    if (y.r.length === 0) {
-                        delete y.r;
-                    } else {
-                        y.r.forEach(z => {
-                            if (z.p === "") {
-                                delete z.p;
-                            } else if (z.p) {
-                                z.p = z.p.toLowerCase();
-                            }
-                            if (z.s === "") {
-                                delete z.s;
-                            } else if (z.s) {
-                                z.s = z.s.toLowerCase();
-                            }
-                        });
-                        y.r.sort((a,b) => {
-                            const ll = [a.p, y.w, a.s].filter(l => l).join("");
-                            const rr = [b.p, y.w, b.s].filter(r => r).join("");
-                            return ll.localeCompare(rr);
-                        });
-                    }
-                }
-                return {
-                    t: JSON.stringify(y).replaceAll("\"", ""),
-                    a: x.a // This is not used by the firehose
-                };
-            });
+            keywords = keywords.map(x => compressKeyword(x));
             keywords.sort((a,b) => {
                return a.t.localeCompare(b.t);
             });
@@ -131,7 +102,6 @@ export default async function handler(req, res) {
 
 
             const actors = [...new Set([...allowList, ...blockList, ...everyList])]; // dids
-
             if (actors.length !== allowList.length + blockList.length + everyList.length) {
                 res.status(400).send("duplicate"); return;
             }
@@ -141,7 +111,6 @@ export default async function handler(req, res) {
                 allowList = allowList.filter(x => profiles.find(y => y.did === x));
                 everyList = everyList.filter(x => profiles.find(y => y.did === x));
             }
-
 
 
             let img = {};
