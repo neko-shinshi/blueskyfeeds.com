@@ -64,11 +64,11 @@ export default async function handler (req, res) {
             let keywordSearch = [];
             const findKeywords = keywords.filter(x => x.a).map(x => x.t);
             const blockKeywords = keywords.filter(x => !x.a).map(x => x.t);
-            if (keywordSetting.indexOf("alt") >= 0) {
+            if (keywordSetting.indexOf("alt") >= 0 && findKeywords.length > 0) {
                 keywordSearch.push({kwAlt:{$in: findKeywords, $nin: blockKeywords}});
             }
 
-            if (keywordSetting.indexOf("text") >= 0) {
+            if (keywordSetting.indexOf("text") >= 0 && findKeywords.length > 0) {
                 keywordSearch.push({kwText:{$in: findKeywords, $nin: blockKeywords}});
             }
 
@@ -95,8 +95,11 @@ export default async function handler (req, res) {
                     authorQuery.replyRoot = query.replyRoot;
                 }
 
+
+
                 query = {$or: [authorQuery, query]};
             }
+           // console.log(JSON.stringify(query, null, 2));
 
 
             const sortMethod = getSortMethod(sort);
