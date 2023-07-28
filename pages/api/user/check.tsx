@@ -8,9 +8,12 @@ export default async function handler(req, res) {
             const agent = await rebuildAgentFromToken(token);
             if (!agent) {res.status(401).send(); return;}
 
-            const {actors} = req.query;
+            const {actors:_actors} = req.query;
+            const actors = _actors.split(",");
             try {
+                //console.log({actors});
                 const {data:{profiles}} = await agent.api.app.bsky.actor.getProfiles({actors});
+                //console.log(profiles);
                 const result = profiles.map(x => {
                     const {did, handle, displayName} = x;
                     return {did, handle, displayName};
