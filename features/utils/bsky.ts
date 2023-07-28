@@ -127,5 +127,8 @@ export const editFeed = async (agent, {img, shortName, displayName, description}
 }
 
 export const isVIP = (agent) => {
-    return agent.session.did === "did:plc:tazrmeme4dzahimsykusrwrk" || agent.session.did === "did:plc:2dozc4lhicvbmpsbxnicvdpj";
+    return ["did:plc:eubjsqnf5edgvcc6zuoyixhw",
+        "did:plc:tazrmeme4dzahimsykusrwrk",
+        "did:plc:2dozc4lhicvbmpsbxnicvdpj"
+    ].indexOf(agent.session.did) >= 0;
 }
