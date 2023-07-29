@@ -117,10 +117,12 @@ export async function getServerSideProps({req, res, query}) {
             if (index === -1) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
             result = result.slice(index+1, index+1+limit);
             const last = result.at(-1);
-            const ts = new Date(last.createdAt).getTime();
-            const parts = last._id.split("/");
-            const id = `${parts[2]}/${parts[4]}`;
-            cursor = `${id}::${ts}`;
+            if (last) {
+                const ts = new Date(last.createdAt).getTime();
+                const parts = last._id.split("/");
+                const id = `${parts[2]}/${parts[4]}`;
+                cursor = `${id}::${ts}`;
+            }
         } else {
             const skip = parseInt(queryCursor);
             result = await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project({_id: 1}).toArray();
@@ -135,10 +137,12 @@ export async function getServerSideProps({req, res, query}) {
             if (sticky) {result.splice(1,0, {_id: sticky.p})}
             // return last item + timestamp
             const last = result.at(-1);
-            const ts = new Date(last.createdAt).getTime();
-            const parts = last._id.split("/");
-            const id = `${parts[2]}/${parts[4]}`;
-            cursor = `${id}::${ts}`;
+            if (last) {
+                const ts = new Date(last.createdAt).getTime();
+                const parts = last._id.split("/");
+                const id = `${parts[2]}/${parts[4]}`;
+                cursor = `${id}::${ts}`;
+            }
         } else {
             if (sticky) {limit = limit -1;}
             result = await db.posts.find(dbQuery).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
