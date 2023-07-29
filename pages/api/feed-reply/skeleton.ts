@@ -1,5 +1,6 @@
 import {connectToDatabase} from "features/utils/dbUtils";
 import {randomInt} from "crypto";
+import {validateAuthGetUser} from "features/auth/serverAuth";
 const getSortMethod = (sort) => {
     switch (sort) {
         case "like": return {likes:-1, createdAt:-1};
@@ -20,6 +21,13 @@ export default async function handler (req, res) {
                 res.status(400).send();
                 return;
             }
+
+            if (feedId === "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/test") {
+                const userId = await validateAuthGetUser(req);
+                console.log(userId);
+            }
+
+
             let limit = parseInt(_limit);
             if (limit > 100) {
                 res.status(400).json({error:"InvalidRequest", message:"Error: limit cannot be greater than 100"});
@@ -94,8 +102,6 @@ export default async function handler (req, res) {
                 if (query.replyRoot) {
                     authorQuery.replyRoot = query.replyRoot;
                 }
-
-
 
                 query = {$or: [authorQuery, query]};
             }

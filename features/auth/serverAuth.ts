@@ -11,7 +11,7 @@ const getDidResolver = (): DidResolver => {
 }
 
 export const validateAuthGetUser = async (req): Promise<string> => {
-    const { authorization = '' } = req.headers
+    const { authorization = '' } = req.headers;
     if (!authorization.startsWith('Bearer ')) {
         throw new AuthRequiredError()
     }
