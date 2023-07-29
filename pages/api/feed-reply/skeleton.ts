@@ -23,8 +23,9 @@ export default async function handler (req, res) {
             }
 
             if (feedId === "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/test") {
-                const userId = await validateAuthGetUser(req);
-                console.log(userId);
+                console.log(JSON.stringify(req.query));
+                console.log(JSON.stringify(req.rawHeaders))
+//                console.log(userId);
             }
 
 
