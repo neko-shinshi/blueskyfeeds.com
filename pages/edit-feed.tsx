@@ -38,7 +38,7 @@ import PopupConfirmation from "features/components/PopupConfirmation";
 import {APP_SESSION} from "features/auth/authUtils";
 import {isValidDomain, isValidToken} from "features/utils/validationUtils";
 import {parseJwt} from "features/utils/jwtUtils";
-import {isVIP} from "features/utils/bsky";
+import {checkValidActors, isVIP} from "features/utils/bsky";
 import PopupLoading from "features/components/PopupLoading";
 import {compressedToJsonString} from "features/utils/textUtils";
 import Link from "next/link";
@@ -62,18 +62,10 @@ export async function getServerSideProps({req, res, query}) {
                 everyList = everyList || [];
                 const actors = [...allowList, ...blockList, ...everyList];
                 if (actors.length > 0) {
-                    const {data: {profiles}} = await agent.api.app.bsky.actor.getProfiles({actors});
-                    const findAndMatch = (acc, did) => {
-                        const profile = profiles.find(x => x.did === did);
-                        if (profile) {
-                            const {did, handle, displayName} = profile;
-                            acc.push({did, handle, displayName: displayName || ""});
-                        }
-                        return acc;
-                    };
-                    allowList = allowList.reduce(findAndMatch, []);
-                    blockList = blockList.reduce(findAndMatch, []);
-                    everyList = everyList.reduce(findAndMatch, []);
+                    const profiles = await checkValidActors(agent, actors);
+                    allowList = profiles.filter(x =>  allowList.find(y => y === x.did));
+                    blockList = profiles.filter(x =>  blockList.find(y => y === x.did));
+                    everyList = profiles.filter(x =>  everyList.find(y => y === x.did));
                 }
 
                 feed = {...feedData, allowList, blockList, everyList};
@@ -959,6 +951,9 @@ export default function Home({feed, updateSession, token, VIP}) {
                                                                 //@ts-ignore
                                                                 const result = await localGet("/user/check", {captcha, actors});
                                                                 if (result.status === 200 && Array.isArray(result.data)) {
+                                                                    allowList = result.data.filter(x =>  allowList.find(y => y === x.did));
+                                                                    blockList = result.data.filter(x =>  blockList.find(y => y === x.did));
+                                                                    everyList = result.data.filter(x =>  everyList.find(y => y === x.did));
                                                                     keywords = keywords?.map(x => {
                                                                         const {t, a} = x;
                                                                         let o = JSON.parse(compressedToJsonString(t));
@@ -977,17 +972,6 @@ export default function Home({feed, updateSession, token, VIP}) {
                                                                     setPics(pics || ["text", "pics"]);
                                                                     setKeywords(keywords);
 
-                                                                    const findAndMatch = (acc, did) => {
-                                                                        const profile = result.data.find(x => x.did === did);
-                                                                        if (profile) {
-                                                                            const {did, handle, displayName} = profile;
-                                                                            acc.push({did, handle, displayName: displayName || ""});
-                                                                        }
-                                                                        return acc;
-                                                                    };
-                                                                    o.allowList = allowList.reduce(findAndMatch, []);
-                                                                    o.blockList = blockList.reduce(findAndMatch, []);
-                                                                    o.everyList = everyList.reduce(findAndMatch, []);
                                                                     reset(o);
 
                                                                 } else {

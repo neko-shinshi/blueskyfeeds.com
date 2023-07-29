@@ -126,6 +126,24 @@ export const editFeed = async (agent, {img, shortName, displayName, description}
     return await agent.api.com.atproto.repo.putRecord(record);
 }
 
+export const checkValidActors = async (agent, actors) => {
+    if (actors.length > 0) {
+        const MAX_QUERY = 25;
+        let allProfiles = [];
+        for (let i = 0; i < actors.length; i += MAX_QUERY) {
+            const chunk = actors.slice(i, i + MAX_QUERY);
+            const {data:{profiles}} = (await agent.api.app.bsky.actor.getProfiles({actors: chunk}));
+            profiles.forEach(x => allProfiles.push(x));
+        }
+        return allProfiles.map(x => {
+            const {did, handle, displayName} = x;
+            return {did, handle, displayName};
+        });
+    } else {
+        return [];
+    }
+}
+
 export const isVIP = (agent) => {
     return ["did:plc:eubjsqnf5edgvcc6zuoyixhw",
         "did:plc:tazrmeme4dzahimsykusrwrk",

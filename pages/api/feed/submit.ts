@@ -1,5 +1,5 @@
 import {userPromise} from "features/utils/apiUtils";
-import {editFeed, getCustomFeeds, isVIP, rebuildAgentFromToken} from "features/utils/bsky";
+import {checkValidActors, editFeed, getCustomFeeds, isVIP, rebuildAgentFromToken} from "features/utils/bsky";
 import {serializeFile} from "features/utils/fileUtils";
 import {
     KEYWORD_SETTING,
@@ -106,10 +106,10 @@ export default async function handler(req, res) {
                 res.status(400).send("duplicate"); return;
             }
             if (actors.length > 0) {
-                const {data:{profiles}} = (await agent.api.app.bsky.actor.getProfiles({actors}));
-                blockList = blockList.filter(x => profiles.find(y => y.did === x));
-                allowList = allowList.filter(x => profiles.find(y => y.did === x));
-                everyList = everyList.filter(x => profiles.find(y => y.did === x));
+                const allProfiles = await checkValidActors(agent, actors);
+                blockList = blockList.filter(x => allProfiles.find(y => y.did === x));
+                allowList = allowList.filter(x => allProfiles.find(y => y.did === x));
+                everyList = everyList.filter(x => allProfiles.find(y => y.did === x));
             }
 
 

@@ -196,32 +196,8 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
             <div className="bg-sky-200 w-full max-w-7xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} />
 
-                <Link href="/my-feeds">
-                    <button type="button"
-                            className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                        <SiBuzzfeed className="w-6 h-6"/>
-                        <div className="text-lg font-medium">{session? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
-                        <SiBuzzfeed className="w-6 h-6"/>
-                    </button>
-                </Link>
-
-                {
-                    popularMadeHere && popularMadeHere.length > 0 &&
-                    <div className="bg-lime-100 border border-black border-2 p-4 rounded-xl space-y-2">
-                        <div className="text-lg font-medium">Highlights of Feeds made here</div>
-                        {
-                            popularMadeHere.map(x =>
-                                <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />
-                            )
-                        }
-                    </div>
-                }
-
-
-                <div className="bg-white border border-black border-2 p-4 rounded-xl space-y-2">
-                    <div className="text-lg font-medium">Existing Feeds (Updated Irregularly)</div>
-
-
+                <div className="bg-white border border-2 border-black p-2 rounded-xl">
+                    <div>Search Feed Directory</div>
                     <div className="flex place-items-center gap-2 bg-sky-200 w-fit p-2 rounded-xl">
                         <div className="flex">
                             <input ref={searchTextRef} className="rounded-l-md p-1" type="text" onKeyDown={async (event)  => {
@@ -238,13 +214,54 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                                     await startSearch();
                                 }}
                             >
-                            <span>Search</span>
+                                <span>Search</span>
                             </button>
                         </div>
                         <div className="flex place-items-center gap-1 p-1 hover:bg-orange-100 select-none" onClick={()=> setSearchUser(!searchUser)}>
-                            <input type="checkbox" checked={searchUser} onChange={() => {}} onKeyDown={async e => {if (e.key === "Enter") {await startSearch()}}}/>Search User
+                            <input type="checkbox" checked={searchUser} onChange={() => {}} onKeyDown={async e => {if (e.key === "Enter") {await startSearch()}}}/>Select to Search User Instead
                         </div>
                     </div>
+                </div>
+
+
+                <Link href="/my-feeds">
+                    <button type="button"
+                            className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <SiBuzzfeed className="w-6 h-6"/>
+                        <div className="text-lg font-medium">{session? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
+                        <SiBuzzfeed className="w-6 h-6"/>
+                    </button>
+                </Link>
+
+                {
+                    popularMadeHere && popularMadeHere.length > 0 &&
+                    <div className="bg-lime-100 border border-black border-2 p-4 rounded-xl space-y-2">
+                        <div className="inline-flex justify-between w-full place-items-center">
+                            <div className="text-lg font-medium">Highlights of Feeds made here</div>
+                            {
+                                /*
+                                <Link href="/local-feeds">
+                                <button type="button"
+                                        className="w-full inline-flex justify-center items-center p-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <div className="text-lg font-medium">See More</div>
+                                </button>
+                            </Link>
+                                 */
+                            }
+
+                        </div>
+
+                        {
+                            popularMadeHere.map(x =>
+                                <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />
+                            )
+                        }
+                    </div>
+                }
+
+
+                <div className="bg-white border border-black border-2 p-4 rounded-xl space-y-2">
+                    <div className="text-lg font-medium">Existing Feeds (Updated Irregularly)</div>
                     <BackAndForwardButtons  basePath={`${BASE_URL}`} params={router.query}/>
 
                     {
@@ -256,8 +273,6 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                     {
                         feeds.length > 0 && <BackAndForwardButtons  basePath={`${BASE_URL}`} params={router.query}/>
                     }
-
-
                 </div>
             </div>
         </>

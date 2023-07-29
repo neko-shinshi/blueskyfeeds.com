@@ -1,5 +1,5 @@
 import {userPromise} from "features/utils/apiUtils";
-import {rebuildAgentFromToken} from "features/utils/bsky";
+import {checkValidActors, rebuildAgentFromToken} from "features/utils/bsky";
 
 export default async function handler(req, res) {
     return userPromise(req, res, "GET", true, false,
@@ -10,17 +10,11 @@ export default async function handler(req, res) {
 
             const {actors:_actors} = req.query;
             const actors = _actors.split(",");
+
+
             try {
-                //console.log({actors});
-                const {data:{profiles}} = await agent.api.app.bsky.actor.getProfiles({actors});
-                //console.log(profiles);
-                const result = profiles.map(x => {
-                    const {did, handle, displayName} = x;
-                    return {did, handle, displayName};
-                });
-               // const {did, handle, displayName} = result.data;
+                const result = await checkValidActors(agent, actors);
                 res.status(200).json(result);
-                return;
             } catch (e) {
                 console.log(e);
             }
