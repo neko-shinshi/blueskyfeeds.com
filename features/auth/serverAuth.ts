@@ -11,11 +11,15 @@ const getDidResolver = (): DidResolver => {
 }
 
 export const validateAuthGetUser = async (req): Promise<string> => {
+    console.log("auth");
     const { authorization = '' } = req.headers;
+    console.log(authorization);
     if (!authorization.startsWith('Bearer ')) {
+        console.log("throw");
         throw new AuthRequiredError()
     }
-    const jwt = authorization.replace('Bearer ', '').trim()
+    const jwt = authorization.replace('Bearer ', '').trim();
+    console.log("jwt", jwt);
     return verifyJwt(jwt, "did:web:blueskyfeeds.com",
         async (did: string) => getDidResolver().resolveAtprotoKey(did));
 }
