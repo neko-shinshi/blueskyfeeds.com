@@ -202,9 +202,9 @@ export default function Home({feed, updateSession, token, VIP}) {
     const multiWordCallback = (fieldName:string) => {
         return async(val, callback) => {
             const user = val.startsWith("@")? val.slice(1) : val;
-            const everyList = getValues("everyList");
-            const allowList = getValues("allowList");
-            const blockList = getValues("blockList");
+            const everyList = getValues("everyList") || [];
+            const allowList = getValues("allowList") || [];
+            const blockList = getValues("blockList") || [];
             if (everyList.find(x => x.did === user || x.handle === user)) {
                 setError(fieldName, {type:'custom', message:`${user} is already in Every List`});
             } else if (blockList.find(x => x.did === user || x.handle === user)) {
@@ -672,7 +672,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                     <InputMultiWord
                                         key="feed id"
                                         className={clsx("border border-2 border-yellow-700 p-2 rounded-xl")}
-                                        labelText="Feed Id"
+                                        labelText="Feed Id (Copy this from the browser URL)"
                                         placeHolder="bsky.app/profile/did:plc:<user>/feed/<id>"
                                         orderedList={false}
                                         fieldName="copy"
@@ -689,6 +689,9 @@ export default function Home({feed, updateSession, token, VIP}) {
                                             } else if (getValues("copy").indexOf(v) >= 0){
                                                 setError("copy", {type:'custom', message:`${val} is already in the list`});
                                             } else {
+                                                // Check feed
+
+
                                                 callback(v);
                                             }
                                         }}/>
@@ -879,8 +882,8 @@ export default function Home({feed, updateSession, token, VIP}) {
                                             } else if (!isValidDomain(val)) {
                                                 setError(id, {type:'custom', message:`Invalid domain`});
                                             } else {
-                                                const mustUrls = getValues("mustUrl");
-                                                const blockUrls = getValues("blockUrl");
+                                                const mustUrls = getValues("mustUrl") || [];
+                                                const blockUrls = getValues("blockUrl") || [];
                                                 if (mustUrls.indexOf(val) >= 0) {
                                                     setError(id, {type:'custom', message:`${val} is already in required url list`});
                                                 } else if (blockUrls.indexOf(val) >= 0) {
