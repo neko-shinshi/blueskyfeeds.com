@@ -943,17 +943,28 @@ export default function Home({feed, updateSession, token, VIP}) {
                                                         };
 
                                                         const actors = [...blockList, ...allowList, ...everyList];
-                                                        console.log(actors);
+
                                                         if (typeof recaptcha !== 'undefined') {
                                                             recaptcha.ready(async () => {
-                                                                //@ts-ignore
-                                                                const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                                                                //@ts-ignore
-                                                                const result = await localGet("/user/check", {captcha, actors});
-                                                                if (result.status === 200 && Array.isArray(result.data)) {
-                                                                    allowList = result.data.filter(x =>  allowList.find(y => y === x.did));
-                                                                    blockList = result.data.filter(x =>  blockList.find(y => y === x.did));
-                                                                    everyList = result.data.filter(x =>  everyList.find(y => y === x.did));
+                                                                let result, skip = true;
+                                                                if (actors.length > 0) {
+                                                                    skip = false;
+                                                                    //@ts-ignore
+                                                                    const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                                                                    //@ts-ignore
+                                                                    result = await localGet("/user/check", {captcha, actors});
+                                                                }
+                                                                if (!skip && result && (result.status !== 200 || !Array.isArray(result.data))) {
+                                                                    // fail
+                                                                    console.log(result);
+                                                                    alert("error recovering data");
+                                                                } else {
+                                                                    if (result && (result.status !== 200 || !Array.isArray(result.data))) {
+                                                                        allowList = result.data.filter(x => allowList.find(y => y === x.did));
+                                                                        blockList = result.data.filter(x => blockList.find(y => y === x.did));
+                                                                        everyList = result.data.filter(x => everyList.find(y => y === x.did));
+                                                                    }
+
                                                                     keywords = keywords?.map(x => {
                                                                         const {t, a} = x;
                                                                         let o = JSON.parse(compressedToJsonString(t));
@@ -964,7 +975,6 @@ export default function Home({feed, updateSession, token, VIP}) {
                                                                         return o;
                                                                     }) || [];
 
-
                                                                     setShortNameLocked(true);
                                                                     setLanguages(languages || []);
                                                                     setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
@@ -973,11 +983,8 @@ export default function Home({feed, updateSession, token, VIP}) {
                                                                     setKeywords(keywords);
 
                                                                     reset(o);
-
-                                                                } else {
-                                                                    console.log(result);
-                                                                    alert("error recovering data");
                                                                 }
+
                                                                 setBusy(false);
                                                                 setTimeout(() => {
                                                                     input.remove();
