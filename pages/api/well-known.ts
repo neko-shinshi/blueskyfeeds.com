@@ -8,7 +8,7 @@ export default async function handler (req, res) {
                 {
                     "id": "#bsky_fg",
                     "type": "BskyFeedGenerator",
-                    "serviceEndpoint": "https://www.blueskyfeeds.com"
+                    "serviceEndpoint": "https://blueskyfeeds.com"
                 }
             ]
         });

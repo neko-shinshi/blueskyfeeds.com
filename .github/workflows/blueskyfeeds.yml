@@ -29,8 +29,8 @@ jobs:
     - name: Create env file
       run: |
         touch .env.local
-        echo NEXTAUTH_URL="https://www.blueskyfeeds.com/api/auth" >> .env.local
-        echo NEXT_PUBLIC_BASE_URL="https://www.blueskyfeeds.com" >> .env.local
+        echo NEXTAUTH_URL="https://blueskyfeeds.com/api/auth" >> .env.local
+        echo NEXT_PUBLIC_BASE_URL="https://blueskyfeeds.com" >> .env.local
         
         # From github secrets
         echo NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }} >> .env.local
