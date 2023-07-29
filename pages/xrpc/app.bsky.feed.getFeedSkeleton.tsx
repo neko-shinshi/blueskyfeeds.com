@@ -101,7 +101,6 @@ export async function getServerSideProps({req, res, query}) {
     const sortMethod = getSortMethod(sort);
     let result:any[];
     let cursor:string;
-    res.setHeader("Content-Type", "application/json");
     if (queryCursor) {
         if (sort === "new") {
             const [_postId, tss] = queryCursor.split("::");
@@ -159,5 +158,5 @@ export async function getServerSideProps({req, res, query}) {
 }
 
 export default function Home({}) {
-    return <></>
+    return <div></div>
 }
