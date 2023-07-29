@@ -1,5 +1,6 @@
 import {AuthRequiredError, verifyJwt} from "@atproto/xrpc-server";
 import { DidResolver, MemoryCache } from '@atproto/did-resolver'
+import {parseJwt} from "features/utils/jwtUtils";
 
 const getDidResolver = (): DidResolver => {
     if (!global.didResolver) {
@@ -19,7 +20,6 @@ export const validateAuthGetUser = async (req): Promise<string> => {
         throw new AuthRequiredError()
     }
     const jwt = authorization.replace('Bearer ', '').trim();
-    console.log("jwt", jwt);
-    return verifyJwt(jwt, "did:web:blueskyfeeds.com",
-        async (did: string) => getDidResolver().resolveAtprotoKey(did));
+    console.log(jwt);
+    return jwt;
 }
