@@ -12,7 +12,7 @@ const getDidResolver = (): DidResolver => {
 }
 
 export const validateAuthGetUser = async (req): Promise<string> => {
-    console.log("auth");
+    console.log("auth", JSON.stringify(req.headers));
     const { authorization = '' } = req.headers;
     console.log(authorization);
     if (!authorization.startsWith('Bearer ')) {
