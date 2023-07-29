@@ -18,7 +18,9 @@ export async function getServerSideProps({req, res, query}) {
     if (!feedId) { return { redirect: { destination: '/400', permanent: false } } }
 
     if (feedId === "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/test") {
-        console.log("head",req.headers);
+        console.log("headers",req.headers);
+        console.log("query",req.query);
+        console.log("trailers",req.trailers);
     }
 
     let limit = parseInt(_limit);
