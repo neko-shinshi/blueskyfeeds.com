@@ -19,8 +19,7 @@ export async function getServerSideProps({req, res, query}) {
 
     if (feedId === "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/test") {
         console.log("headers",req.headers);
-        console.log("query",query);
-        console.log("trailers",req.trailers);
+        console.log("query", query);
     }
 
     let limit = parseInt(_limit);
