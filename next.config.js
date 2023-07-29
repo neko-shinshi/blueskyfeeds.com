@@ -15,18 +15,21 @@ const nextConfig = {
       },
     ],
   },
-  rewrites: async () => [
+  redirects: async () => [
     {
       source: '/.well-known/did.json',
-      destination: '/api/well-known'
+      destination: '/api/well-known',
+      permanent:false
     },
     {
       source: '/xrpc/app.bsky.feed.describeFeedGenerator',
-      destination: '/api/feed-reply/describe'
+      destination: '/api/feed-reply/describe',
+      permanent:false
     },
     {
       source: '/xrpc/app.bsky.feed.getFeedSkeleton',
-      destination: '/api/feed-reply/skeleton'
+      destination: '/api/feed-reply/skeleton',
+      permanent:false
     }
   ]
 }
