@@ -23,8 +23,7 @@ export default async function handler (req, res) {
             }
 
             if (feedId === "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/test") {
-                console.log(JSON.stringify(req.query));
-                console.log(JSON.stringify(req.rawHeaders))
+                console.log(JSON.stringify(req, null, 2));
 //                console.log(userId);
             }
 
