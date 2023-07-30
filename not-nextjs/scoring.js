@@ -13,6 +13,7 @@ const generateScoreWithTime = (ups, now, then, gravity) => {
 }
 
 const updateScores = async() => {
+    /*
     const db = await connectToDatabase();
     const [posts, like, reply, repost] = await Promise.all([
         db.posts.find({}).project({_id:1, createdAt:1}).toArray(),
@@ -36,7 +37,7 @@ const updateScores = async() => {
             }
         };
     });
-    return await db.posts.bulkWrite(commands, {ordered:false});
+    return await db.posts.bulkWrite(commands, {ordered:false});*/
 }
 
 module.exports = {
