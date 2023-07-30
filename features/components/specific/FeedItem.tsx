@@ -52,6 +52,13 @@ export default function FeedItem ({item, setSelectedItem, setPopupState}) {
                 </a>
             </div>
             <div>{item.description}</div>
+            {
+                item.my && item.views &&
+                <div>
+                    <div className="">Unique viewers last whole day: {item.views.day}</div>
+                    <div className="">Unique viewers last whole week: {item.views.week}</div>
+                </div>
+            }
         </div>
         {
             <div className="inline-flex flex-col place-items-center gap-1">

@@ -1,11 +1,13 @@
 import { Menu, Transition } from "@headlessui/react";
 import clsx from "clsx";
-import {HiLogout} from "react-icons/hi";
+import {HiLogout, HiPlus} from "react-icons/hi";
 import {useRouter} from "next/router";
 import {signOut, useSession} from "next-auth/react";
 import {Fragment, useEffect, useState} from "react";
 import PopupSignIn from "features/login/PopupSignIn";
 import Image from "next/image";
+import {HiListBullet} from "react-icons/hi2";
+import Link from "next/link";
 
 export default function NavButtonUserAvatar({navPosition}) {
     const router = useRouter();
@@ -67,19 +69,55 @@ export default function NavButtonUserAvatar({navPosition}) {
                                 )}
                             </Menu.Item>
 
+                            <div className="py-1">
+                                <Menu.Item>
+                                    {({active}) => (
+                                        <Link href="/my-feeds">
+                                            <button
+                                                type="button"
+                                                className={clsx(
+                                                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
+                                                    'flex place-items-center w-full text-left px-4 py-2 text-sm'
+                                                )}
+                                            >
+                                                <HiListBullet className="h-4 w-4 inline-block mr-2"/> <span>My Feeds</span>
+                                            </button>
+                                        </Link>
+                                    )}
+                                </Menu.Item>
+                            </div>
+
+                            <div className="py-1">
+                                <Menu.Item>
+                                    {({active}) => (
+                                        <Link href="/edit-feed">
+                                            <button
+                                                type="button"
+                                                className={clsx(
+                                                    active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
+                                                    'flex place-items-center w-full text-left px-4 py-2 text-sm'
+                                                )}
+                                            >
+                                                <HiPlus className="h-4 w-4 inline-block mr-2"/> <span>Make a new Feed</span>
+                                            </button>
+                                        </Link>
+
+                                    )}
+                                </Menu.Item>
+                            </div>
 
                             <div className="py-1">
                                 <Menu.Item>
                                     {({active}) => (
                                         <button
                                             onClick={logout}
-                                            type="submit"
+                                            type="button"
                                             className={clsx(
                                                 active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
-                                                'block w-full text-left px-4 py-2 text-sm'
+                                                'flex place-items-center w-full text-left px-4 py-2 text-sm'
                                             )}
                                         >
-                                            <HiLogout className="h-4 w-4 inline-block"/> <span>Logout</span>
+                                            <HiLogout className="h-4 w-4 inline-block mr-2"/> <span>Logout</span>
                                         </button>
                                     )}
                                 </Menu.Item>

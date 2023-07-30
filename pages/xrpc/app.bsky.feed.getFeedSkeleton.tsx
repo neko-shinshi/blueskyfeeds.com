@@ -14,11 +14,11 @@ const getSortMethod = (sort) => {
     }
 }
 
-const MS_ONE_DAY = 24*60*60*1000;
-const MS_TWO_HOURS = 2*60*60*1000;
+const MS_ONE_WEEK = 7*24*60*60*1000;
+const MS_HALF_DAY = 12*60*60*1000;
 
 const makeExpiryDate = (nowTs) => {
-    return new Date(nowTs + MS_ONE_DAY);
+    return new Date(nowTs + MS_ONE_WEEK);
 }
 
 export async function getServerSideProps({req, res, query}) {
@@ -45,10 +45,10 @@ export async function getServerSideProps({req, res, query}) {
             }
             const key = `${iss} ${feedId}`;
             const then = global.views.get(key);
-            if (!then || now - then > MS_TWO_HOURS) { // don't update if seen within last 2 hours
+            if (!then || now - then > MS_HALF_DAY) { // don't update if seen within last half day
                 global.views.set(key, now);
                 const expireAt = makeExpiryDate(now);
-                await db.feedViews.updateOne({user: iss, feed:feedId}, {$set: {user: iss, feed:feedId, expireAt}}, {upsert:true});
+                await db.feedViews.updateOne({user: iss, feed:feedId}, {$set: {expireAt}}, {upsert:true});
             }
         }
     }

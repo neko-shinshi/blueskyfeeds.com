@@ -87,18 +87,6 @@ export default function Navbar({hide}) {
                                     <NavButtonNavReposition position={navPosition}
                                                             setPosition={setNavPosition}/>
                                     <NavButtonUserAvatar navPosition={navPosition}/>
-
-                                    <Disclosure.Button className={
-                                        clsx("ml-6 inline-flex items-center justify-center rounded-md text-white",
-                                            "hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-white")}>
-                                        <span className="sr-only">Open main menu</span>
-                                        {
-                                            menuOpen ? <HiX className="block h-8 w-8" aria-hidden="true" />
-                                                : <HiMenu className="block h-8 w-8" aria-hidden="true" />
-                                        }
-                                    </Disclosure.Button>
-
-
                                 </div>
 
                                 <div className="hidden md:flex-1 md:flex md:items-center md:justify-between">

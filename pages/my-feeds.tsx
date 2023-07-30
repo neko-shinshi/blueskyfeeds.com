@@ -36,15 +36,32 @@ export async function getServerSideProps({req, res}) {
 }
 
 
-export default function Home({updateSession, myFeeds, canCreate}) {
+export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
     const title = "My BlueSky Custom Feeds";
     const description = "";
     const { data: session, status } = useSession();
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
+    const [myFeeds, setMyFeeds] = useState([]);
     const recaptcha = useRecaptcha();
     const router = useRouter();
+
+    useEffect(() => {
+        if (_myFeeds) {
+            console.log(_myFeeds);
+
+            setMyFeeds(_myFeeds.sort((x,y) => {
+                if (x.pinned === y.pinned) {
+                    if (x.my === y.my) {
+                        return x.displayName.localeCompare(y.displayName);
+                    }
+                    return x.my? -1 : 1;
+                }
+                return x.pinned? -1 : 1;
+            }));
+        }
+    }, [_myFeeds])
 
     useEffect(() => {
         console.log("status", status);

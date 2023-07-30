@@ -109,13 +109,13 @@ export async function getServerSideProps({req, res, query}) {
     ].filter(x => x);
     const [feeds, feedsHere] = await Promise.all([
         db.allFeeds.aggregate(agg).toArray(),
-        db.feeds.find({}).project({_id:1}).toArray()
+        db.feeds.find({highlight:'yes'}).project({_id:1}).toArray()
     ]);
 
     let popularMadeHere = [];
     if (!q && (!p || p === "1")) {
         popularMadeHere = await db.allFeeds.find({_id: {$in: feedsHere.map(x => x._id)}, likeCount: {$gte: 2}})
-            .sort({likeCount:-1}).limit(10).project(projection).toArray();
+            .sort({likeCount:-1}).limit(6).project(projection).toArray();
     }
 
    /* let myFeeds = [];
