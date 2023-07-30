@@ -46,7 +46,7 @@ import {IoArrowBackSharp} from "react-icons/io5";
 import {compressKeyword} from "features/utils/objectUtils";
 
 export async function getServerSideProps({req, res, query}) {
-    const {updateSession, session, agent, redirect, db, token} = await getLoggedInData(req, res);
+    const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
     if (redirect) {return {redirect};}
 
     let feed = null;
@@ -87,21 +87,13 @@ export async function getServerSideProps({req, res, query}) {
         Create public Feed Description Page to show internal workings of feed
     </div>
      */
-
-    return {props: {updateSession, session, feed, token, VIP}};
+    return {props: {updateSession, session, feed, VIP}};
 }
 
 
 
 
-export default function Home({feed, updateSession, token, VIP}) {
-    useEffect(() => {
-        if (token) {
-            parseJwt(token);
-        }
-    }, [token])
-
-
+export default function Home({feed, updateSession, VIP}) {
     const title = "Make a Feed for Bluesky Social";
     const description = "";
     const router = useRouter();
@@ -220,6 +212,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                         const result = await localGet("/user/check", {captcha, actors:[user]});
                         if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
                             clearErrors(fieldName);
+                            console.log(result.data[0]);
                             callback(result.data[0]);
                         } else if (result.status === 400) {
                             setError(fieldName, {type:'custom', message:"Invalid user or user not found"});

@@ -30,14 +30,6 @@ export const getMyFeeds = async (agent, db) => {
     return [ ...saved, ...my];
 }
 
-export const getMyFeedIds = async (agent) => {
-    let myFeeds:any = {};
-    myFeeds.my = (await getCustomFeeds(agent)).map(x => x.uri);
-    myFeeds = {...myFeeds, ...await getSavedFeedIds(agent)};
-
-    return myFeeds;
-}
-
 export const getFeedDetails = async (agent, db, feedId) => {
      const feeds = await getCustomFeeds(agent);
      const foundFeed = feeds.find(x => x.uri.endsWith(feedId));
