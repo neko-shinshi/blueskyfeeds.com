@@ -63,7 +63,7 @@ export const getSavedFeedIds = async (agent) => {
 
 export const getSavedFeeds = async (agent) => {
     const feeds = await getSavedFeedIds(agent);
-    if (feeds) {
+    if (feeds && feeds.saved) {
         let {success, data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feeds.saved});
         if (success) {
             return data.feeds.map(x => {
