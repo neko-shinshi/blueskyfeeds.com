@@ -7,6 +7,8 @@ const hostname = '0.0.0.0';
 const port = 9123;
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
+const {schedule} = require("node-cron");
+const {updateScores} = require("./not-nextjs/scoring");
 
 const handleData = async (req, res) => {
     try {
@@ -44,6 +46,17 @@ app.prepare().then(async () => {
     const server = getServer(secure);
     server.listen(port, async (err) => {
         if (err) throw err;
+
+        if (process.env.NEXT_PUBLIC_DEV !== "1") {
+            schedule('*/10 * * * *', async () => {
+                console.log(await updateScores());
+            }, {
+                scheduled: true,
+                timezone: "GMT"
+            });
+        }
+
+
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
     });
 });

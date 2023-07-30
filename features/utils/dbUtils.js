@@ -1,6 +1,6 @@
-import {MongoClient} from "mongodb";
+const {MongoClient} = require("mongodb");
 
-export const connectToDatabase = async () => {
+const connectToDatabase = async () => {
     if (global.cachedDb) {
         return Promise.resolve(global.cachedDb);
     }
@@ -27,6 +27,9 @@ export const connectToDatabase = async () => {
                 feedViews: db.collection("feedViews"),
                 posts: db.collection("posts"),
                 keywords: db.collection("keywords"),
+                reposts: db.collection("reposts"),
+                likes: db.collection("likes"),
+                replies: db.collection("replies"),
             };
             return global.cachedDb;
         })
@@ -34,6 +37,10 @@ export const connectToDatabase = async () => {
             console.error(error);
         });
 };
+
+module.exports = {
+    connectToDatabase
+}
 
 /*
 // Indexes
