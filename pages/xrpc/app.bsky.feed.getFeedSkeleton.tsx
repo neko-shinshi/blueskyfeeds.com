@@ -14,6 +14,13 @@ const getSortMethod = (sort) => {
     }
 }
 
+const MS_ONE_DAY = 24*60*60*1000;
+const MS_TWO_HOURS = 2*60*60*1000;
+
+const makeExpiryDate = (nowTs) => {
+    return new Date(nowTs + MS_ONE_DAY);
+}
+
 export async function getServerSideProps({req, res, query}) {
     try {
         res.setHeader("Content-Type", "application/json");
@@ -21,22 +28,30 @@ export async function getServerSideProps({req, res, query}) {
     let {feed:feedId, cursor:queryCursor, limit:_limit=50} = query;
     if (!feedId) { return { redirect: { destination: '/400', permanent: false } } }
 
-    if (feedId === "at://did:plc:tazrmeme4dzahimsykusrwrk/app.bsky.feed.generator/Test123") {
-        let {authorization} = req.headers;
-        if (authorization && authorization.startsWith("Bearer ")) {
-            authorization = authorization.slice(7);
-            const {iss} = parseJwt(authorization);
-            if (iss) {
-                console.log(iss);
-            }
-        }
-    }
-
     let limit = parseInt(_limit);
     if (limit > 100) { return { redirect: { destination: '/400', permanent: false } } }
 
     const db = await connectToDatabase();
     if (!db) { return { redirect: { destination: '/500', permanent: false } } }
+
+    let {authorization} = req.headers;
+    if (authorization && authorization.startsWith("Bearer ")) {
+        authorization = authorization.slice(7);
+        const {iss} = parseJwt(authorization);
+        if (iss) {
+            const now = performance.now();
+            if (!global.views) {
+                global.views = new Map();
+            }
+            const then = global.views.get(iss);
+            if (!then || now - then > MS_TWO_HOURS) { // don't update if seen within last 2 hours
+                global.views.set(iss, now);
+                const expireAt = makeExpiryDate(now);
+                await db.feedViews.updateOne({user: iss, feed:feedId}, {$set: {expireAt}}, {upsert:true});
+            }
+        }
+    }
+
     const [feedObj, sticky] = await Promise.all([
         db.feeds.findOne({_id: feedId}),
         db.sticky.findOne({_id: feedId})
