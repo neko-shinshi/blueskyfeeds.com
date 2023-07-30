@@ -543,10 +543,10 @@ export default function Home({feed, updateSession, VIP}) {
                                             <div className={clsx("ml-3 text-gray-700")}>
                                                 {
                                                     SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
-                                                        Deselect All
+                                                        Deselect All (all posts no matter the language)
                                                         <RxCross2 className="w-6 h-6 text-red-600"/>
                                                     </div>: <div className="flex place-items-center">
-                                                        Select All
+                                                        Select All listed here (some languages are not listed)
                                                         <RxCheck className="w-6 h-6 text-green-600"/>
                                                     </div>
                                                 }
