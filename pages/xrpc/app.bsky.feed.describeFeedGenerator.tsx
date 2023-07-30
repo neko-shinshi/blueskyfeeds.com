@@ -4,7 +4,10 @@ export async function getServerSideProps({req, res, query}) {
     const db = await connectToDatabase();
     if (!db) { return { redirect: { destination: '/500', permanent: false } } }
     const feeds = await db.feeds.find({}).toArray();
-    res.setHeader("Content-Type", "application/json");
+    try {
+        res.setHeader("Content-Type", "application/json");
+    } catch {}
+
     res.write(JSON.stringify({
         encoding: 'application/json',
         body: {
