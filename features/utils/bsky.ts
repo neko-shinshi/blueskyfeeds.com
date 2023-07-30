@@ -137,7 +137,7 @@ export const checkValidActors = async (agent, actors) => {
         }
         return allProfiles.map(x => {
             const {did, handle, displayName} = x;
-            return {did, handle, displayName};
+            return {did, handle, displayName: displayName || ""};
         });
     } else {
         return [];
