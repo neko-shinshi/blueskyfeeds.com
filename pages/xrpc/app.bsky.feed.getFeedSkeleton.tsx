@@ -39,7 +39,7 @@ export async function getServerSideProps({req, res, query}) {
         authorization = authorization.slice(7);
         const {iss} = parseJwt(authorization);
         if (iss) {
-            const now = performance.now();
+            const now = new Date().getTime();
             if (!global.views) {
                 global.views = new Map();
             }
