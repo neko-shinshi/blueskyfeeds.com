@@ -381,7 +381,7 @@ export default function Home({feed, updateSession, token, VIP}) {
                                             fieldName="file"
                                             className="inset-0 absolute rounded-xl z-10"
                                             useFormReturn={useFormReturn}
-                                            acceptedTypes={{'image/jpeg': ["*.jpg", "*.jpeg"], 'image/png':["*.png"]}}
+                                            acceptedTypes={{'image/jpeg': [".jpg", ".jpeg"], 'image/png':[".png"]}}
                                             acceptedTypesLabel="jpg or png"/>
                                         {
                                             watchFile && <Image ref={imageRef} className="object-cover hover:blur-sm" unoptimized fill src={watchFile.url} alt="feed-avatar" />
