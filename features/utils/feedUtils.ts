@@ -31,7 +31,6 @@ export const getMyFeeds = async (agent, db) => {
         const editable = editableFeeds.find(y => y._id === x.uri);
         const views = feedViews.find(y => y._id === x.uri);
         const found = saved.find(y => y.uri === x.uri);
-        console.log(views);
         if (found) {
             found.my = true;
             if (editable) {
