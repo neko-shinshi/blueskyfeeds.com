@@ -14,6 +14,11 @@ const getSortMethod = (sort) => {
 }
 
 export async function getServerSideProps({req, res, query}) {
+    try {
+        res.setHeader("Content-Type", "application/json");
+    } catch (e){
+        console.log(e);
+    }
     let {feed:feedId, cursor:queryCursor, limit:_limit=50} = query;
     if (!feedId) { return { redirect: { destination: '/400', permanent: false } } }
 
@@ -101,9 +106,7 @@ export async function getServerSideProps({req, res, query}) {
     const sortMethod = getSortMethod(sort);
     let result:any[];
     let cursor:string;
-    try {
-        res.setHeader("Content-Type", "application/json");
-    } catch {}
+
 
     if (queryCursor) {
         if (sort === "new") {
