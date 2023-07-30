@@ -19,9 +19,9 @@ export default function InputFileDropzone ({fieldName, acceptedTypes, acceptedTy
         } = useDropzone({
             accept: acceptedTypes,
             minSize: 0,
-            maxSize: 5 * 1000000,
+            maxSize: 200000,
             maxFiles: 1,
-            onDrop: (acceptedFiles) => {
+            onDrop: (acceptedFiles, rejectedFiles) => {
                 if (acceptedFiles.length === 1) {
                     let file = acceptedFiles[0];
                     onChange({
@@ -29,6 +29,8 @@ export default function InputFileDropzone ({fieldName, acceptedTypes, acceptedTy
                         url: URL.createObjectURL(file),
                         type: file.type
                     });
+                } else if (rejectedFiles.length > 0 && rejectedFiles[0].errors.length > 0) {
+                    alert(rejectedFiles[0].errors[0].message);
                 }
             }
         });
@@ -58,7 +60,7 @@ export default function InputFileDropzone ({fieldName, acceptedTypes, acceptedTy
                                         <p className="text-xs text-gray-500 select-none">Invalid file type or file is too large <span className="select-none invisible">file here, or click to browse</span></p> :
                                         isDragActive ?
                                             <p className="text-xs text-gray-500 select-none">Drop file here <span className="select-none invisible">file here, or click to browse</span></p> :
-                                            <p className="text-xs text-gray-500 select-none">Drag & drop a <span className="font-bold text-black">{"<"}5MB {acceptedTypesLabel}</span> file here, or click to browse</p>
+                                            <p className="text-xs text-gray-500 select-none">Drag & drop a <span className="font-bold text-black">{"<"}200kB {acceptedTypesLabel}</span> file here, or click to browse</p>
                                 }
                             </>
                         }
