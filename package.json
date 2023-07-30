@@ -9,10 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@atproto/did-resolver": "^0.1.0",
-    "@atproto/xrpc-server": "^0.3.0",
-    "@headlessui/react": "^1.7.4",
     "@atproto/api": "^0.4.3",
+    "@headlessui/react": "^1.7.4",
     "@tailwindcss/forms": "^0.5.3",
     "add": "^2.0.6",
     "axios": "^1.1.3",

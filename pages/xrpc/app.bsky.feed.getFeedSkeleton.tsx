@@ -1,5 +1,6 @@
 import {connectToDatabase} from "features/utils/dbUtils";
 import {randomInt} from "crypto";
+import {parseJwt} from "features/utils/jwtUtils";
 
 const getSortMethod = (sort) => {
     switch (sort) {
@@ -21,8 +22,14 @@ export async function getServerSideProps({req, res, query}) {
     if (!feedId) { return { redirect: { destination: '/400', permanent: false } } }
 
     if (feedId === "at://did:plc:tazrmeme4dzahimsykusrwrk/app.bsky.feed.generator/Test123") {
-        console.log("headers",req.headers);
-        console.log("query", query);
+        let {authorization} = req.headers;
+        if (authorization && authorization.startsWith("Bearer ")) {
+            authorization = authorization.slice(7);
+            const {iss} = parseJwt(authorization);
+            if (iss) {
+                console.log(iss);
+            }
+        }
     }
 
     let limit = parseInt(_limit);
