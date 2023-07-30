@@ -47,7 +47,7 @@ export async function getServerSideProps({req, res, query}) {
             if (!then || now - then > MS_TWO_HOURS) { // don't update if seen within last 2 hours
                 global.views.set(iss, now);
                 const expireAt = makeExpiryDate(now);
-                await db.feedViews.updateOne({user: iss, feed:feedId}, {$set: {expireAt}}, {upsert:true});
+                await db.feedViews.updateOne({user: iss, feed:feedId}, {$set: {user: iss, feed:feedId, expireAt}}, {upsert:true});
             }
         }
     }
