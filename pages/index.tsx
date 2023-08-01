@@ -275,6 +275,8 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                     }
                 </div>
             </div>
+
+            <div className="text-transparent">1</div>
         </>
     )
 }
