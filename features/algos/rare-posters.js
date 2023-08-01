@@ -26,9 +26,9 @@ const handler = async (user, cursor, limit) => {
 
     if (cursor) {
         const end = start + limit;
-        return {feed: feed.posts.slice(start, end), cursor: `${end}`};
+        return {feed: feed.posts.slice(start, end).map(x => {return {post:x}}), cursor: `${end}`};
     } else {
-        return {feed: feed.posts.slice(0, limit), cursor: `${limit}`};
+        return {feed: feed.posts.slice(0, limit).map(x => {return {post:x}}), cursor: `${limit}`};
     }
 }
 
