@@ -45,7 +45,6 @@ import Link from "next/link";
 import {IoArrowBackSharp} from "react-icons/io5";
 import {compressKeyword,} from "features/utils/objectUtils";
 import InputTextBasic from "features/input/InputTextBasic";
-import {mockSession} from "next-auth/client/__tests__/helpers/mocks";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
