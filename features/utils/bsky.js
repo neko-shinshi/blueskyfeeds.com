@@ -31,19 +31,13 @@ const getCustomFeeds = async (agent) => {
     let results = [];
     do {
         const params = {actor: agent.session.did, ...cursor};
-
-        const {success, data} = await agent.api.app.bsky.feed.getActorFeeds(params);
-
-        if (success) {
-            const {cursor:newCursor, feeds} = data;
-            feeds.forEach(x => results.push(x));
-            if (!newCursor) {
-                cursor = null;
-            } else {
-                cursor = {cursor: newCursor};
-            }
+        const {data} = await agent.api.app.bsky.feed.getActorFeeds(params);
+        const {cursor:newCursor, feeds} = data;
+        feeds.forEach(x => results.push(x));
+        if (!newCursor) {
+            cursor = null;
         } else {
-            return false; // Failure
+            cursor = {cursor: newCursor};
         }
     } while (cursor);
     return results;

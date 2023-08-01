@@ -146,7 +146,7 @@ export default async function handler(req, res) {
                     {$set: o},
                     {upsert:true});
                 // Reload all current user's feeds
-                const commands = (await getCustomFeeds(agent)).map(x => {
+                const commands = (await getCustomFeeds(agent) as any[]).map(x => {
                     const {uri, ...y} = x;
                     return {
                         updateOne: {
