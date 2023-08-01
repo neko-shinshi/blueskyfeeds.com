@@ -60,12 +60,12 @@ export async function getServerSideProps({req, res, query}) {
     if (!feedObj) {return { redirect: { destination: '/400', permanent: false } } }
     const {sticky} = feedObj;
 
-    const {handler} = algos[feedId];
+    const algo = algos[feedId];
     let cursor:string;
     let feed:any[];
 
-    if (handler) {
-        const {feed: feedV, cursor: cursorV} = await handler(user, queryCursor, limit);
+    if (algo && algo.handler) {
+        const {feed: feedV, cursor: cursorV} = await algo.handler(user, queryCursor, limit);
         feed = feedV;
         cursor = cursorV;
     } else {
