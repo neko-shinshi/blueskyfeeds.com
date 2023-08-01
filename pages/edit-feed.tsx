@@ -70,6 +70,8 @@ export async function getServerSideProps({req, res, query}) {
                 }
                 if (sticky) {
                     sticky = await getPostInfo(agent, sticky);
+                } else {
+                    sticky = "";
                 }
 
                 feed = {...feedData, allowList, blockList, everyList, sticky};
