@@ -1,6 +1,7 @@
 import {connectToDatabase} from "features/utils/dbUtils";
 import {randomInt} from "crypto";
 import {parseJwt} from "features/utils/jwtUtils";
+import * as algos from 'features/algos'
 
 const getSortMethod = (sort) => {
     switch (sort) {
@@ -25,7 +26,7 @@ export async function getServerSideProps({req, res, query}) {
     try {
         res.setHeader("Content-Type", "application/json");
     } catch {}
-    let {feed:feedId, cursor:queryCursor, limit:_limit=50} = query;
+    let {feed:feedId, cursor:queryCursor, limit:_limit=50, did} = query;
     if (!feedId) { return { redirect: { destination: '/400', permanent: false } } }
 
     let limit = parseInt(_limit);
@@ -34,11 +35,13 @@ export async function getServerSideProps({req, res, query}) {
     const db = await connectToDatabase();
     if (!db) { return { redirect: { destination: '/500', permanent: false } } }
 
+    let user = did;
     let {authorization} = req.headers;
     if (authorization && authorization.startsWith("Bearer ")) {
         authorization = authorization.slice(7);
         const {iss} = parseJwt(authorization);
         if (iss) {
+            user = iss;
             const now = new Date().getTime();
             if (!global.views) {
                 global.views = new Map();
@@ -48,138 +51,147 @@ export async function getServerSideProps({req, res, query}) {
             if (!then || now - then > MS_HALF_DAY) { // don't update if seen within last half day
                 global.views.set(key, now);
                 const expireAt = makeExpiryDate(now);
-                await db.feedViews.updateOne({user: iss, feed:feedId}, {$set: {expireAt}}, {upsert:true});
+                await db.feedViews.updateOne({user, feed:feedId}, {$set: {expireAt}}, {upsert:true});
             }
         }
     }
 
-    const [feedObj, sticky] = await Promise.all([
-        db.feeds.findOne({_id: feedId}),
-        db.sticky.findOne({_id: feedId})
-    ]);
+    const feedObj = await db.feeds.findOne({_id: feedId});
     if (!feedObj) {return { redirect: { destination: '/400', permanent: false } } }
+    const {sticky} = feedObj;
 
-    const {allowList, blockList, everyList, keywordSetting,
-        keywords, languages, pics, postLevels, sort} = feedObj;
-    let dbQuery:any = {};
-    if (allowList.length > 0) {
-        // Only search posts from x users
-        dbQuery.author = {$in: allowList};
-    } else if (blockList.length > 0) {
-        dbQuery.author = {$nin: blockList};
-    }
-    const wantPics = pics.indexOf("pics") >= 0;
-    const wantText = pics.indexOf("text") >= 0;
-    if (!(wantPics && wantText)) {
-        dbQuery.hasImage = wantPics;
-    }
-    const wantTop = postLevels.indexOf("top") >= 0;
-    const wantReply = postLevels.indexOf("reply") >= 0;
-    if (!(wantTop && wantReply)) {
-        if (wantTop) {
-            dbQuery.replyRoot = null;
-        } else { // wantReply
-            dbQuery.replyRoot = {$ne: null};
-        }
-    }
-    if (languages.length > 0) {
-        dbQuery.lang = {$in: languages};
-    }
-
-    let keywordSearch = [];
-    const findKeywords = keywords.filter(x => x.a).map(x => x.t);
-    const blockKeywords = keywords.filter(x => !x.a).map(x => x.t);
-    if (keywordSetting.indexOf("alt") >= 0 && findKeywords.length > 0) {
-        keywordSearch.push({kwAlt:{$in: findKeywords, $nin: blockKeywords}});
-    }
-
-    if (keywordSetting.indexOf("text") >= 0 && findKeywords.length > 0) {
-        keywordSearch.push({kwText:{$in: findKeywords, $nin: blockKeywords}});
-    }
-
-    switch (keywordSearch.length) {
-        case 1: {
-            dbQuery = {...dbQuery, ...keywordSearch[0]};
-            break;
-        }
-        case 2: {
-            dbQuery = {...dbQuery, $or:keywordSearch};
-            break;
-        }
-    }
-
-    if (everyList.length > 0) {
-        let authorQuery:any = {author: {$in: everyList}};
-        if (dbQuery.lang) {
-            authorQuery.lang = dbQuery.lang;
-        }
-        if (dbQuery.hasImage) {
-            authorQuery.hasImage = dbQuery.hasImage;
-        }
-        if (dbQuery.replyRoot) {
-            authorQuery.replyRoot = dbQuery.replyRoot;
-        }
-
-        dbQuery = {$or: [authorQuery, dbQuery]};
-    }
-    // console.log(JSON.stringify(query, null, 2));
-
-    const sortMethod = getSortMethod(sort);
-    let result:any[];
+    const {handler} = algos[feedId];
     let cursor:string;
+    let feed:any[];
 
-
-    if (queryCursor) {
-        if (sort === "new") {
-            const [_postId, tss] = queryCursor.split("::");
-            const [userId, __postId] = _postId.split("/");
-            const postId = `at://${userId}/app.bsky.feed.post/${__postId}`;
-            result = await db.posts.find(dbQuery).sort(sortMethod).limit(500).project({createdAt: 1}).toArray(); // don't bother querying beyond 500
-            if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
-            let index = result.findIndex(x => x._id === postId);
-            if (index === -1) {
-                const tsss = new Date(tss).toISOString();
-                index = result.findIndex(x => x.createdAt < tsss);
-            }
-            if (index === -1) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
-            result = result.slice(index+1, index+1+limit);
-            const last = result.at(-1);
-            if (last) {
-                const ts = new Date(last.createdAt).getTime();
-                const parts = last._id.split("/");
-                const id = `${parts[2]}/${parts[4]}`;
-                cursor = `${id}::${ts}`;
-            }
-        } else {
-            const skip = parseInt(queryCursor);
-            result = await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project({_id: 1}).toArray();
-            if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}};
-            cursor = `${limit+skip}`;
-        }
+    if (handler) {
+        const {feed: feedV, cursor: cursorV} = await handler(user, queryCursor, limit);
+        feed = feedV;
+        cursor = cursorV;
     } else {
-        if (sort === "new") {
-            if (sticky) {limit = limit -1;}
-            result = await db.posts.find(dbQuery).sort(sortMethod).project({createdAt: 1}).limit(limit).toArray();
-            if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}};
-            if (sticky) {result.splice(1,0, {_id: sticky.p})}
-            // return last item + timestamp
-            const last = result.at(-1);
-            if (last) {
-                const ts = new Date(last.createdAt).getTime();
-                const parts = last._id.split("/");
-                const id = `${parts[2]}/${parts[4]}`;
-                cursor = `${id}::${ts}`;
+        const {allowList, blockList, everyList, keywordSetting,
+            keywords, languages, pics, postLevels, sort} = feedObj;
+        let dbQuery:any = {};
+        if (allowList.length > 0) {
+            // Only search posts from x users
+            dbQuery.author = {$in: allowList};
+        } else if (blockList.length > 0) {
+            dbQuery.author = {$nin: blockList};
+        }
+        const wantPics = pics.indexOf("pics") >= 0;
+        const wantText = pics.indexOf("text") >= 0;
+        if (!(wantPics && wantText)) {
+            dbQuery.hasImage = wantPics;
+        }
+        const wantTop = postLevels.indexOf("top") >= 0;
+        const wantReply = postLevels.indexOf("reply") >= 0;
+        if (!(wantTop && wantReply)) {
+            if (wantTop) {
+                dbQuery.replyRoot = null;
+            } else { // wantReply
+                dbQuery.replyRoot = {$ne: null};
+            }
+        }
+        if (languages.length > 0) {
+            dbQuery.lang = {$in: languages};
+        }
+
+        let keywordSearch = [];
+        const findKeywords = keywords.filter(x => x.a).map(x => x.t);
+        const blockKeywords = keywords.filter(x => !x.a).map(x => x.t);
+        if (keywordSetting.indexOf("alt") >= 0 && findKeywords.length > 0) {
+            keywordSearch.push({kwAlt:{$in: findKeywords, $nin: blockKeywords}});
+        }
+
+        if (keywordSetting.indexOf("text") >= 0 && findKeywords.length > 0) {
+            keywordSearch.push({kwText:{$in: findKeywords, $nin: blockKeywords}});
+        }
+
+        switch (keywordSearch.length) {
+            case 1: {
+                dbQuery = {...dbQuery, ...keywordSearch[0]};
+                break;
+            }
+            case 2: {
+                dbQuery = {...dbQuery, $or:keywordSearch};
+                break;
+            }
+        }
+
+        if (everyList.length > 0) {
+            let authorQuery:any = {author: {$in: everyList}};
+            if (dbQuery.lang) {
+                authorQuery.lang = dbQuery.lang;
+            }
+            if (dbQuery.hasImage) {
+                authorQuery.hasImage = dbQuery.hasImage;
+            }
+            if (dbQuery.replyRoot) {
+                authorQuery.replyRoot = dbQuery.replyRoot;
+            }
+
+            dbQuery = {$or: [authorQuery, dbQuery]};
+        }
+        // console.log(JSON.stringify(query, null, 2));
+
+        const sortMethod = getSortMethod(sort);
+        let result:any[];
+
+
+
+        if (queryCursor) {
+            if (sort === "new") {
+                const [_postId, tss] = queryCursor.split("::");
+                const [userId, __postId] = _postId.split("/");
+                const postId = `at://${userId}/app.bsky.feed.post/${__postId}`;
+                result = await db.posts.find(dbQuery).sort(sortMethod).limit(500).project({createdAt: 1}).toArray(); // don't bother querying beyond 500
+                if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
+                let index = result.findIndex(x => x._id === postId);
+                if (index === -1) {
+                    const tsss = new Date(tss).toISOString();
+                    index = result.findIndex(x => x.createdAt < tsss);
+                }
+                if (index === -1) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
+                result = result.slice(index+1, index+1+limit);
+                const last = result.at(-1);
+                if (last) {
+                    const ts = new Date(last.createdAt).getTime();
+                    const parts = last._id.split("/");
+                    const id = `${parts[2]}/${parts[4]}`;
+                    cursor = `${id}::${ts}`;
+                }
+            } else {
+                const skip = parseInt(queryCursor);
+                result = await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project({_id: 1}).toArray();
+                if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}};
+                cursor = `${limit+skip}`;
             }
         } else {
-            if (sticky) {limit = limit -1;}
-            result = await db.posts.find(dbQuery).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
-            if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}};
-            if (sticky) {result.splice(randomInt(0, 2),0, {_id: sticky.p})}
-            cursor = `${limit}`;
+            if (sort === "new") {
+                if (sticky) {limit = limit -1;}
+                result = await db.posts.find(dbQuery).sort(sortMethod).project({createdAt: 1}).limit(limit).toArray();
+                if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}};
+                if (sticky) {result.splice(1,0, {_id: sticky.p})}
+                // return last item + timestamp
+                const last = result.at(-1);
+                if (last) {
+                    const ts = new Date(last.createdAt).getTime();
+                    const parts = last._id.split("/");
+                    const id = `${parts[2]}/${parts[4]}`;
+                    cursor = `${id}::${ts}`;
+                }
+            } else {
+                if (sticky) {limit = limit -1;}
+                result = await db.posts.find(dbQuery).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
+                if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}};
+                if (sticky) {result.splice(randomInt(0, 2),0, {_id: sticky.p})}
+                cursor = `${limit}`;
+            }
         }
+        feed = result.map(x => {return {post: x._id};});
     }
 
-    const feed = result.map(x => {return {post: x._id};});
+
     res.write(JSON.stringify({feed, cursor}));
     res.end();
     return {props: {}};

@@ -1,5 +1,5 @@
 import {userPromise} from "features/utils/apiUtils";
-import {checkValidActors, editFeed, getCustomFeeds, isVIP, rebuildAgentFromToken} from "features/utils/bsky";
+import {getActorsInfo, editFeed, getCustomFeeds, isVIP, rebuildAgentFromToken, getPostInfo} from "features/utils/bsky";
 import {serializeFile} from "features/utils/fileUtils";
 import {
     KEYWORD_SETTING,
@@ -18,14 +18,25 @@ import {compressKeyword} from "features/utils/objectUtils";
 
 export default async function handler(req, res) {
     return userPromise(req, res, "POST", true, true,
-        ({captcha, shortName}) => !!captcha && !!shortName,
+        ({shortName}) => !!shortName,
         async ({db, token}) => {
             const agent = await rebuildAgentFromToken(token);
             if (!agent) {res.status(401).send(); return;}
             console.log("received");
 
             let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords,
-                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight} = req.body;
+                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight, sticky} = req.body;
+
+            if (sticky) {
+                const {uri} = await getPostInfo(agent, sticky);
+                if (!uri) {
+                    res.status(400).send("invalid sticky"); return;
+                } else {
+                    sticky = uri; // only store uri
+                }
+            } else {
+                sticky = null;
+            }
 
             if (!/^[a-zA-Z0-9_-]+$/.test(shortName)) {
                 res.status(400).send("invalid short name"); return;
@@ -106,7 +117,7 @@ export default async function handler(req, res) {
                 res.status(400).send("duplicate"); return;
             }
             if (actors.length > 0) {
-                const allProfiles = await checkValidActors(agent, actors);
+                const allProfiles = await getActorsInfo(agent, actors);
                 blockList = blockList.filter(x => allProfiles.find(y => y.did === x));
                 allowList = allowList.filter(x => allProfiles.find(y => y.did === x));
                 everyList = everyList.filter(x => allProfiles.find(y => y.did === x));
@@ -127,7 +138,7 @@ export default async function handler(req, res) {
                 console.log("submit to bsky")
                 await editFeed(agent, {img, shortName, displayName, description});
 
-                const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight,
+                const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight, sticky,
                     sort, allowList, blockList, everyList, mustUrl, blockUrl};
 
                 // Update current feed

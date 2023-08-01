@@ -21,6 +21,7 @@ const connectToDatabase = async () => {
                 sticky: db.collection("sticky"),
                 sessions: db.collection("sessions"), // session keys for rollover
                 data: db.collection("data"),
+                dataAlgoFeed: db.collection("dataAlgoFeed"),
                 allFeeds: db.collection("allFeeds"),
                 allHandles: db.collection("allHandles"),
                 feeds: db.collection("feeds"),
@@ -50,7 +51,7 @@ db.posts.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.replies.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.likes.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.reposts.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
-
+db.dataAlgoFeed.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 
 db.allFeeds.createIndex( { likeCount: -1, indexedAt:1 } )
 db.feeds.createIndex({keywords:1})

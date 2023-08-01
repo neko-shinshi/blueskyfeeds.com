@@ -56,6 +56,13 @@ app.prepare().then(async () => {
             });
         }
 
+        const algos = require("./features/algos/index");
+        for (const [_, value] of Object.entries(algos)) {
+            if (value.generate) {
+                value.generate();
+            }
+        }
+
 
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
     });

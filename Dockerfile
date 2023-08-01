@@ -28,7 +28,11 @@ COPY --from=builder /opt/app/.next ./.next
 COPY --from=builder /opt/app/node_modules ./node_modules
 COPY --from=builder /opt/app/package.json ./
 COPY ./not-nextjs ./not-nextjs
+COPY ./features/algos/ ./features/algos/
 COPY ./features/utils/dbUtils.js ./features/utils/dbUtils.js
+COPY ./features/utils/bsky.js ./features/utils/bsky.js
+COPY ./features/utils/signature.js ./features/utils/signature.js
+COPY ./features/utils/queue.js ./features/utils/queue.js
 
 RUN mkdir -p /opt/app/.next/cache/images
 RUN chmod -R 777 /opt/app/.next/cache/images

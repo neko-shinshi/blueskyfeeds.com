@@ -1,10 +1,10 @@
 import {userPromise} from "features/utils/apiUtils";
-import {feedRKeyToUri, feedUriToUrl, } from "features/utils/feedUtils";
+import {feedRKeyToUri} from "features/utils/feedUtils";
 import {deleteFeed, rebuildAgentFromToken} from "features/utils/bsky";
 
 export default async function handler(req, res) {
     return userPromise(req, res, "DELETE", true, true,
-        ({rkey, captcha}) => !!rkey && !!captcha,
+        ({rkey}) => !!rkey,
         async ({db, token}) => {
         const agent = await rebuildAgentFromToken(token);
         if (!agent) {res.status(401).send(); return;}

@@ -21,29 +21,31 @@ import InputMultiWord from "features/input/InputMultiWord";
 import KeywordParser from "features/components/specific/KeywordParser";
 import {serializeFile} from "features/utils/fileUtils";
 import {
+    FEED_MODE,
     FeedKeyword,
     KEYWORD_SETTING,
     KEYWORD_TYPES,
     KeywordType, KeywordTypeToShort, MAX_FEEDS_PER_USER, MAX_KEYWORDS_PER_FEED,
     PICS_SETTING,
     POST_LEVELS,
-    SIGNATURE,
-    SORT_ORDERS
+    SORT_ORDERS,
+    SUPPORTED_LANGUAGES
 } from "features/utils/constants";
-import {SUPPORTED_LANGUAGES} from "features/utils/constants";
+import {SIGNATURE} from "features/utils/signature";
 import SortableWordBubbles from "features/components/SortableWordBubbles";
 import {getLoggedInData} from "features/network/session";
-import {HiTrash} from "react-icons/hi";
+import { HiTrash} from "react-icons/hi";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {APP_SESSION} from "features/auth/authUtils";
-import {isValidDomain, isValidToken} from "features/utils/validationUtils";
-import {parseJwt} from "features/utils/jwtUtils";
-import {checkValidActors, isVIP} from "features/utils/bsky";
+import { isValidToken} from "features/utils/validationUtils";
+import {getActorsInfo, getPostInfo, isVIP} from "features/utils/bsky";
 import PopupLoading from "features/components/PopupLoading";
 import {compressedToJsonString} from "features/utils/textUtils";
 import Link from "next/link";
 import {IoArrowBackSharp} from "react-icons/io5";
-import {compressKeyword} from "features/utils/objectUtils";
+import {compressKeyword,} from "features/utils/objectUtils";
+import InputTextBasic from "features/input/InputTextBasic";
+import {mockSession} from "next-auth/client/__tests__/helpers/mocks";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -56,19 +58,22 @@ export async function getServerSideProps({req, res, query}) {
         if (_feed) {
             const feedData: any = await getFeedDetails(agent, db, _feed);
             if (feedData) {
-                let {allowList, blockList, everyList} = feedData;
+                let {allowList, blockList, everyList, sticky} = feedData;
                 allowList = allowList || [];
                 blockList = blockList || [];
                 everyList = everyList || [];
                 const actors = [...allowList, ...blockList, ...everyList];
                 if (actors.length > 0) {
-                    const profiles = await checkValidActors(agent, actors);
+                    const profiles = await getActorsInfo(agent, actors);
                     allowList = profiles.filter(x =>  allowList.find(y => y === x.did));
                     blockList = profiles.filter(x =>  blockList.find(y => y === x.did));
                     everyList = profiles.filter(x =>  everyList.find(y => y === x.did));
                 }
+                if (sticky) {
+                    sticky = await getPostInfo(agent, sticky);
+                }
 
-                feed = {...feedData, allowList, blockList, everyList};
+                feed = {...feedData, allowList, blockList, everyList, sticky};
             } else {
                 return {redirect: {destination: '/404', permanent: false}}
             }
@@ -123,6 +128,11 @@ export default function Home({feed, updateSession, VIP}) {
     const [busy, setBusy] = useState(false);
     const [editTag, setEditTag] = useState<any>(null);
     const [done, setDone] = useState(false);
+    const [mode, setMode] = useState("keyword");
+    const [stickyText, setStickyText] = useState("");
+    const [stickyError, setStickyError] = useState("");
+    const stickyRef = useRef(null);
+
 
     const recaptcha = useRecaptcha();
     const imageRef = useRef(null);
@@ -139,7 +149,7 @@ export default function Home({feed, updateSession, VIP}) {
     } = useFormReturn;
     const watchFile = watch("file");
     const watchShortName = watch("shortName");
-
+    const watchSticky = watch("sticky");
 
     useEffect(() => {
         if (session && status === "authenticated" && updateSession) {
@@ -152,15 +162,21 @@ export default function Home({feed, updateSession, VIP}) {
 
     useEffect(() => {
         if (!feed) {
-            reset({sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes"});
+            reset({sticky:"", sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes"});
+            setMode("keyword");
             setLanguages([]);
             setPostLevels(POST_LEVELS.map(x => x.id));
             setKeywordSetting(["text"]);
             setPics(["text", "pics"])
         } else {
-            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight} = feed;
+            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode:_mode, sticky} = feed;
+            const {uri:stickyUri, text} = sticky;
+            if (stickyUri) {
+                setStickyText(text);
+            }
 
             let o:any = {
+                sticky:stickyUri || "",
                 sort,displayName, description: description.replaceAll(SIGNATURE, ""), copy: copy || [], highlight: highlight || "yes",
                 shortName: uri.split("/").at(-1), blockList, allowList, everyList, mustUrl: mustUrl || [], blockUrl: blockUrl || [],
             };
@@ -181,6 +197,7 @@ export default function Home({feed, updateSession, VIP}) {
             }) || [];
 
             reset(o);
+            setMode(_mode);
             setShortNameLocked(true);
             setLanguages(languages || []);
             setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
@@ -189,6 +206,38 @@ export default function Home({feed, updateSession, VIP}) {
             setKeywords(keywords);
         }
     }, [feed]);
+
+    const submitSticky = async () => {
+        const v = stickyRef.current.value;
+        if (v.trim() === "") {
+            setValue("sticky", "");
+        } else {
+            if (typeof recaptcha !== 'undefined') {
+                setBusy(true);
+                recaptcha.ready(async () => {
+                    //@ts-ignore
+                    const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                    //@ts-ignore
+                    const result = await localGet("/check/post", {captcha, post:v});
+                    if (result.status === 200) {
+                        setStickyError("");
+                        const {uri, text} = result.data;
+                        setStickyText(text);
+                        stickyRef.current.value = "";
+                        setValue("sticky", uri);
+                    } else if (result.status === 400) {
+                        setStickyError("Invalid post or post not found");
+                    } else if (result.status === 401) {
+                        setStickyError("Bluesky account error, please logout and login again");
+                    } else {
+                        setStickyError("Unknown error");
+                    }
+
+                    setBusy(false);
+                });
+            }
+        }
+    }
 
 
     const multiWordCallback = (fieldName:string) => {
@@ -209,7 +258,7 @@ export default function Home({feed, updateSession, VIP}) {
                         //@ts-ignore
                         const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
                         //@ts-ignore
-                        const result = await localGet("/user/check", {captcha, actors:[user]});
+                        const result = await localGet("/check/user", {captcha, actors:[user]});
                         if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
                             clearErrors(fieldName);
                             console.log(result.data[0]);
@@ -415,13 +464,72 @@ export default function Home({feed, updateSession, VIP}) {
                                         buttonCallback={() => {}}
                                         buttonDisabled={true}
                                     />
-                                    <InputTextAreaBasic fieldName="description" fieldReadableName="Description (Max 300 characters)" options={{}} useFormReturn={useFormReturn} placeholder="This is an amazing feed, please use it" />
+                                    <InputTextAreaBasic fieldName="description" fieldReadableName="Description (Max 200 characters)" maxLength={200} options={{}} useFormReturn={useFormReturn} placeholder="This is an amazing feed, please use it" />
                                 </div>
                             </div>
                         </div>
 
                         <div className="bg-white p-2">
                             <div className="font-bold text-lg">Feed Settings</div>
+                            <div className="bg-sky-100 p-2 space-y-2">
+                                <div className="">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Sticky Post URI or URL (This shows up at the 1st or 2nd position of your feed)
+                                    </label>
+                                    <div className="text-sm font-light text-gray-600">Copy from browser or share button. Submit empty text to remove sticky.</div>
+                                </div>
+
+                                <div className="mt-1 flex rounded-md shadow-sm">
+                                    <div className="relative flex flex-grow items-stretch focus-within:z-10">
+                                        <input
+                                            ref={stickyRef}
+                                            type="text"
+                                            onKeyDown={async (e)  => {
+                                                if (e.key === "Enter") {
+                                                    await submitSticky();
+                                                }
+                                            }}
+                                            onChange={() => {
+                                                if (stickyRef.current.value.trim() !== "") {
+                                                    setStickyError("Tap \'Update Button\' to set sticky");
+                                                } else {
+                                                    setStickyError("");
+                                                }
+                                            }}
+                                            className={clsx("block w-full focus:outline-none sm:text-sm rounded-l-md p-2 lowercase",
+
+                                                stickyError? "pr-10 focus:border-red-500 focus:ring-red-500 border-red-300 text-red-900 placeholder-red-300"
+                                                    :"focus:border-gray-500 focus:ring-gray-500 border-gray-300 text-gray-900 placeholder-gray-300")}
+                                            aria-invalid="true"
+                                            placeholder="<handle>/post/<post> or https://bsky.app/profile/<handle>/post/<post> or at://<did>/app.bsky.feed.post/<post>"
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
+                                        onClick={submitSticky}
+                                    >
+                                        <span>Update</span>
+                                    </button>
+                                </div>
+                                {
+                                    stickyError &&
+                                    <p className="mt-2 text-sm text-red-600">
+                                        {stickyError}
+                                    </p>
+                                }
+
+                                {
+                                    watchSticky &&
+                                    <div className="p-2">
+                                        <div className="text-sm">Preview</div>
+                                        <InputTextBasic fieldName="sticky" disabled={true} fieldReadableName="" useFormReturn={useFormReturn} options={{}}/>
+                                        <div className="bg-gray-50 p-2">{stickyText}</div>
+                                    </div>
+                                }
+
+
+                            </div>
                             <div className="bg-lime-100 p-2 space-y-2">
                                 <InputRadio entriesPerRow={2} modifyText={_ => {
                                     return "text-base font-semibold";
@@ -618,238 +726,277 @@ export default function Home({feed, updateSession, VIP}) {
                         </div>
 
                         <div className="bg-white p-2 space-y-2">
-                            <div className="text-lg font-bold">Keyword Filters {VIP? "" : `(max ${MAX_KEYWORDS_PER_FEED})`}</div>
-                            <div>A post is blocked if it contains at least one blocked keyword, and is allowed only if it has no blocked keywords and at least one search keyword</div>
-                            <div className="bg-sky-200 p-2">
-                                <div className="font-semibold">Search location</div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {
-                                        KEYWORD_SETTING.map(x =>
-                                            <div key={x.id}
-                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
-                                                 onClick={() => {
-                                                     if (keywordSetting.indexOf(x.id) >= 0) {
-                                                         setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
-                                                     } else {
-                                                         setKeywordSetting([...keywordSetting, x.id]);
-                                                     }
-                                                     console.log(keywordSetting);
-                                                 }}>
-                                                <input type="checkbox"
-                                                       onChange={() => {}}
-                                                       onClick={(e) => {
-                                                           e.stopPropagation();
-                                                           if (keywordSetting.indexOf(x.id) >= 0) {
-                                                               setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
-                                                           } else {
-                                                               keywordSetting.push(x.id);
-                                                               setKeywordSetting([...keywordSetting]);
-                                                           }
-                                                       }}
-                                                       checked={keywordSetting.indexOf(x.id) >= 0}
-                                                       className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
-                                                />
-                                                <div>{x.txt}</div>
-                                            </div>)
-                                    }
-                                </div>
+                            <div className="text-lg font-bold">Mode</div>
+                            <div className="grid grid-cols-2 w-full items-center p-2 bg-lime-100">
                                 {
-                                    keywordSetting.length === 0 && <div className="text-red-700">Please select at least one keyword search method</div>
+                                    FEED_MODE.map(id =>
+                                        <div key={id}
+                                             className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                             onClick={() => {
+                                                 setMode(id);
+                                             }}>
+                                            <input type="checkbox"
+                                                   onChange={() => {}}
+                                                   onClick={(e) => {
+                                                       e.stopPropagation();
+                                                       setMode(id);
+                                                   }}
+                                                   checked={mode === id}
+                                                   className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                            />
+                                            <div>{id.slice(0,1).toUpperCase()}{id.slice(1)}</div>
+                                        </div>
+                                    )
                                 }
                             </div>
 
                             {
-                                process.env.NEXT_PUBLIC_DEV === "1" &&
-                                <div>
-                                    <div>Copy keywords from: </div>
-                                    <InputMultiWord
-                                        key="feed id"
-                                        className={clsx("border border-2 border-yellow-700 p-2 rounded-xl")}
-                                        labelText="Feed Id (Copy this from the browser URL)"
-                                        placeHolder="bsky.app/profile/did:plc:<user>/feed/<id>"
-                                        orderedList={false}
-                                        fieldName="copy"
-                                        handleItem={(item, value, onChange) => {
-                                            value.push(item);
-                                            value.sort(); // sorting algo
-                                            onChange(value);
-                                        }}
-                                        useFormReturn={useFormReturn}
-                                        check={(val, callback) => {
-                                            const v = val.startsWith("https://")? val.slice(8) : val;
-                                            if (!v.startsWith("bsky.app/profile/did:plc:") || !v.includes("/feed/")) {
-                                                setError("copy", {type:'custom', message:`${val} is not following the feed url format`});
-                                            } else if (getValues("copy").indexOf(v) >= 0){
-                                                setError("copy", {type:'custom', message:`${val} is already in the list`});
-                                            } else {
-                                                // Check feed
+                                mode === "user" &&
+                                <>
+                                    <div className="text-lg font-bold">User Filters {VIP? "" : `(max ${MAX_KEYWORDS_PER_FEED})`}</div>
 
-
-                                                callback(v);
-                                            }
-                                        }}/>
-                                </div>
+                                </>
                             }
 
 
-
-                            <div>
-                                <div className="font-semibold text-lg bg-lime-100 p-2">There are three ways keywords are filtered, tap the <span className="text-pink-600">different</span> <span className="text-yellow-600">colored</span> <span className="text-sky-600">tabs</span> below to see their differences</div>
-                                <div className={clsx("grid grid-cols-3")}>
-                                    {
-                                        KEYWORD_TYPES.map((x, i) =>
-                                            <div key={x} className={clsx(
-                                                ["bg-pink-100 hover:bg-pink-200", "bg-yellow-100 hover:bg-yellow-200", "bg-sky-100 hover:bg-sky-200"][i],
-                                                "flex items-center p-2 border border-x-2 border-t-2 border-b-0 border-black")}
-                                                 onClick={() => {
-                                                     setNewKeywordMode(x);
-                                                 }}>
-                                                <input
-                                                    id='keyword-filter-type'
-                                                    type="radio"
-                                                    value={x}
-                                                    checked={newKeywordMode === x}
-                                                    onChange={() => {}}
-                                                    onClick={() => {setNewKeywordMode(x)}}
-                                                    className="mr-2 focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
-                                                />
-                                                {x.slice(0,1).toUpperCase()+x.slice(1)}
-                                            </div>)
-                                    }
-                                </div>
-
-
-                                <div className={clsx("p-2 border border-l-2 border-r-2 border-y-0 border-black",
-                                    newKeywordMode === "token" && "bg-pink-100",
-                                    newKeywordMode === "segment" && "bg-yellow-100",
-                                    newKeywordMode === "hashtag" && "bg-sky-100"
-                                )}>
-                                    <div className="font-semibold">{`${newKeywordMode.slice(0,1).toUpperCase()}${newKeywordMode.slice(1)} Search`}</div>
-                                    {
-                                        newKeywordMode === "token" &&
-                                        <KeywordParser
-                                            editTag={editTag}
-                                            keyword="Token"
-                                            handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join(" ")}
-                                            validateKeyword={(word, reject) => {
-                                                const trimmed = word.trim();
-                                                if (!isValidToken(trimmed)) {
-                                                    return `Invalid keyword: Alphanumeric with accents and spaces only a-zA-ZÀ-ÖØ-öø-ÿ0-9`;
-                                                }
-                                                return validateKeyword(trimmed, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(" "));
-                                            }}
-                                            submitKeyword={(w, r, a) => {
-                                                setKeywords([...keywords, {t:"t", w:w.toLowerCase().trim(), a, r}]);
-                                                setEditTag(null);
-                                            }}>
-                                            <ul className="list-disc pl-4">
-                                                <li ><span className="font-bold">Does not work for non-latin languages</span> like Korean, Mandarin or Japanese, use <span className="font-bold underline">Segment</span> Mode</li>
-                                                <li>In token mode, posts and search terms are set to lowercase, then split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is un-funny.jpg` becomes `this` `is` `un `funny` `jpg`</li>
-                                                <li>The search term is searched both separately e.g. `quickdraw` and `quick draw` will also find `#quickdraw`</li>
-                                                <li>Works for terms with accents like `bon appétit`</li>
-                                                <li>Might not work well if the term is combined with other terms, e.g. searching for `cat` will not find `caturday`, search for `caturday` separately or use Segment mode</li>
-                                                <li>A desired token might often appear with undesired terms, like `one piece swimsuit` when looking for the anime `one piece`</li>
-                                                <li>To prevent this, use an ignore combination to add `swimsuit` to reject `one piece swimsuit` if it appears but accept `one piece`</li>
-                                            </ul>
-                                        </KeywordParser>
-                                    }
-                                    {
-                                        newKeywordMode === "segment" && <KeywordParser
-                                            editTag={editTag}
-                                            keyword="Segment"
-                                            handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join("")}
-                                            validateKeyword={(word, reject) => {
-                                                const trimmed = word.trim();
-                                                return validateKeyword(trimmed, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(""));
-                                            }}
-                                            submitKeyword={(w, r, a) => {
-                                                setKeywords([...keywords, {t:"s", w:w.toLowerCase().trim(), a, r}]);
-                                                setEditTag(null);
-                                            }}>
-                                            <ul className="list-disc pl-4">
-                                                <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>
-                                                <li>For example: `cat` is inside both `concatenation` and `cataclysm`</li>
-                                                <li>To prevent this, add the prefix and suffix of common terms to reject</li>
-                                                <li>This is the preferred way to search for non-latin words like アニメ</li>
-                                            </ul>
-                                        </KeywordParser>
-                                    }
-
-                                    {
-                                        newKeywordMode === "hashtag" && <KeywordParser
-                                            editTag={editTag}
-                                            keyword="Hashtag"
-                                            prefix="#"
-                                            handleTokenization={null}
-                                            validateKeyword={term => {
-                                                if (!VIP && keywords.length >= MAX_KEYWORDS_PER_FEED) {
-                                                    return `Too many keywords, max ${MAX_KEYWORDS_PER_FEED}`;
-                                                }
-                                                if (term.startsWith("#")) {
-                                                    return "Hashtag does not need to start with #, already handled by server";
-                                                }
-                                                if (keywords.find(x => x.t === "#" && x.w === term)) {
-                                                    return "Hashtag already in list";
-                                                }
-                                                return null;
-                                            }} submitKeyword={(w, rejectWords, a) => {
-                                            setKeywords([...keywords, {t:"#", w:w.toLowerCase(), a}]);
-                                            setEditTag(null);
-                                        }}
-                                        >
-                                            <ul className="list-disc pl-4">
-                                                <li>Posts are searched for hashtags</li>
-                                            </ul>
-                                        </KeywordParser>
-                                    }
-                                    <div className="mt-4 font-semibold">Keywords ({keywords.length}{!VIP && `/${MAX_KEYWORDS_PER_FEED}`})</div>
-                                    <SortableWordBubbles
-                                        className="mt-2"
-                                        value={keywords}
-                                        selectable={true}
-                                        valueModifier={(val) => {
-                                            switch (val.t) {
-                                                case "#":
-                                                    return `#${val.w}`;
-                                                case "s":
-                                                    return `[${val.w}] [${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
-                                                case "t":
-                                                    return `${val.w} [${val.r.map(x => [x.p, val.w, x.s].filter(x => x).join(" ")).join(",")}]`;
+                            {
+                                mode === "keyword" &&
+                                <>
+                                    <div className="text-lg font-bold">Keyword Filters {VIP? "" : `(max ${MAX_KEYWORDS_PER_FEED})`}</div>
+                                    <div>A post is blocked if it contains at least one blocked keyword, and is allowed only if it has no blocked keywords and at least one search keyword</div>
+                                    <div className="bg-sky-200 p-2">
+                                        <div className="font-semibold">Search location</div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {
+                                                KEYWORD_SETTING.map(x =>
+                                                    <div key={x.id}
+                                                         className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                                         onClick={() => {
+                                                             if (keywordSetting.indexOf(x.id) >= 0) {
+                                                                 setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
+                                                             } else {
+                                                                 setKeywordSetting([...keywordSetting, x.id]);
+                                                             }
+                                                             console.log(keywordSetting);
+                                                         }}>
+                                                        <input type="checkbox"
+                                                               onChange={() => {}}
+                                                               onClick={(e) => {
+                                                                   e.stopPropagation();
+                                                                   if (keywordSetting.indexOf(x.id) >= 0) {
+                                                                       setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
+                                                                   } else {
+                                                                       keywordSetting.push(x.id);
+                                                                       setKeywordSetting([...keywordSetting]);
+                                                                   }
+                                                               }}
+                                                               checked={keywordSetting.indexOf(x.id) >= 0}
+                                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                                        />
+                                                        <div>{x.txt}</div>
+                                                    </div>)
                                             }
-                                            return `#${JSON.stringify(val)}`;
-                                        }}
-                                        classModifier={(val, index, original) => {
-                                            if (editTag && editTag.w === val.w) {
-                                                return original.replace("bg-white", "bg-gray-200 hover:bg-gray-300");
-                                            } else if (val.a) {
-                                                return original.replace("bg-white", "bg-lime-100 hover:bg-lime-300");
-                                            } else {
-                                                return original.replace("bg-white", "bg-red-300 hover:bg-red-500");
-                                            }
-                                        }}
-                                        buttonCallback={(val, action) => {
-                                            if (action === "x") {
-                                                setKeywords([...keywords.filter(x => !(x.t === val.t && x.w === val.w))]);
-                                            } else if (action === "o") {
-                                                if (editTag && editTag.w === val.w) {
-                                                    setEditTag(null)
-                                                } else {
-                                                    switch (val.t) {
-                                                        case "t": {setNewKeywordMode('token'); break;}
-                                                        case "s": {setNewKeywordMode('segment'); break;}
-                                                        case "#": {setNewKeywordMode('hashtag'); break;}
+                                        </div>
+                                        {
+                                            keywordSetting.length === 0 && <div className="text-red-700">Please select at least one keyword search method</div>
+                                        }
+                                    </div>
+                                    {
+                                        process.env.NEXT_PUBLIC_DEV === "1" &&
+                                        <div>
+                                            <div>Copy keywords from: </div>
+                                            <InputMultiWord
+                                                key="feed id"
+                                                className={clsx("border border-2 border-yellow-700 p-2 rounded-xl")}
+                                                labelText="Feed Id (Copy this from the browser URL)"
+                                                placeHolder="bsky.app/profile/did:plc:<user>/feed/<id>"
+                                                orderedList={false}
+                                                fieldName="copy"
+                                                handleItem={(item, value, onChange) => {
+                                                    value.push(item);
+                                                    value.sort(); // sorting algo
+                                                    onChange(value);
+                                                }}
+                                                useFormReturn={useFormReturn}
+                                                check={(val, callback) => {
+                                                    const v = val.startsWith("https://")? val.slice(8) : val;
+                                                    if (!v.startsWith("bsky.app/profile/did:plc:") || !v.includes("/feed/")) {
+                                                        setError("copy", {type:'custom', message:`${val} is not following the feed url format`});
+                                                    } else if (getValues("copy").indexOf(v) >= 0){
+                                                        setError("copy", {type:'custom', message:`${val} is already in the list`});
+                                                    } else {
+                                                        // Check feed
+
+
+                                                        callback(v);
                                                     }
-                                                    setEditTag(val);
-                                                }
+                                                }}/>
+                                        </div>
+                                    }
 
-                                                // change type to match tag, fill up form, remove from list
+
+                                    <div>
+                                        <div className="font-semibold text-lg bg-lime-100 p-2">There are three ways keywords are filtered, tap the <span className="text-pink-600">different</span> <span className="text-yellow-600">colored</span> <span className="text-sky-600">tabs</span> below to see their differences</div>
+                                        <div className={clsx("grid grid-cols-3")}>
+                                            {
+                                                KEYWORD_TYPES.map((x, i) =>
+                                                    <div key={x} className={clsx(
+                                                        ["bg-pink-100 hover:bg-pink-200", "bg-yellow-100 hover:bg-yellow-200", "bg-sky-100 hover:bg-sky-200"][i],
+                                                        "flex items-center p-2 border border-x-2 border-t-2 border-b-0 border-black")}
+                                                         onClick={() => {
+                                                             setNewKeywordMode(x);
+                                                         }}>
+                                                        <input
+                                                            id='keyword-filter-type'
+                                                            type="radio"
+                                                            value={x}
+                                                            checked={newKeywordMode === x}
+                                                            onChange={() => {}}
+                                                            onClick={() => {setNewKeywordMode(x)}}
+                                                            className="mr-2 focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
+                                                        />
+                                                        {x.slice(0,1).toUpperCase()+x.slice(1)}
+                                                    </div>)
                                             }
-                                        }} />
-                                </div>
-                            </div>
+                                        </div>
+
+
+                                        <div className={clsx("p-2 border border-l-2 border-r-2 border-y-0 border-black",
+                                            newKeywordMode === "token" && "bg-pink-100",
+                                            newKeywordMode === "segment" && "bg-yellow-100",
+                                            newKeywordMode === "hashtag" && "bg-sky-100"
+                                        )}>
+                                            <div className="font-semibold">{`${newKeywordMode.slice(0,1).toUpperCase()}${newKeywordMode.slice(1)} Search`}</div>
+                                            {
+                                                newKeywordMode === "token" &&
+                                                <KeywordParser
+                                                    editTag={editTag}
+                                                    keyword="Token"
+                                                    handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join(" ")}
+                                                    validateKeyword={(word, reject) => {
+                                                        const trimmed = word.trim();
+                                                        if (!isValidToken(trimmed)) {
+                                                            return `Invalid keyword: Alphanumeric with accents and spaces only a-zA-ZÀ-ÖØ-öø-ÿ0-9`;
+                                                        }
+                                                        return validateKeyword(trimmed, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(" "));
+                                                    }}
+                                                    submitKeyword={(w, r, a) => {
+                                                        setKeywords([...keywords, {t:"t", w:w.toLowerCase().trim(), a, r}]);
+                                                        setEditTag(null);
+                                                    }}>
+                                                    <ul className="list-disc pl-4">
+                                                        <li ><span className="font-bold">Does not work for non-latin languages</span> like Korean, Mandarin or Japanese, use <span className="font-bold underline">Segment</span> Mode</li>
+                                                        <li>In token mode, posts and search terms are set to lowercase, then split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is un-funny.jpg` becomes `this` `is` `un `funny` `jpg`</li>
+                                                        <li>The search term is searched both separately e.g. `quickdraw` and `quick draw` will also find `#quickdraw`</li>
+                                                        <li>Works for terms with accents like `bon appétit`</li>
+                                                        <li>Might not work well if the term is combined with other terms, e.g. searching for `cat` will not find `caturday`, search for `caturday` separately or use Segment mode</li>
+                                                        <li>A desired token might often appear with undesired terms, like `one piece swimsuit` when looking for the anime `one piece`</li>
+                                                        <li>To prevent this, use an ignore combination to add `swimsuit` to reject `one piece swimsuit` if it appears but accept `one piece`</li>
+                                                    </ul>
+                                                </KeywordParser>
+                                            }
+                                            {
+                                                newKeywordMode === "segment" && <KeywordParser
+                                                    editTag={editTag}
+                                                    keyword="Segment"
+                                                    handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join("")}
+                                                    validateKeyword={(word, reject) => {
+                                                        const trimmed = word.trim();
+                                                        return validateKeyword(trimmed, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(""));
+                                                    }}
+                                                    submitKeyword={(w, r, a) => {
+                                                        setKeywords([...keywords, {t:"s", w:w.toLowerCase().trim(), a, r}]);
+                                                        setEditTag(null);
+                                                    }}>
+                                                    <ul className="list-disc pl-4">
+                                                        <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>
+                                                        <li>For example: `cat` is inside both `concatenation` and `cataclysm`</li>
+                                                        <li>To prevent this, add the prefix and suffix of common terms to reject</li>
+                                                        <li>This is the preferred way to search for non-latin words like アニメ</li>
+                                                    </ul>
+                                                </KeywordParser>
+                                            }
+
+                                            {
+                                                newKeywordMode === "hashtag" && <KeywordParser
+                                                    editTag={editTag}
+                                                    keyword="Hashtag"
+                                                    prefix="#"
+                                                    handleTokenization={null}
+                                                    validateKeyword={term => {
+                                                        if (!VIP && keywords.length >= MAX_KEYWORDS_PER_FEED) {
+                                                            return `Too many keywords, max ${MAX_KEYWORDS_PER_FEED}`;
+                                                        }
+                                                        if (term.startsWith("#")) {
+                                                            return "Hashtag does not need to start with #, already handled by server";
+                                                        }
+                                                        if (keywords.find(x => x.t === "#" && x.w === term)) {
+                                                            return "Hashtag already in list";
+                                                        }
+                                                        return null;
+                                                    }} submitKeyword={(w, rejectWords, a) => {
+                                                    setKeywords([...keywords, {t:"#", w:w.toLowerCase(), a}]);
+                                                    setEditTag(null);
+                                                }}
+                                                >
+                                                    <ul className="list-disc pl-4">
+                                                        <li>Posts are searched for hashtags</li>
+                                                    </ul>
+                                                </KeywordParser>
+                                            }
+                                            <div className="mt-4 font-semibold">Keywords ({keywords.length}{!VIP && `/${MAX_KEYWORDS_PER_FEED}`})</div>
+                                            <SortableWordBubbles
+                                                className="mt-2"
+                                                value={keywords}
+                                                selectable={true}
+                                                valueModifier={(val) => {
+                                                    switch (val.t) {
+                                                        case "#":
+                                                            return `#${val.w}`;
+                                                        case "s":
+                                                            return `[${val.w}] [${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
+                                                        case "t":
+                                                            return `${val.w} [${val.r.map(x => [x.p, val.w, x.s].filter(x => x).join(" ")).join(",")}]`;
+                                                    }
+                                                    return `#${JSON.stringify(val)}`;
+                                                }}
+                                                classModifier={(val, index, original) => {
+                                                    if (editTag && editTag.w === val.w) {
+                                                        return original.replace("bg-white", "bg-gray-200 hover:bg-gray-300");
+                                                    } else if (val.a) {
+                                                        return original.replace("bg-white", "bg-lime-100 hover:bg-lime-300");
+                                                    } else {
+                                                        return original.replace("bg-white", "bg-red-300 hover:bg-red-500");
+                                                    }
+                                                }}
+                                                buttonCallback={(val, action) => {
+                                                    if (action === "x") {
+                                                        setKeywords([...keywords.filter(x => !(x.t === val.t && x.w === val.w))]);
+                                                    } else if (action === "o") {
+                                                        if (editTag && editTag.w === val.w) {
+                                                            setEditTag(null)
+                                                        } else {
+                                                            switch (val.t) {
+                                                                case "t": {setNewKeywordMode('token'); break;}
+                                                                case "s": {setNewKeywordMode('segment'); break;}
+                                                                case "#": {setNewKeywordMode('hashtag'); break;}
+                                                            }
+                                                            setEditTag(val);
+                                                        }
+
+                                                        // change type to match tag, fill up form, remove from list
+                                                    }
+                                                }} />
+                                        </div>
+                                    </div>
+
+                                </>
+                            }
                         </div>
 
-                        <div className="bg-white p-2 space-y-2 hidden">
+                        {
+                            /*
+                               <div className="bg-white p-2 space-y-2 hidden">
                             <div className="text-lg font-bold">URL Filters</div>
                             <div>Use *.domain.tld to get all subdomains for domain.tld</div>
                             {
@@ -888,6 +1035,8 @@ export default function Home({feed, updateSession, VIP}) {
                                         }}/>)
                             }
                         </div>
+                             */
+                        }
 
                         <div className="p-2 bg-white">
                             <div className="font-bold text-lg">File Backup</div>
@@ -895,11 +1044,11 @@ export default function Home({feed, updateSession, VIP}) {
                             <div className="w-full lg:flex justify-between gap-4">
                                 <button type="button"
                                         onClick={() => {
-                                            const {sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight} = getValues();
+                                            const {sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky} = getValues();
                                             const allowList = (_allowList || []).map(x => x.did);
                                             const blockList = (_blockList || []).map(x => x.did);
                                             const everyList = (_everyList || []).map(x => x.did);
-                                            const result = {languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), copy, highlight,
+                                            const result = {languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), copy, highlight, sticky,
                                                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl};
                                             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
                                             const dlAnchorElem = document.createElement('a');
@@ -931,12 +1080,9 @@ export default function Home({feed, updateSession, VIP}) {
                                                         var content = readerEvent.target.result as string; // this is the content!
                                                         console.log( content );
 
-                                                        let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight} = JSON.parse(content);
+                                                        let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, sticky} = JSON.parse(content);
 
-                                                        let o:any = {
-                                                            sort,displayName, description, copy: copy || [], highlight: highlight || "yes",
-                                                            shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [],
-                                                        };
+
 
                                                         const actors = [...blockList, ...allowList, ...everyList];
 
@@ -948,7 +1094,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                                     //@ts-ignore
                                                                     const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
                                                                     //@ts-ignore
-                                                                    result = await localGet("/user/check", {captcha, actors});
+                                                                    result = await localGet("/check/user", {captcha, actors});
                                                                 }
                                                                 if (!skip && result && (result.status !== 200 || !Array.isArray(result.data))) {
                                                                     // fail
@@ -971,17 +1117,37 @@ export default function Home({feed, updateSession, VIP}) {
                                                                         return o;
                                                                     }) || [];
 
-                                                                    setShortNameLocked(true);
-                                                                    setLanguages(languages || []);
-                                                                    setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
-                                                                    setKeywordSetting(keywordSetting || ["text"]);
-                                                                    setPics(pics || ["text", "pics"]);
-                                                                    setKeywords(keywords);
+                                                                    recaptcha.ready(async () => {
+                                                                        if (sticky) {
+                                                                            //@ts-ignore
+                                                                            const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                                                                            //@ts-ignore
+                                                                            const result = await localGet("/check/post", {captcha, post:sticky});
+                                                                            if (result.status === 200) {
+                                                                                const {uri:stickyUri, text} = result.data;
+                                                                                if (stickyUri) {
+                                                                                    sticky = stickyUri;
+                                                                                    setStickyText(text);
+                                                                                }
+                                                                            }
+                                                                        }
 
-                                                                    reset(o);
+                                                                        let o:any = {
+                                                                            sort,displayName, description, copy: copy || [], highlight: highlight || "yes",
+                                                                            shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [], sticky
+                                                                        };
+                                                                        setShortNameLocked(true);
+                                                                        setLanguages(languages || []);
+                                                                        setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
+                                                                        setKeywordSetting(keywordSetting || ["text"]);
+                                                                        setPics(pics || ["text", "pics"]);
+                                                                        setKeywords(keywords);
+
+                                                                        reset(o);
+                                                                        setBusy(false);
+                                                                    });
                                                                 }
 
-                                                                setBusy(false);
                                                                 setTimeout(() => {
                                                                     input.remove();
                                                                 }, 100);

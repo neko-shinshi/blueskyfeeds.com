@@ -1,8 +1,10 @@
 export const MAX_FEEDS_PER_USER = 3;
 export const MAX_KEYWORDS_PER_FEED = 40;
 
-export const SIGNATURE = " //Made at BlueskyFeeds.com"
+
 export const SUPPORTED_LANGUAGES = ["", "en", "pt", "ja", "ko", "uk", "es", "fa", "tr", "de", "nl", "fr", "id"];
+export const FEED_MODE = ["keyword", "user"];
+
 export const POST_LEVELS = [{id:"top", txt:"Top-level posts"}, {id:"reply", txt: "Quote Posts & Replies"}];
 export const SORT_ORDERS = [
     {id:"new", txt:"Latest - Most recent post at top"},
