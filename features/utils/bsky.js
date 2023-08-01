@@ -66,15 +66,13 @@ const getSavedFeedIds = async (agent) => {
 const getSavedFeeds = async (agent) => {
     const feeds = await getSavedFeedIds(agent);
     if (feeds && feeds.saved) {
-        let {success, data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feeds.saved});
-        if (success) {
-            return data.feeds.map(x => {
-                if (feeds.pinned.indexOf(x.uri) >= 0) {
-                    return {...x, pinned:true};
-                }
-                return x;
-            });
-        }
+        let {data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feeds.saved});
+        return data.feeds.map(x => {
+            if (feeds.pinned.indexOf(x.uri) >= 0) {
+                return {...x, pinned:true};
+            }
+            return x;
+        });
     }
     return [];
 }

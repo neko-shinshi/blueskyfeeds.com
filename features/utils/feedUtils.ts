@@ -2,7 +2,7 @@ import {getCustomFeeds, getSavedFeeds} from "features/utils/bsky";
 
 
 export const getMyFeeds = async (agent, db) => {
-    let my = await getCustomFeeds(agent);
+    let my = (await getCustomFeeds(agent)) as any[];
     const did = agent.session.did;
     const regex = new RegExp(`^at://${did}`);
     let [editableFeeds, feedViews] = await Promise.all([
@@ -26,7 +26,6 @@ export const getMyFeeds = async (agent, db) => {
     });
 
     let saved = await getSavedFeeds(agent);
-
     my = my.reduce((acc, x) => {
         const editable = editableFeeds.find(y => y._id === x.uri);
         const views = feedViews.find(y => y._id === x.uri);
@@ -54,11 +53,12 @@ export const getMyFeeds = async (agent, db) => {
         return acc;
     }, []);
 
+
     return [ ...saved, ...my];
 }
 
 export const getFeedDetails = async (agent, db, feedId) => {
-     const feeds = await getCustomFeeds(agent);
+     const feeds = (await getCustomFeeds(agent)) as any[];
      const foundFeed = feeds.find(x => x.uri.endsWith(feedId));
      if (!foundFeed) { return false; }
      const dbData = await db.feeds.findOne({_id: foundFeed.uri});
