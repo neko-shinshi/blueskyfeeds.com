@@ -197,7 +197,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                 <PageHeader title={title} description={description} />
 
                 <div className="bg-white border border-2 border-black p-2 rounded-xl">
-                    <div>Search Feed Directory</div>
+                    <div className="font-bold">Search Feed Directory</div>
                     <div className="flex place-items-center gap-2 bg-sky-200 w-fit p-2 rounded-xl">
                         <div className="flex">
                             <input ref={searchTextRef} className="rounded-l-md p-1" type="text" onKeyDown={async (event)  => {
@@ -275,8 +275,6 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                     }
                 </div>
             </div>
-
-            <div className="text-transparent">1</div>
         </>
     )
 }
