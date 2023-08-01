@@ -171,7 +171,7 @@ export async function getServerSideProps({req, res, query}) {
                 if (sticky) {limit = limit -1;}
                 result = await db.posts.find(dbQuery).sort(sortMethod).project({createdAt: 1}).limit(limit).toArray();
                 if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}};
-                if (sticky) {result.splice(1,0, {_id: sticky.p})}
+                if (sticky) {result.splice(1,0, {_id: sticky})}
                 // return last item + timestamp
                 const last = result.at(-1);
                 if (last) {
@@ -184,7 +184,7 @@ export async function getServerSideProps({req, res, query}) {
                 if (sticky) {limit = limit -1;}
                 result = await db.posts.find(dbQuery).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
                 if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}};
-                if (sticky) {result.splice(randomInt(0, 2),0, {_id: sticky.p})}
+                if (sticky) {result.splice(randomInt(0, 2),0, {_id: sticky})}
                 cursor = `${limit}`;
             }
         }
