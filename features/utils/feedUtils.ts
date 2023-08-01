@@ -8,7 +8,7 @@ export const getMyFeeds = async (agent, db) => {
     let [editableFeeds, feedViews] = await Promise.all([
         db.feeds.find({_id: regex}).project({_id:1}).toArray(),
         db.feedViews.aggregate([
-            {$match: {feed: new RegExp(`^at://did:plc:tazrmeme4dzahimsykusrwrk`)}},
+            {$match: {feed: new RegExp(`^at://${did}`)}},
             {$group: {_id: "$feed", expireAt: {$push: "$expireAt"}}},
         ]).toArray(),
     ]);
@@ -37,7 +37,6 @@ export const getMyFeeds = async (agent, db) => {
                 if (views) {
                     found.views = views;
                 }
-
             }
         } else {
             x.my = true;
