@@ -44,15 +44,13 @@ const getCustomFeeds = async (agent) => {
 }
 
 const getSavedFeedIds = async (agent) => {
-    let {success, data} = await agent.api.app.bsky.actor.getPreferences();
-
-    if (success) {
-        const feeds = data.preferences.find(x =>  x["$type"] === "app.bsky.actor.defs#savedFeedsPref");
-        if (feeds) {
-            const {$type, ...rest} = feeds;
-            return rest;
-        }
+    let { data} = await agent.api.app.bsky.actor.getPreferences();
+    const feeds = data.preferences.find(x =>  x["$type"] === "app.bsky.actor.defs#savedFeedsPref");
+    if (feeds) {
+        const {$type, ...rest} = feeds;
+        return rest;
     }
+
     return {};
 }
 
@@ -215,23 +213,19 @@ const getFollowing = async (agent, actor) => {
     do {
         const params = {actor, ...cursor, limit:100};
         console.log("following", uris.size, cursor);
-        const {data, success} = await agent.getFollows(params);
-        if (success) {
-            const {cursor:newCursor, follows} = data;
-            if (newCursor === cursor?.cursor) {
-                return uris;
-            }
-            const oldSize = uris.size;
-            follows.forEach(x => uris.add(x.did));
-            const diff = uris.size - oldSize;
-            console.log("following +",diff)
-            if (!newCursor || diff === 0) {
-                cursor = null;
-            } else {
-                cursor = {cursor: newCursor};
-            }
+        const {data} = await agent.getFollows(params);
+        const {cursor:newCursor, follows} = data;
+        if (newCursor === cursor?.cursor) {
+            return uris;
+        }
+        const oldSize = uris.size;
+        follows.forEach(x => uris.add(x.did));
+        const diff = uris.size - oldSize;
+        console.log("following +",diff)
+        if (!newCursor || diff === 0) {
+            cursor = null;
         } else {
-            return false;
+            cursor = {cursor: newCursor};
         }
     } while (cursor);
 
