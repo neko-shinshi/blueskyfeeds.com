@@ -171,6 +171,7 @@ export default function Home({feed, updateSession, VIP}) {
             setPics(["text", "pics"])
         } else {
             let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode:_mode, sticky} = feed;
+           console.log("sticky", sticky);
             const {uri:stickyUri, text} = sticky;
             if (stickyUri) {
                 setStickyText(text);
@@ -371,7 +372,7 @@ export default function Home({feed, updateSession, VIP}) {
                         useFormReturn={useFormReturn}
                         cleanUpData={async (data) => {
                             setBusy(true);
-                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight} = data;
+                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky} = data;
                             const allowList = (_allowList || []).map(x => x.did);
                             const blockList = (_blockList || []).map(x => x.did);
                             const everyList = (_everyList || []).map(x => x.did);
@@ -386,7 +387,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 }
                             }
 
-                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, copy, highlight,
+                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, copy, highlight, sticky,
                                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl};
                             console.log(result);
 
@@ -492,7 +493,7 @@ export default function Home({feed, updateSession, VIP}) {
                                             }}
                                             onChange={() => {
                                                 if (stickyRef.current.value.trim() !== "") {
-                                                    setStickyError("Tap \'Update Button\' to set sticky");
+                                                    setStickyError("Tap \'Update\' Button to set sticky");
                                                 } else {
                                                     setStickyError("");
                                                 }
