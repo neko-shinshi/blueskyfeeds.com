@@ -6,13 +6,6 @@ const {secondsAfter} = require("../utils/timeUtils");
 const id = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/gordonramses";
 
 const handler = async (user, cursor, limit) => {
-    let start = 0;
-    if (cursor) {
-        const v = parseInt(cursor);
-        if (!isNaN(v)) {
-            start = v;
-        }
-    }
     const db = await connectToDatabase();
     if (!db) {return {feed: [], cursor:""};} // DB fail
 
@@ -23,12 +16,10 @@ const handler = async (user, cursor, limit) => {
         return {feed: [], cursor:""}; // Not ready yet
     }
 
-    if (cursor) {
-        const end = start + limit;
-        return {feed: feed.posts.slice(start, end).map(x => {return {post:x}}), cursor: `${end}`};
-    } else {
-        return {feed: feed.posts.slice(0, limit).map(x => {return {post:x}}), cursor: `${limit}`};
-    }
+    shuffleArray(feed.posts);
+
+    return {feed: feed.posts.slice(0, limit).map(x => {return {post:x}}), cursor: "0"};
+
     // Cursor is just the index
 }
 
@@ -56,9 +47,8 @@ const generate = async() => {
             return !reply && likeCount >= 20 && likeCount <=50;
         })).map(x => x.uri);
 
-        shuffleArray(posts);
         const result = await db.dataAlgoFeed.updateOne({_id: "feed_gordon-ramses"}, {$set:{posts}}, {upsert:true});
-        console.log(result);
+        console.log("gordon-ramses", result);
 
     } catch {}
 }
