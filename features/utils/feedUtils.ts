@@ -1,6 +1,6 @@
 import {getCustomFeeds, getSavedFeeds} from "features/utils/bsky";
-
-
+const MS_ONE_WEEK = 7*24*60*60*1000;
+const MS_ONE_DAY = 24*60*60*1000;
 export const getMyFeeds = async (agent, db) => {
     let my = (await getCustomFeeds(agent)) as any[];
     const did = agent.session.did;
@@ -19,7 +19,8 @@ export const getMyFeeds = async (agent, db) => {
         const {_id, expireAt} = x;
         const week = expireAt.length;
         const day = expireAt.reduce((acc,y) => {
-            if ((now - y.getTime()) < 86400000) {acc++;}
+            const diff = now - y.getTime() + MS_ONE_WEEK;
+            if (diff < MS_ONE_DAY) {acc++;}
             return acc;
         }, 0);
         return {_id, week, day};
