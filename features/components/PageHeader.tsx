@@ -1,11 +1,14 @@
 import {FaInstagram, FaMastodon, FaTumblr, FaTwitter} from "react-icons/fa";
 
-export default function PageHeader({title, description}) {
+export default function PageHeader({title, description, description2=""}) {
     return <div className="p-2 bg-white rounded-xl border-2 border-black space-y-1">
         <h1 className="text-center text-2xl font-bold">{title}</h1>
         <h2 className="text-center text-lg" onClick={() => {
             console.log(1);
         }}>{description}</h2>
+        {description2 &&
+            <h3 className="text-center text-sm">{description2}</h3>
+        }
 
 
         <div className="md:hidden block w-full text-center pb-2">Powered by <a href="https://www.anianimals.moe" className="text-blue-500 underline">AniAnimals.moe</a></div>

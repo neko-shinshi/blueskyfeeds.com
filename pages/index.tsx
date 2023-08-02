@@ -195,7 +195,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                 }
                 }/>
             <div className="bg-sky-200 w-full max-w-7xl rounded-xl overflow-hidden p-4 space-y-4">
-                <PageHeader title={title} description={description} />
+                <PageHeader title={title} description={description} description2="*This site is not affiliated with Bluesky or the ATProtocol, both of which are still in Beta. Feeds here are not guaranteed to work 100% of the time as it is maintained by only 1 person, and may be impacted by changes in Bluesky." />
 
                 <div className="bg-white border border-2 border-black p-2 rounded-xl">
                     <div className="font-bold">Search Feed Directory</div>
@@ -239,16 +239,12 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                     <div className="bg-lime-100 border border-black border-2 p-4 rounded-xl space-y-2">
                         <div className="inline-flex justify-between w-full place-items-center">
                             <div className="text-lg font-medium">Highlights of Feeds made here</div>
-                            {
-                                /*
-                                <Link href="/local-feeds">
+                            <Link href="/local-feeds">
                                 <button type="button"
                                         className="w-full inline-flex justify-center items-center p-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     <div className="text-lg font-medium">See More</div>
                                 </button>
                             </Link>
-                                 */
-                            }
 
                         </div>
 
