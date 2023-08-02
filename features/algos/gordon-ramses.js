@@ -1,5 +1,4 @@
 const {getAgent, getAllPosts} = require("../utils/bsky");
-const {randomInt} = require("crypto");
 const {connectToDatabase} = require("../utils/dbUtils");
 const {secondsAfter} = require("../utils/timeUtils");
 
@@ -36,7 +35,7 @@ const generate = async() => {
     const db = await connectToDatabase();
     if (!db) {return;}
     try {
-        await db.dataAlgoFeed.insertOne({_id: "feed_lock_gordon-ramses", expireAt: secondsAfter(randomInt(30, 45)*60)});
+        await db.dataAlgoFeed.insertOne({_id: "feed_lock_gordon-ramses", expireAt: secondsAfter(12*60*60)});
         // if successfully inserted, actually regenerate
 
         const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
