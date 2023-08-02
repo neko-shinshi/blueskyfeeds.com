@@ -130,6 +130,7 @@ const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 export default function Home({updateSession, feeds, popularMadeHere}) {
     const title = "Bluesky Social Feeds @ BlueskyFeeds.com";
     const description = "Find your perfect feed algorithm for Bluesky Social App, or build one yourself";
+    const longDescription = "Search Bluesky feeds, browse the Bluesky feed directory, or use our no-code Bluesky feed builder to make your own custom feed for yourself or your community here."
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
@@ -169,7 +170,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
     return (
         <>
             <HeadExtended title={title}
-                          description={description}/>
+                          description={longDescription}/>
             <PopupLoading isOpen={busy} setOpen={setBusy}/>
             <PopupConfirmation
                 isOpen={popupState === "delete"}
