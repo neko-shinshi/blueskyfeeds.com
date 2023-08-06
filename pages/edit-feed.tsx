@@ -560,7 +560,7 @@ export default function Home({feed, updateSession, VIP}) {
                                         FEED_MODES.map(({id, txt}) => {
                                             const updateMode = (id) => {
                                                 setMode(id);
-                                                if (mode === "user") {
+                                                if (mode === id) {
                                                     setValue("sort", "new");
                                                     setKeywords([]);
                                                     setValue("allowList", []);
