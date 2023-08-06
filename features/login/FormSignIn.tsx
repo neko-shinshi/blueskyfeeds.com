@@ -99,7 +99,7 @@ export default function FormSignIn() {
             <h1 className="mt-3 text-center text-2xl font-extrabold text-gray-900 ">
                 <span>Login with a Bluesky App Password to continue</span>
             </h1>
-            <Link href="/faq-app-password" target="_blank">
+            <Link href="/faq-app-password" target="_blank" rel="noreferrer">
                 <div className="flex place-items-center justify-center gap-2">
                 <BsFillInfoCircleFill className="w-4 h-4 text-blue-500"/><div className="text-center text-blue-500 hover:text-blue-700 hover:underline">What is an App Password?</div>
                 </div>
