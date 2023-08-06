@@ -175,7 +175,7 @@ export default async function handler(req, res) {
                     };
                 });
                 await db.allFeeds.bulkWrite(commands);
-                res.status(200).send();
+                res.status(200).json({did});
             } catch (e) {
                 console.log(e);
                 console.log("failed to edit feed");

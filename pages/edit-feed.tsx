@@ -46,7 +46,7 @@ import {IoArrowBackSharp} from "react-icons/io5";
 import {compressKeyword,} from "features/utils/objectUtils";
 import InputTextBasic from "features/input/InputTextBasic";
 import PopupWithInputText from "features/components/PopupWithInputText";
-import {all} from "axios";
+import {BiCopy} from "react-icons/bi";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -130,7 +130,7 @@ export default function Home({feed, updateSession, VIP}) {
     const [pics, setPics] = useState<string[]>([]);
     const [busy, setBusy] = useState(false);
     const [editTag, setEditTag] = useState<any>(null);
-    const [done, setDone] = useState(false);
+    const [done, setDone] = useState("");
     const [mode, setMode] = useState("keyword");
     const [subMode, setSubMode] = useState("");
     const [stickyText, setStickyText] = useState("");
@@ -421,10 +421,21 @@ export default function Home({feed, updateSession, VIP}) {
                     <div className="bg-white p-4">
                         <div className="font-bold">Your Feed has been saved.</div>
                         <ul className="list-disc pl-4 py-4">
-                            <li>It will take a while for posts to populate a new feed as we do not store any post text in our servers.<br/>We only process new posts as they arrive via the API. </li>
+                            {
+                                mode === "live" &&
+                                <li>It will take a while for posts to populate a new live feed as we do not store any post text in our servers. It only process new posts as they arrive via the firehose API. </li>
+                            }
+                            {
+                                mode === "user" &&
+                                <li>User feeds fetch data directly from Bluesky, and trigger when the feed is first opened, and can be re-triggered about ten minutes after the last trigger.</li>
+                            }
+                            <li><div className="flex place-items-center">Check your feed out
+                                <a className="ml-1 inline-flex underline text-blue-500 hover:text-blue-800" href={`https://bsky.app/profile/${done}/feed/${getValues("shortName")}`} target="_blank" rel="noreferrer">here</a>.
+                                Or copy it
+                                <BiCopy onClick={() => { navigator.clipboard.writeText(`https://bsky.app/profile/${done}/feed/${getValues("shortName")}`); alert("Url copied to clipboard")}} className="ml-1 h-4 w-4 text-blue-500 hover:text-blue-800"/></div></li>
                             <li>
-                                <div className="">It costs money to operate BlueskyFeeds.com, if you would like to contribute, please visit my
-                                    <a className="ml-1 inline-flex underline text-blue-500 hover:text-blue-800" href="https://ko-fi.com/anianimalsmoe">
+                                <div className="">It costs money to operate BlueskyFeeds.com servers, if you would like to contribute, please visit my
+                                    <a className="ml-1 inline-flex underline text-blue-500 hover:text-blue-800" href="https://ko-fi.com/anianimalsmoe" target="_blank" rel="noreferrer">
                                         Ko-Fi
                                         <div className="h-6 w-6">
                                             <Image width={25} height={25} alt="ko-fi icon" src="/ko-fi.png"/>
@@ -475,7 +486,7 @@ export default function Home({feed, updateSession, VIP}) {
                         }}
                         postUrl="/feed/submit" postCallback={async (result) => {
                         if (result.status === 200) {
-                            setDone(true);
+                            setDone(result.data.did);
                         }
                         setBusy(false);
                     }}
