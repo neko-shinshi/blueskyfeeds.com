@@ -22,6 +22,7 @@ const connectToDatabase = async () => {
                 sessions: db.collection("sessions"), // session keys for rollover
                 data: db.collection("data"),
                 dataAlgoFeed: db.collection("dataAlgoFeed"),
+                postsAlgoFeed: db.collection("postsAlgoFeed"),
                 allFeeds: db.collection("allFeeds"),
                 allHandles: db.collection("allHandles"),
                 feeds: db.collection("feeds"),
@@ -52,11 +53,14 @@ db.replies.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.likes.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.reposts.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.dataAlgoFeed.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
+db.feedViews.createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 } )
 
 db.allFeeds.createIndex( { likeCount: -1, indexedAt:1 } )
 db.feeds.createIndex({keywords:1})
 db.feedViews.createIndex({user:1, feed:1}, {unique:true})
 db.feedViews.createIndex({feed:1})
-db.feedViews.createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 } )
-
+db.dataAlgoFeed.createIndex( { _id: 1, indexedAt:-1 } )
+db.postsAlgoFeed.createIndex({feed:1})
+db.postsAlgoFeed.createIndex({feed:1, indexedAt:-1 } )
+db.postsAlgoFeed.createIndex({feed:1, likeCount:-1, indexedAt:-1 } )
  */

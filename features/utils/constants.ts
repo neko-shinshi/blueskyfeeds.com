@@ -1,17 +1,18 @@
 export const MAX_FEEDS_PER_USER = 3;
-export const MAX_KEYWORDS_PER_FEED = 40;
-
+export const MAX_KEYWORDS_PER_LIVE_FEED = 40;
+export const MAX_KEYWORDS_PER_USER_FEED = 3;
 
 export const SUPPORTED_LANGUAGES = ["", "en", "pt", "ja", "ko", "uk", "es", "fa", "tr", "de", "nl", "fr", "id"];
-export const FEED_MODE = ["keyword", "user"];
+export const FEED_MODES = [{id:"live", txt:"Listens for live posts. Only stores posts for 3 days."}, {id:"user", txt:"Looks at a specific user's data."}];
+export const USER_FEED_MODE = [{id:"posts", txt:"Search user's posts"}, {id:"likes", txt:"Search user's likes."}];
 
 export const POST_LEVELS = [{id:"top", txt:"Top-level posts"}, {id:"reply", txt: "Quote Posts & Replies"}];
 export const SORT_ORDERS = [
-    {id:"new", txt:"Latest - Most recent post at top"},
-    {id:"like", txt:"Likes - Highest Likes at top"},
-    {id:"ups", txt:"Engagement - Highest Likes, Reposts, & Quote Posts at top"},
-    {id:"sLike", txt:"Hot (Likes) - Hacker News sorting algorithm using likes only"},
-    {id:"sUps", txt:"Hot (Engagement) - Hacker News sorting algorithm using engagement"},
+    {id:"new", txt:"Latest - Most recent post on top", mode:["live", "user"]},
+    {id:"like", txt:"Likes - Highest Likes on top", mode:["live", "user"]},
+    {id:"ups", txt:"Engagement - Highest Likes, Reposts, & Quote Posts on top", mode:["live"]},
+    {id:"sLike", txt:"Hot (Likes) - Hacker News ranking algorithm using likes only", mode:["live"]},
+    {id:"sUps", txt:"Hot (Engagement) - Hacker News ranking algorithm using engagement", mode:["live"]},
 ];
 export const PICS_SETTING = [
     {id:"text", txt: "Text-only posts"},

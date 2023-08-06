@@ -1,10 +1,10 @@
-const { BskyAgent }  = require("@atproto/api");
-const {SIGNATURE} = require("./signature");
+import { BskyAgent }  from "@atproto/api";
+import {SIGNATURE} from "features/utils/signature";
+import {processQ} from "features/utils/queue";
 
-const getAgent = async (service, identifier, password) => {
+export const getAgent = async (service, identifier, password) => {
     const agent = new BskyAgent({ service: `https://${service}/` });
     try {
-        console.log("get agent", service, identifier, password);
         await agent.login({identifier, password});
         return agent;
     } catch (e) {
@@ -13,7 +13,7 @@ const getAgent = async (service, identifier, password) => {
     }
 }
 
-const rebuildAgentFromToken = async (token) => {
+export const rebuildAgentFromToken = async (token) => {
     const {sub:_did, did:__did, refreshJwt, accessJwt, service} = token;
     try {
         const agent = new BskyAgent({ service: `https://${service}/` });
@@ -26,7 +26,7 @@ const rebuildAgentFromToken = async (token) => {
 }
 
 
-const getCustomFeeds = async (agent) => {
+export const getCustomFeeds = async (agent) => {
     let cursor = {};
     let results = [];
     do {
@@ -55,7 +55,7 @@ const getSavedFeedIds = async (agent) => {
 }
 
 
-const getSavedFeeds = async (agent) => {
+export const getSavedFeeds = async (agent) => {
     const feeds = await getSavedFeedIds(agent);
     if (feeds && feeds.saved) {
         let {data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feeds.saved});
@@ -69,7 +69,7 @@ const getSavedFeeds = async (agent) => {
     return [];
 }
 
-const deleteFeed = async (agent, rkey) => {
+export const deleteFeed = async (agent, rkey) => {
     const record = {
         repo: agent.session.did,
         collection: 'app.bsky.feed.generator',
@@ -87,7 +87,7 @@ const deleteFeed = async (agent, rkey) => {
     return false;
 }
 
-const editFeed = async (agent, {img, shortName, displayName, description}) => {
+export const editFeed = async (agent, {img, shortName, displayName, description}) => {
     try {
         await agent.api.app.bsky.feed.describeFeedGenerator()
     } catch (err) {
@@ -118,7 +118,7 @@ const editFeed = async (agent, {img, shortName, displayName, description}) => {
     return await agent.api.com.atproto.repo.putRecord(record);
 }
 
-const getPostInfo = async (agent, postId) => {
+export const getPostInfo = async (agent, postId) => {
     let postUri = postId;
     if (!postUri.startsWith("at://did:plc:")) {
         if (postUri.startsWith("https://bsky.app/profile/")) {
@@ -129,7 +129,9 @@ const getPostInfo = async (agent, postId) => {
         const [{did}] = await getActorsInfo(agent, [user]);
         postUri = `at://${did}/app.bsky.feed.post/${post}`;
     }
+    console.log(postUri);
     try {
+
         const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris:[postUri]}));
         if (posts && Array.isArray(posts) && posts.length > 0) {
             const {record, uri} =  posts[0];
@@ -143,7 +145,7 @@ const getPostInfo = async (agent, postId) => {
     return {};
 }
 
-const getActorsInfo = async (agent, actors) => {
+export const getActorsInfo = async (agent, actors) => {
     if (Array.isArray(actors) && actors.length > 0) {
         const MAX_QUERY = 25;
         let allProfiles = [];
@@ -161,54 +163,59 @@ const getActorsInfo = async (agent, actors) => {
     }
 }
 
-const isVIP = (agent) => {
+export const isVIP = (agent) => {
     return ["did:plc:eubjsqnf5edgvcc6zuoyixhw",
         "did:plc:tazrmeme4dzahimsykusrwrk",
         "did:plc:2dozc4lhicvbmpsbxnicvdpj"
     ].indexOf(agent.session.did) >= 0;
 }
 
-const getAllPosts = async (agent, target, filter= (post) => true) => {
-    let cursor = {};
+export const getAllPosts = async (agent, target, filter= (post) => true) => {
+    let cursor:any = {};
     let uris = new Set();
     let posts = [];
     let found = 0;
-    do {
-        const params = {actor: target, ...cursor, limit:100};
-        const {data} = await agent.getAuthorFeed(params);
-        const {cursor:newCursor, feed} = data;
-        if (newCursor === cursor?.cursor) {
-            return posts;
-        }
-        const oldSize = uris.size;
-        feed.forEach(item => {
-            const {post} = item;
-            const {uri} = post;
-            if (!uris.has(uri)) {
-                uris.add(uri);
-                const {post:{author:{did}}} = item;
-                if (did === target && filter(post)) {
-                    const {post:{indexedAt}} = item;
-                    posts.push({uri, indexedAt});
-                }
+    try {
+        do {
+            const params = {actor: target, ...cursor, limit:100};
+            const {data} = await agent.getAuthorFeed(params);
+            const {cursor:newCursor, feed} = data;
+            if (newCursor === cursor?.cursor) {
+                return posts;
             }
-        });
-        found += feed.length;
-        console.log(found);
-        const diff = uris.size - oldSize;
-        if (!newCursor || diff === 0) {
-            cursor = null;
-        } else {
-            cursor = {cursor: newCursor};
-        }
-    } while (cursor);
+            const oldSize = uris.size;
+            feed.forEach(item => {
+                const {post} = item;
+                const {uri} = post;
+                if (!uris.has(uri)) {
+                    uris.add(uri);
+                    const {author:{did}} = post;
+                    if (did === target && filter(post)) {
+                        const {post:{indexedAt, likeCount}} = item;
+                        posts.push({uri, indexedAt, likeCount});
+                    }
+                }
+            });
+            found += feed.length;
+            console.log("found", found);
+            const diff = uris.size - oldSize;
+            if (!newCursor || diff === 0) {
+                cursor = null;
+            } else {
+                cursor = {cursor: newCursor};
+            }
+        } while (cursor);
+    } catch (e) {
+        console.log(e);
+    }
+
     console.log("complete");
 
     return posts;
 }
 
-const getFollowing = async (agent, actor) => {
-    let cursor = {};
+export const getFollowing = async (agent, actor) => {
+    let cursor:any = {};
     let uris = new Set();
     do {
         const params = {actor, ...cursor, limit:100};
@@ -232,7 +239,7 @@ const getFollowing = async (agent, actor) => {
     return uris;
 }
 
-const getRecentPostsFrom = async (agent, target, fromDateString, limit=30) => {
+export const getRecentPostsFrom = async (agent, target, fromDateString, limit=30) => {
     const params = {actor: target, limit};
     let uris = [];
     try {
@@ -249,6 +256,74 @@ const getRecentPostsFrom = async (agent, target, fromDateString, limit=30) => {
     return uris;
 }
 
-module.exports = {
-    getAllPosts, isVIP, getActorsInfo, getPostInfo, getAgent, rebuildAgentFromToken, getCustomFeeds, getSavedFeeds, deleteFeed, editFeed, getRecentPostsFrom, getFollowing
+export const getUserLikes = async (agent, target) => {
+    let cursor:any = {};
+    let uris = new Set();
+    let likes = [];
+    let found = 0;
+    try {
+        do {
+            const {data:{records, cursor:newCursor}} = await agent.api.com.atproto.repo.listRecords(
+                {repo:target, collection:"app.bsky.feed.like", limit:100, ...cursor});
+            if (newCursor === cursor?.cursor) {
+                return likes;
+            }
+
+            const oldSize = uris.size;
+            records.forEach(item => {
+                const {uri, value} = item;
+                if (!uris.has(uri)) {
+                    uris.add(uri);
+                    const {createdAt, subject:{uri:post}} = value;
+                    likes.push({post, createdAt});
+                }
+            });
+            found += records.length;
+            console.log("total", found);
+            const diff = uris.size - oldSize;
+            if (!newCursor || diff === 0) {
+                cursor = null;
+            } else {
+                cursor = {cursor: newCursor};
+            }
+        } while (cursor);
+    } catch (e) {
+        console.log(e);
+    }
+
+    console.log("complete");
+
+    return likes;
+}
+
+export const getPostsInfo = async (agent, postIds, filter = x => true) => {
+    let results = [];
+    if (Array.isArray(postIds) && postIds.length > 0) {
+        const MAX_QUERY = 25;
+        let chunks = [];
+        for (let i = 0; i < postIds.length; i += MAX_QUERY) {
+            chunks.push(postIds.slice(i, i + MAX_QUERY));
+        }
+        await processQ(chunks, 2, async (uris, wcb) => {
+            if (!uris) {
+                return wcb(null, uris + ' got processed');
+            }
+            try {
+                const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris}));
+                if (posts && Array.isArray(posts) && posts.length > 0) {
+                    posts.forEach(post => {
+                        if (filter(post)) {
+                            const {uri, likeCount} = post;
+                            results.push({uri, likeCount});
+                        }
+                    });
+                }
+                wcb(null, uris + ' got processed');
+            } catch (e) {
+                wcb(null, uris + ' got skipped');
+            }
+        });
+    }
+
+    return results;
 }

@@ -2,13 +2,14 @@ import {userPromise} from "features/utils/apiUtils";
 import {getActorsInfo, editFeed, getCustomFeeds, isVIP, rebuildAgentFromToken, getPostInfo} from "features/utils/bsky";
 import {serializeFile} from "features/utils/fileUtils";
 import {
+    FEED_MODES,
     KEYWORD_SETTING,
     MAX_FEEDS_PER_USER,
-    MAX_KEYWORDS_PER_FEED,
+    MAX_KEYWORDS_PER_LIVE_FEED, MAX_KEYWORDS_PER_USER_FEED,
     PICS_SETTING,
     POST_LEVELS,
     SORT_ORDERS,
-    SUPPORTED_LANGUAGES
+    SUPPORTED_LANGUAGES, USER_FEED_MODE
 } from "features/utils/constants";
 import {isValidDomain} from "features/utils/validationUtils";
 import {getMyCustomFeedIds} from "features/utils/feedUtils";
@@ -24,7 +25,7 @@ export default async function handler(req, res) {
             if (!agent) {res.status(401).send(); return;}
             console.log("received");
 
-            let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords,
+            let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, mode,
                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight, sticky} = req.body;
 
             if (sticky) {
@@ -42,6 +43,24 @@ export default async function handler(req, res) {
                 res.status(400).send("invalid short name"); return;
             }
 
+            let modeParent = mode.startsWith("user")? "user" : mode;
+            if (!SORT_ORDERS.find(x => x.id === sort && x.mode.indexOf(modeParent) >= 0)) {
+                res.status(400).send("invalid sort"); return;
+            }
+
+            if (mode) {
+                if (mode.startsWith("user")) {
+                    const subMode = mode.slice(5);
+                    if (!USER_FEED_MODE.find(x => x.id === subMode)) {
+                        res.status(400).send("Invalid user mode"); return;
+                    }
+                } else {
+                    mode = FEED_MODES.find(x => x.id === mode)? mode : "live";
+                }
+            } else {
+                mode = "live";
+            }
+
             const did = agent.session.did;
             const _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
 
@@ -52,10 +71,7 @@ export default async function handler(req, res) {
                 }
             }
 
-            if (!SORT_ORDERS.find(x => x.id === sort)) {
-                console.log("a")
-                res.status(400).send("invalid sort"); return;
-            }
+
 
             keywordSetting = keywordSetting.filter(x => KEYWORD_SETTING.find(y => y.id === x));
             const pics = _pics.filter(x => PICS_SETTING.find(y => y.id === x));
@@ -93,7 +109,11 @@ export default async function handler(req, res) {
                 return false;
             });
 
-            if (keywords.length > MAX_KEYWORDS_PER_FEED && !isVIP(agent)) {
+            if (keywords.length > MAX_KEYWORDS_PER_LIVE_FEED && !isVIP(agent)) {
+                res.status(400).send("too many keywords"); return;
+            }
+
+            if (mode === "user" && keywords.length > MAX_KEYWORDS_PER_USER_FEED) {
                 res.status(400).send("too many keywords"); return;
             }
 
@@ -111,7 +131,6 @@ export default async function handler(req, res) {
                 res.status(400).send("missing urls"); return;
             }
 
-
             const actors = [...new Set([...allowList, ...blockList, ...everyList])]; // dids
             if (actors.length !== allowList.length + blockList.length + everyList.length) {
                 res.status(400).send("duplicate"); return;
@@ -122,7 +141,6 @@ export default async function handler(req, res) {
                 allowList = allowList.filter(x => allProfiles.find(y => y.did === x));
                 everyList = everyList.filter(x => allProfiles.find(y => y.did === x));
             }
-
 
             let img = {};
             if (encoding) {
@@ -139,7 +157,7 @@ export default async function handler(req, res) {
                 await editFeed(agent, {img, shortName, displayName, description});
 
                 const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight, sticky,
-                    sort, allowList, blockList, everyList, mustUrl, blockUrl};
+                    sort, allowList, blockList, everyList, mustUrl, blockUrl, mode};
 
                 // Update current feed
                 await db.feeds.updateOne({_id},

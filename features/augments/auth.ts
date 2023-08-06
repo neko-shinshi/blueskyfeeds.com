@@ -7,7 +7,6 @@ declare module "next-auth" {
 
         // Used to resume AtpSessionData
         service: string
-        id: string // rename to did when using
         refreshJwt: string
         accessJwt: string
         handle: string

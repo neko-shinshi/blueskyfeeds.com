@@ -1,10 +1,10 @@
-const {queue} = require("async");
+import {queue} from "async";
 /*
   This function that will push the tasks to async.queue,
   and then hand them to your worker function
 */
 
-function processQ(tasks, concurrency, worker) {
+export function processQ(tasks, concurrency, worker) {
     return new Promise((resolve, reject) => {
         var results = [], called = false;
 
@@ -47,5 +47,3 @@ function processQ(tasks, concurrency, worker) {
         });
     });
 }
-
-module.exports = {processQ}
