@@ -49,6 +49,7 @@ import PopupWithInputText from "features/components/PopupWithInputText";
 import {BiCopy} from "react-icons/bi";
 import {HiArrowLongRight} from "react-icons/hi2";
 import KeywordsEdit from "features/components/specific/KeywordsEdit";
+import BlueskyForm from "features/components/specific/BlueskyForm";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -135,10 +136,10 @@ export default function Home({feed, updateSession, VIP}) {
     const [mode, setMode] = useState("keyword");
     const [subMode, setSubMode] = useState("");
     const [stickyText, setStickyText] = useState("");
-    const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"edit"|"done">(feed? "edit" : "wizard");
+    const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"edit"|"done">(feed? "edit" : "wizard");
 
     const recaptcha = useRecaptcha();
-    const imageRef = useRef(null);
+
     const formRef = useRef(null);
 
     const useFormReturn = useForm({mode: "onChange"});
@@ -150,13 +151,12 @@ export default function Home({feed, updateSession, VIP}) {
         setError,
         clearErrors,
     } = useFormReturn;
-    const watchFile = watch("file");
-    const watchShortName = watch("shortName");
+
     const watchSticky = watch("sticky");
     const watchAllow = watch("allowList");
 
     const showInstructionAlert = () => {
-        alert("Fill up the `Bluesky Feed Settings` at the top and tap submit at the bottom to complete your new feed.\nYou can further customize the feed by filtering it with keywords or setting sticky post.");
+        alert("Review the feed and tap submit at the bottom to complete your new feed.\nYou can further customize the feed by filtering it with keywords or setting sticky post.");
     }
 
     useEffect(() => {
@@ -265,41 +265,6 @@ export default function Home({feed, updateSession, VIP}) {
 
 
     return <>
-        {
-            /*
-            const user = val.startsWith("@")? val.slice(1) : val;
-            const everyList = getValues("everyList") || [];
-            const allowList = getValues("allowList") || [];
-            const blockList = getValues("blockList") || [];
-            if (everyList.find(x => x.did === user || x.handle === user)) {
-                setError(fieldName, {type:'custom', message:`${user} is already in Every List`});
-            } else if (blockList.find(x => x.did === user || x.handle === user)) {
-                setError(fieldName, {type:'custom', message:`${user} is already in Block List`});
-            } else if (allowList.find(x => x.did === user || x.handle === user)) {
-                setError(fieldName, {type:'custom', message:`${user} is already in Allow List`});
-            } else {
-                if (typeof recaptcha !== 'undefined') {
-                    recaptcha.ready(async () => {
-                        //@ts-ignore
-                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                        //@ts-ignore
-                        const result = await localGet("/check/user", {captcha, actors:[user]});
-                        if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
-                            clearErrors(fieldName);
-                            console.log(result.data[0]);
-                            callback(result.data[0]);
-                        } else if (result.status === 400) {
-                            setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
-                        } else if (result.status === 401) {
-                            await router.reload();
-                        } else {
-                            setError(fieldName, {type:'custom', message:"Error"});
-                        }
-                    });
-                }
-            }
-             */
-        }
         <PopupWithInputText
             isOpen={popupState === "edit_user"}
             setOpen={setPopupState}
@@ -402,7 +367,6 @@ export default function Home({feed, updateSession, VIP}) {
                 {
                     modal.startsWith("wizard") &&
                     <div className="bg-white p-4 space-y-4">
-
                         {
                             modal === "wizard" &&
                             <>
@@ -423,9 +387,8 @@ export default function Home({feed, updateSession, VIP}) {
                                                             setSubMode("posts");
                                                             setPics(["pics"]);
                                                             setPostLevels(["top"]);
-                                                            setModal("edit");
                                                             setValue("allowList", result.data);
-                                                            showInstructionAlert();
+                                                            setModal("wizard-bsky");
                                                         } else if (result.status === 400) {
                                                             alert("Error setting to self");
                                                         }
@@ -463,8 +426,7 @@ export default function Home({feed, updateSession, VIP}) {
                                             if (keywords.length === 0) {
                                                 alert("Add at least 1 keyword to continue");
                                             } else {
-                                                setModal("edit");
-                                                showInstructionAlert();
+                                                setModal("wizard-bsky");
                                             }
                                         }}
                                     >
@@ -505,8 +467,31 @@ export default function Home({feed, updateSession, VIP}) {
                                             if (getValues("everyList").length === 0) {
                                                 alert("Add at least 1 user to the Every List to continue");
                                             } else {
+                                                setModal("wizard-bsky");
+                                                console.log("modal set");
+                                            }
+                                        }}
+                                    >
+                                        Next
+                                        <HiArrowLongRight className="ml-3 h-5 w-5 text-gray-400" />
+                                    </button>
+                                </div>
+                            </>
+                        }
+                        {
+                            modal === "wizard-bsky" && <>
+                                <div className="font-bold text-xl">Fill in your new feed`s description</div>
+                                <BlueskyForm useFormReturn={useFormReturn} setPopupState={setPopupState} shortNameLocked={shortNameLocked} />
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                        onClick={() => {
+                                            if (getValues("displayName").trim() !== "" && getValues("shortName").trim() !== "") {
                                                 setModal("edit");
                                                 showInstructionAlert();
+                                            } else {
+                                                alert("Fill in the form");
                                             }
                                         }}
                                     >
@@ -518,7 +503,6 @@ export default function Home({feed, updateSession, VIP}) {
                         }
                     </div>
                 }
-
 
                 {
                     modal === "done" &&
@@ -596,76 +580,7 @@ export default function Home({feed, updateSession, VIP}) {
                         setBusy(false);
                     }}
                         className="space-y-4">
-                        <div className="bg-white p-2">
-                            <div className="flex justify-between">
-                                <div className="flex place-items-center gap-2">
-                                    <div className="font-bold text-lg">Bluesky Feed Settings</div>
-                                    <div>(This info is submitted to Bluesky)</div>
-                                </div>
-                                {
-                                    shortNameLocked &&
-                                    <button type="button"
-                                            onClick={() => {if (shortNameLocked) {setPopupState("delete")}}}
-                                            className="p-1 inline-flex items-center rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
-                                        <HiTrash className="w-6 h-6"/>
-                                        <div className="text-lg font-medium">Delete this feed</div>
-                                    </button>
-                                }
-
-                            </div>
-                            <div className="flex w-full place-items-center gap-4">
-                                <div>
-                                    <div className="text-center">Feed Avatar</div>
-                                    <div className="w-40 h-40 aspect-square relative rounded-xl overflow-hidden">
-                                        <InputFileDropzone
-                                            fieldName="file"
-                                            className="inset-0 absolute rounded-xl z-10"
-                                            useFormReturn={useFormReturn}
-                                            acceptedTypes={{'image/jpeg': [".jpg", ".jpeg"], 'image/png':[".png"]}}
-                                            acceptedTypesLabel="jpg or png"/>
-                                        {
-                                            watchFile && <Image ref={imageRef} className="object-cover hover:blur-sm" unoptimized fill src={watchFile.url} alt="feed-avatar" />
-                                        }
-                                    </div>
-                                </div>
-
-                                <div className="grow">
-                                    <InputTextButton
-                                        maxLength={24}
-                                        fieldName="displayName"
-                                        fieldReadableName="Feed Full Name (Max 24 characters)"
-                                        options={{required: "This is required"}}
-                                        useFormReturn={useFormReturn}
-                                        placeholder="My Amazing Feed"
-                                        optional={false}
-                                        buttonDisabled={shortNameLocked}
-                                        buttonText="Make Short Name"
-                                        buttonCallback={() => {
-                                            if (!shortNameLocked) {
-                                                const name = getValues("displayName");
-                                                setValue("shortName", name.toLowerCase().replaceAll(" ", "-").replaceAll(/[^a-z0-9-_]/g, "").slice(0,15));
-                                            }
-                                        }} />
-                                    <InputTextButton
-                                        maxLength={15} fieldName="shortName" disabled={shortNameLocked}
-                                        fieldReadableName="Unique Short Name among all your feeds (CANNOT be changed once submitted)"
-                                        subtext="(alphanumeric and dashes only, max 15 characters) [0-9a-zA-z-]"
-                                        options={
-                                        {
-                                            required: "This is required",
-                                            pattern: {
-                                                value: /^[a-zA-Z0-9_-]+$/,
-                                                message: 'Only alphanumeric and dashes allowed',
-                                            }
-                                        }} useFormReturn={useFormReturn} placeholder="my-amazing-feed"
-                                        buttonText={`${15-(watchShortName?.length || 0)} left`}
-                                        buttonCallback={() => {}}
-                                        buttonDisabled={true}
-                                    />
-                                    <InputTextAreaBasic fieldName="description" fieldReadableName="Description (Max 200 characters)" maxLength={200} options={{}} useFormReturn={useFormReturn} placeholder="This is an amazing feed, please use it" />
-                                </div>
-                            </div>
-                        </div>
+                        <BlueskyForm useFormReturn={useFormReturn} setPopupState={setPopupState} shortNameLocked={shortNameLocked} />
 
                         <div className="bg-white p-2">
                             <div className="font-bold text-lg">Feed Settings</div>
