@@ -14,7 +14,7 @@ import {getFeedDetails, getMyCustomFeedIds} from "features/utils/feedUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
-import {localDelete, localGet} from "features/network/network";
+import {localDelete, localGet, paramsToEncodedString} from "features/network/network";
 import InputTextButton from "features/input/InputTextButton";
 import Image from "next/image";
 import InputMultiWord from "features/input/InputMultiWord";
@@ -47,6 +47,8 @@ import {compressKeyword,} from "features/utils/objectUtils";
 import InputTextBasic from "features/input/InputTextBasic";
 import PopupWithInputText from "features/components/PopupWithInputText";
 import {BiCopy} from "react-icons/bi";
+import {HiArrowLongRight} from "react-icons/hi2";
+import KeywordsEdit from "features/components/specific/KeywordsEdit";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -121,7 +123,6 @@ export default function Home({feed, updateSession, VIP}) {
     });
     const { data: session, status } = useSession();
     const [languages, setLanguages] = useState<string[]>([]);
-    const [newKeywordMode, setNewKeywordMode] = useState<KeywordType>("token");
     const [shortNameLocked, setShortNameLocked] = useState(false);
     const [postLevels, setPostLevels] = useState<string[]>([]);
     const [keywordSetting, setKeywordSetting] = useState<string[]>([]);
@@ -129,11 +130,12 @@ export default function Home({feed, updateSession, VIP}) {
     const [popupState, setPopupState] = useState<"delete"|"edit_sticky"|"edit_user"|false>(false);
     const [pics, setPics] = useState<string[]>([]);
     const [busy, setBusy] = useState(false);
-    const [editTag, setEditTag] = useState<any>(null);
-    const [done, setDone] = useState("");
+
+    const [userDid, setUserDid] = useState("");
     const [mode, setMode] = useState("keyword");
     const [subMode, setSubMode] = useState("");
     const [stickyText, setStickyText] = useState("");
+    const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"edit"|"done">(feed? "edit" : "wizard");
 
     const recaptcha = useRecaptcha();
     const imageRef = useRef(null);
@@ -152,6 +154,10 @@ export default function Home({feed, updateSession, VIP}) {
     const watchShortName = watch("shortName");
     const watchSticky = watch("sticky");
     const watchAllow = watch("allowList");
+
+    const showInstructionAlert = () => {
+        alert("Fill up the `Bluesky Feed Settings` at the top and tap submit at the bottom to complete your new feed.\nYou can further customize the feed by filtering it with keywords or setting sticky post.");
+    }
 
     useEffect(() => {
         if (session && status === "authenticated" && updateSession) {
@@ -255,30 +261,7 @@ export default function Home({feed, updateSession, VIP}) {
         }
     }
 
-    const validateKeyword = (term, rejectWords, transform) => {
-        if (term.length === 0) {
-            return "Term is empty";
-        }
-        if (!VIP && keywords.length >= MAX_KEYWORDS_PER_LIVE_FEED) {
-            return `Too many keywords, max ${MAX_KEYWORDS_PER_LIVE_FEED}`;
-        }
 
-        const modeShort = KeywordTypeToShort(newKeywordMode)
-        if (keywords.find(y => y.w === term && y.t === modeShort)) {
-            return "Term is already in keywords";
-        }
-        let set = new Set();
-        set.add(term);
-        console.log(set);
-        for (const [i,r] of rejectWords.entries()) {
-            const combined = transform(r, term);
-            if (set.has(combined)) {
-                return `Duplicate or empty Ignore Combination at #${i+1}: ${combined}`;
-            }
-            set.add(combined);
-        }
-        return null;
-    }
 
 
     return <>
@@ -417,7 +400,128 @@ export default function Home({feed, updateSession, VIP}) {
             session && <div className="bg-sky-200 w-full max-w-5xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} />
                 {
-                    done &&
+                    modal.startsWith("wizard") &&
+                    <div className="bg-white p-4 space-y-4">
+
+                        {
+                            modal === "wizard" &&
+                            <>
+                                <div className="font-bold text-xl">What kind of feed do you want to make?</div>
+                                <div>
+                                    <button type="button" className="w-full bg-lime-100 p-8 hover:bg-lime-400 p-8 hover:font-bold border border-black"
+                                            onClick={async () => {
+                                                setBusy(true);
+                                                const {handle} = session.user;
+                                                if (typeof recaptcha !== 'undefined') {
+                                                    recaptcha.ready(async () => {
+                                                        //@ts-ignore
+                                                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                                                        //@ts-ignore
+                                                        const result = await localGet("/check/user", {captcha, actors:[handle]});
+                                                        if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
+                                                            setMode("user");
+                                                            setSubMode("posts");
+                                                            setPics(["pics"]);
+                                                            setPostLevels(["top"]);
+                                                            setModal("edit");
+                                                            setValue("allowList", result.data);
+                                                            showInstructionAlert();
+                                                        } else if (result.status === 400) {
+                                                            alert("Error setting to self");
+                                                        }
+                                                        setBusy(false);
+                                                    });
+                                                }
+
+                                            }}>
+                                        I want to create feed to show my media
+                                    </button>
+                                    <button type="button" className="w-full bg-yellow-100 hover:bg-yellow-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-everyList")}}>
+                                        I want to create a feed showing the latest posts of some users
+                                    </button>
+                                    <button type="button" className="w-full bg-blue-100 hover:bg-blue-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-keywords")}}>
+                                        I want to create a feed to show the latest posts of a community or fandom
+                                    </button>
+                                    <button type="button" className="w-full bg-red-100 p-8 hover:bg-red-400 p-8 hover:font-bold border border-black" onClick={() => {setModal("edit")}}>
+                                        I want to create some other type of feed (sorry, more templates will be added in the future).
+                                    </button>
+                                </div>
+                            </>
+
+                        }
+                        {
+                            modal === "wizard-keywords" &&
+                            <>
+                                <div className="font-bold text-xl">Which keywords do you want to find posts to show into the feed?</div>
+                                <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP} />
+
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                        onClick={() => {
+                                            if (keywords.length === 0) {
+                                                alert("Add at least 1 keyword to continue");
+                                            } else {
+                                                setModal("edit");
+                                                showInstructionAlert();
+                                            }
+                                        }}
+                                    >
+                                        Next
+                                        <HiArrowLongRight className="ml-3 h-5 w-5 text-gray-400" />
+                                    </button>
+                                </div>
+
+                            </>
+                        }
+
+                        {
+                            modal === "wizard-everyList" &&
+                            <>
+                                <div className="font-bold text-xl">Which users` posts do you want to show?</div>
+                                <InputMultiWord
+                                    className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
+                                    labelText="Every List: Show all posts from these users"
+                                    placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
+                                    fieldName="everyList"
+                                    handleItem={(item, value, onChange) => {
+                                        value.push(item);
+                                        value.sort((a, b) => {
+                                            return a.handle.localeCompare(b.handle);
+                                        })
+                                        onChange(value);
+                                    }}
+                                    valueModifier={item => {
+                                        return `${item.displayName} @${item.handle}`
+                                    }}
+                                    useFormReturn={useFormReturn}
+                                    check={multiWordCallback("everyList")}/>
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                        onClick={() => {
+                                            if (getValues("everyList").length === 0) {
+                                                alert("Add at least 1 user to the Every List to continue");
+                                            } else {
+                                                setModal("edit");
+                                                showInstructionAlert();
+                                            }
+                                        }}
+                                    >
+                                        Next
+                                        <HiArrowLongRight className="ml-3 h-5 w-5 text-gray-400" />
+                                    </button>
+                                </div>
+                            </>
+                        }
+                    </div>
+                }
+
+
+                {
+                    modal === "done" &&
                     <div className="bg-white p-4">
                         <div className="font-bold">Your Feed has been saved.</div>
                         <ul className="list-disc pl-4 py-4">
@@ -430,9 +534,9 @@ export default function Home({feed, updateSession, VIP}) {
                                 <li>User feeds fetch data directly from Bluesky, and trigger when the feed is first opened, and can be re-triggered about ten minutes after the last trigger.</li>
                             }
                             <li><div className="flex place-items-center">Check your feed out
-                                <a className="ml-1 inline-flex underline text-blue-500 hover:text-blue-800" href={`https://bsky.app/profile/${done}/feed/${getValues("shortName")}`} target="_blank" rel="noreferrer">here</a>.
+                                <a className="ml-1 inline-flex underline text-blue-500 hover:text-blue-800" href={`https://bsky.app/profile/${userDid}/feed/${getValues("shortName")}`} target="_blank" rel="noreferrer">here</a>.
                                 Or copy it
-                                <BiCopy onClick={() => { navigator.clipboard.writeText(`https://bsky.app/profile/${done}/feed/${getValues("shortName")}`); alert("Url copied to clipboard")}} className="ml-1 h-4 w-4 text-blue-500 hover:text-blue-800"/></div></li>
+                                <BiCopy onClick={() => { navigator.clipboard.writeText(`https://bsky.app/profile/${userDid}/feed/${getValues("shortName")}`); alert("Url copied to clipboard")}} className="ml-1 h-4 w-4 text-blue-500 hover:text-blue-800"/></div></li>
                             <li>
                                 <div className="">It costs money to operate BlueskyFeeds.com servers, if you would like to contribute, please visit my
                                     <a className="ml-1 inline-flex underline text-blue-500 hover:text-blue-800" href="https://ko-fi.com/anianimalsmoe" target="_blank" rel="noreferrer">
@@ -456,7 +560,7 @@ export default function Home({feed, updateSession, VIP}) {
                     </div>
                 }
                 {
-                    !done &&
+                    modal === "edit" &&
                     <RHForm
                         formRef={formRef}
                         recaptcha={recaptcha}
@@ -486,7 +590,8 @@ export default function Home({feed, updateSession, VIP}) {
                         }}
                         postUrl="/feed/submit" postCallback={async (result) => {
                         if (result.status === 200) {
-                            setDone(result.data.did);
+                            setUserDid(result.data.did);
+                            setModal("done");
                         }
                         setBusy(false);
                     }}
@@ -984,169 +1089,13 @@ export default function Home({feed, updateSession, VIP}) {
                                                 setError("copy", {type:'custom', message:`${val} is already in the list`});
                                             } else {
                                                 // Check feed
-
-
                                                 callback(v);
                                             }
                                         }}/>
                                 </div>
                             }
 
-
-                            <div>
-                                <div className="font-semibold text-lg bg-lime-100 p-2">There are three ways keywords are filtered, tap the <span className="text-pink-600">different</span> <span className="text-yellow-600">colored</span> <span className="text-sky-600">tabs</span> below to see their differences</div>
-                                <div className={clsx("grid grid-cols-3")}>
-                                    {
-                                        KEYWORD_TYPES.map((x, i) =>
-                                            <div key={x} className={clsx(
-                                                ["bg-pink-100 hover:bg-pink-200", "bg-yellow-100 hover:bg-yellow-200", "bg-sky-100 hover:bg-sky-200"][i],
-                                                "flex items-center p-2 border border-x-2 border-t-2 border-b-0 border-black")}
-                                                 onClick={() => {
-                                                     setNewKeywordMode(x);
-                                                 }}>
-                                                <input
-                                                    id='keyword-filter-type'
-                                                    type="radio"
-                                                    value={x}
-                                                    checked={newKeywordMode === x}
-                                                    onChange={() => {}}
-                                                    onClick={() => {setNewKeywordMode(x)}}
-                                                    className="mr-2 focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
-                                                />
-                                                {x.slice(0,1).toUpperCase()+x.slice(1)}
-                                            </div>)
-                                    }
-                                </div>
-
-
-                                <div className={clsx("p-2 border border-l-2 border-r-2 border-y-0 border-black",
-                                    newKeywordMode === "token" && "bg-pink-100",
-                                    newKeywordMode === "segment" && "bg-yellow-100",
-                                    newKeywordMode === "hashtag" && "bg-sky-100"
-                                )}>
-                                    <div className="font-semibold">{`${newKeywordMode.slice(0,1).toUpperCase()}${newKeywordMode.slice(1)} Search`}</div>
-                                    {
-                                        newKeywordMode === "token" &&
-                                        <KeywordParser
-                                            editTag={editTag}
-                                            keyword="Token"
-                                            handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join(" ")}
-                                            validateKeyword={(word, reject) => {
-                                                const trimmed = word.trim();
-                                                if (!isValidToken(trimmed)) {
-                                                    return `Invalid keyword: Alphanumeric with accents and spaces only a-zA-ZÀ-ÖØ-öø-ÿ0-9`;
-                                                }
-                                                return validateKeyword(trimmed, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(" "));
-                                            }}
-                                            submitKeyword={(w, r, a) => {
-                                                setKeywords([...keywords, {t:"t", w:w.toLowerCase().trim(), a, r}]);
-                                                setEditTag(null);
-                                            }}>
-                                            <ul className="list-disc pl-4">
-                                                <li ><span className="font-bold">Does not work for non-latin languages</span> like Korean, Mandarin or Japanese, use <span className="font-bold underline">Segment</span> Mode</li>
-                                                <li>In token mode, posts and search terms are set to lowercase, then split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is un-funny.jpg` becomes `this` `is` `un `funny` `jpg`</li>
-                                                <li>The search term is searched both separately e.g. `quickdraw` and `quick draw` will also find `#quickdraw`</li>
-                                                <li>Works for terms with accents like `bon appétit`</li>
-                                                <li>Might not work well if the term is combined with other terms, e.g. searching for `cat` will not find `caturday`, search for `caturday` separately or use Segment mode</li>
-                                                <li>A desired token might often appear with undesired terms, like `one piece swimsuit` when looking for the anime `one piece`</li>
-                                                <li>To prevent this, use an ignore combination to add `swimsuit` to reject `one piece swimsuit` if it appears but accept `one piece`</li>
-                                            </ul>
-                                        </KeywordParser>
-                                    }
-                                    {
-                                        newKeywordMode === "segment" && <KeywordParser
-                                            editTag={editTag}
-                                            keyword="Segment"
-                                            handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join("")}
-                                            validateKeyword={(word, reject) => {
-                                                const trimmed = word.trim();
-                                                return validateKeyword(trimmed, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(""));
-                                            }}
-                                            submitKeyword={(w, r, a) => {
-                                                setKeywords([...keywords, {t:"s", w:w.toLowerCase().trim(), a, r}]);
-                                                setEditTag(null);
-                                            }}>
-                                            <ul className="list-disc pl-4">
-                                                <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>
-                                                <li>For example: `cat` is inside both `concatenation` and `cataclysm`</li>
-                                                <li>To prevent this, add the prefix and suffix of common terms to reject</li>
-                                                <li>This is the preferred way to search for non-latin words like アニメ</li>
-                                            </ul>
-                                        </KeywordParser>
-                                    }
-
-                                    {
-                                        newKeywordMode === "hashtag" && <KeywordParser
-                                            editTag={editTag}
-                                            keyword="Hashtag"
-                                            prefix="#"
-                                            handleTokenization={null}
-                                            validateKeyword={term => {
-                                                if (!VIP && keywords.length >= MAX_KEYWORDS_PER_LIVE_FEED) {
-                                                    return `Too many keywords, max ${MAX_KEYWORDS_PER_LIVE_FEED}`;
-                                                }
-                                                if (term.startsWith("#")) {
-                                                    return "Hashtag does not need to start with #, already handled by server";
-                                                }
-                                                if (keywords.find(x => x.t === "#" && x.w === term)) {
-                                                    return "Hashtag already in list";
-                                                }
-                                                return null;
-                                            }} submitKeyword={(w, rejectWords, a) => {
-                                            setKeywords([...keywords, {t:"#", w:w.toLowerCase(), a}]);
-                                            setEditTag(null);
-                                        }}
-                                        >
-                                            <ul className="list-disc pl-4">
-                                                <li>Posts are searched for hashtags</li>
-                                            </ul>
-                                        </KeywordParser>
-                                    }
-                                    <div className="mt-4 font-semibold">Keywords ({keywords.length}{!VIP && `/${MAX_KEYWORDS_PER_LIVE_FEED}`})</div>
-                                    <SortableWordBubbles
-                                        className="mt-2"
-                                        value={keywords}
-                                        selectable={true}
-                                        valueModifier={(val) => {
-                                            switch (val.t) {
-                                                case "#":
-                                                    return `#${val.w}`;
-                                                case "s":
-                                                    return `[${val.w}] [${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
-                                                case "t":
-                                                    return `${val.w} [${val.r.map(x => [x.p, val.w, x.s].filter(x => x).join(" ")).join(",")}]`;
-                                            }
-                                            return `#${JSON.stringify(val)}`;
-                                        }}
-                                        classModifier={(val, index, original) => {
-                                            if (editTag && editTag.w === val.w) {
-                                                return original.replace("bg-white", "bg-gray-200 hover:bg-gray-300");
-                                            } else if (val.a) {
-                                                return original.replace("bg-white", "bg-lime-100 hover:bg-lime-300");
-                                            } else {
-                                                return original.replace("bg-white", "bg-red-300 hover:bg-red-500");
-                                            }
-                                        }}
-                                        buttonCallback={(val, action) => {
-                                            if (action === "x") {
-                                                setKeywords([...keywords.filter(x => !(x.t === val.t && x.w === val.w))]);
-                                            } else if (action === "o") {
-                                                if (editTag && editTag.w === val.w) {
-                                                    setEditTag(null)
-                                                } else {
-                                                    switch (val.t) {
-                                                        case "t": {setNewKeywordMode('token'); break;}
-                                                        case "s": {setNewKeywordMode('segment'); break;}
-                                                        case "#": {setNewKeywordMode('hashtag'); break;}
-                                                    }
-                                                    setEditTag(val);
-                                                }
-
-                                                // change type to match tag, fill up form, remove from list
-                                            }
-                                        }} />
-                                </div>
-                            </div>
+                            <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP} />
 
                         </div>
 
@@ -1345,7 +1294,6 @@ export default function Home({feed, updateSession, VIP}) {
                                     Recover from JSON backup
                                 </button>
                             </div>
-
                         </div>
 
                         <button type="button"
