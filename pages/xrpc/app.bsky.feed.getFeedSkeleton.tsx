@@ -69,7 +69,7 @@ export async function getServerSideProps({req, res, query}) {
         feed = feedV;
         cursor = cursorV;
     } else {
-        const {allowList, blockList, everyList, keywordSetting,
+        let {allowList, blockList, everyList, keywordSetting,
             keywords, languages, pics, postLevels, sort, mode, sticky} = feedObj;
         if (mode === "user-likes" || mode === "user-posts") {
             const {feed: feedV, cursor: cursorV} = await userFeedHandler(feedId, feedObj, user, queryCursor, limit);
@@ -135,9 +135,17 @@ export async function getServerSideProps({req, res, query}) {
                     authorQuery.replyRoot = dbQuery.replyRoot;
                 }
 
-                dbQuery = {$or: [authorQuery, dbQuery]};
+                if (findKeywords.length === 0) {
+                    dbQuery = authorQuery; // Totally block not in everyList
+                } else {
+                    dbQuery = {$or: [authorQuery, dbQuery]};
+                }
+            } else {
+                if (findKeywords.length === 0) {
+                    dbQuery = {author:"_"}; // Block everything
+                    sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3k4ematehei27";
+                }
             }
-            // console.log(JSON.stringify(query, null, 2));
 
             const sortMethod = getSortMethod(sort);
             let result:any[];
@@ -172,7 +180,11 @@ export async function getServerSideProps({req, res, query}) {
                 if (sort === "new") {
                     if (sticky) {limit = limit -1;}
                     result = await db.posts.find(dbQuery).sort(sortMethod).project({createdAt: 1}).limit(limit).toArray();
-                    if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}}
+
+                    if (result.length === 0) {
+                        const feed = sticky? [{post:sticky}] : [];
+                        res.write(JSON.stringify({cursor:"", feed})); res.end(); return {props: {}};
+                    }
                     if (sticky) {result.splice(1,0, {_id: sticky})}
                     // return last item + timestamp
                     const last = result.at(-1);
@@ -185,7 +197,10 @@ export async function getServerSideProps({req, res, query}) {
                 } else {
                     if (sticky) {limit = limit -1;}
                     result = await db.posts.find(dbQuery).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
-                    if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}}
+                    if (result.length === 0) {
+                        const feed = sticky? [{post:sticky}] : [];
+                        res.write(JSON.stringify({cursor:"", feed})); res.end(); return {props: {}};
+                    }
                     if (sticky) {result.splice(randomInt(0, 2),0, {_id: sticky})}
                     cursor = `${limit}`;
                 }
