@@ -1,6 +1,5 @@
 // Hacker news score
 // https://medium.com/hacking-and-gonzo/how-hacker-news-ranking-algorithm-works-1d9b0cf2c08d
-const {connectToDatabase} = require("../features/utils/dbUtils");
 const {secondsAfter} = require("../features/utils/timeUtils");
 
 const generateScore = (ups, diffTime, gravity) =>{
@@ -13,9 +12,8 @@ const generateScoreWithTime = (ups, now, then, gravity) => {
     return generateScore(ups, diffTime, gravity);
 }
 
-const updateScores = async() => {
+const updateScores = async(db) => {
     const GRAVITY = 2;
-    const db = await connectToDatabase();
     try {
         await db.data.insertOne({_id: "calculate_score", expireAt: secondsAfter(9.5*60)});
 

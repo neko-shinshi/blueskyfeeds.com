@@ -9,6 +9,7 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 const {schedule} = require("node-cron");
 const {updateScores} = require("./not-nextjs/scoring");
+const {connectToDatabase} = require("./features/utils/dbUtils");
 
 const handleData = async (req, res) => {
     try {
@@ -49,7 +50,8 @@ app.prepare().then(async () => {
 
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             schedule('*/10 * * * *', async () => {
-                await updateScores();
+                const db = await connectToDatabase();
+                await updateScores(db);
             }, {
                 scheduled: true,
                 timezone: "GMT"
