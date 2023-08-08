@@ -29,6 +29,7 @@ COPY --from=builder /opt/app/node_modules ./node_modules
 COPY --from=builder /opt/app/package.json ./
 COPY ./not-nextjs ./not-nextjs
 COPY ./features/utils/dbUtils.js ./features/utils/dbUtils.js
+COPY ./features/utils/timeUtils.js ./features/utils/timeUtils.js
 
 RUN mkdir -p /opt/app/.next/cache/images
 RUN chmod -R 777 /opt/app/.next/cache/images

@@ -49,7 +49,7 @@ app.prepare().then(async () => {
 
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             schedule('*/10 * * * *', async () => {
-                console.log(await updateScores());
+                await updateScores();
             }, {
                 scheduled: true,
                 timezone: "GMT"

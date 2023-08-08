@@ -23,7 +23,6 @@ export default async function handler(req, res) {
         async ({db, token}) => {
             const agent = await rebuildAgentFromToken(token);
             if (!agent) {res.status(401).send(); return;}
-            console.log("received");
 
             let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, mode,
                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight, sticky} = req.body;
@@ -76,18 +75,15 @@ export default async function handler(req, res) {
             keywordSetting = keywordSetting.filter(x => KEYWORD_SETTING.find(y => y.id === x));
             const pics = _pics.filter(x => PICS_SETTING.find(y => y.id === x));
             if (pics.length === 0 || pics.length !== _pics.length) {
-                console.log("b")
                 res.status(400).send("missing pics"); return;
             }
             const postLevels = _postLevels.filter(x => POST_LEVELS.find(y => y.id === x));
             if (postLevels.length === 0 || postLevels.length !== _postLevels.length) {
-                console.log("c")
                 res.status(400).send("missing levels"); return;
             }
             const languages = _languages.filter(x => SUPPORTED_LANGUAGES.indexOf(x) >= 0);
             if (languages.length !== _languages.length) {
                 // Empty languages means skip filtering language
-                console.log("d")
                 res.status(400).send("missing languages"); return;
             }
 
@@ -118,7 +114,6 @@ export default async function handler(req, res) {
             }
 
             if (keywords.length !== _keywords.length) {
-                console.log("e")
                 res.status(400).send("missing keywords"); return;
             }
             keywords = keywords.map(x => compressKeyword(x));
@@ -153,7 +148,6 @@ export default async function handler(req, res) {
 
             try {
                 // Update feed at Bluesky's side
-                console.log("submit to bsky")
                 await editFeed(agent, {img, shortName, displayName, description});
 
                 const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight, sticky,

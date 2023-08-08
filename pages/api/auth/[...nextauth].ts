@@ -56,9 +56,7 @@ export const authOptions: NextAuthOptions = {
             credentials: {},
             async authorize(credentials) {
                 const { id:_id } = credentials as { id: string };
-                console.log("rollover", _id);
                 const db = await connectToDatabase();
-                console.log("has db");
                 if (!db) {console.log("authorize 500");throw makeCustomException('500', {code: 500});}
                 const rollover = await db.sessions.findOne({_id});
                 if (!rollover) {console.log("authorize 401");throw makeCustomException('401', {code: 401});}
@@ -102,35 +100,27 @@ export const authOptions: NextAuthOptions = {
                 // Update window
                 sameRequest.push(secondsAfter(60 * 1000));
                 global.logins.set(usernameOrEmail, sameRequest);
-                console.log("pre check")
                 // Reject if > 10 requests
                 if (totalRequests >= 10) {
-                    console.log("1")
                     throw makeCustomException('429', {code: 429});
                 }
 
                 // Add artificial delay
                 if (totalRequests >= 3) {
-                    console.log(2);
                     await new Promise(r => setTimeout(r, 500 + 300 * (totalRequests-3)));
                 }
 
-                console.log("clear")
 
                 if (!(await testRecaptcha(captcha))) {
                     throw makeCustomException('400', {code: 400});
                 }
 
-                console.log("get db")
                 const db = await connectToDatabase();
                 if (!db) {console.log("authorize 500");throw makeCustomException('500', {code: 500});}
 
-                console.log("got db");
                 const agent = await getAgent(service, usernameOrEmail, password);
                 if (!agent) {console.log("no agent");throw makeCustomException('401', {code: 400});}
-                console.log("got agent");
                 const r = await getUserFromAgent(agent, db, service);
-                console.log("got user");
                 return r;
             }
         }),
