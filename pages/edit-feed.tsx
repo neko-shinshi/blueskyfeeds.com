@@ -46,6 +46,7 @@ import {BiCopy} from "react-icons/bi";
 import {HiArrowLongRight} from "react-icons/hi2";
 import KeywordsEdit from "features/components/specific/KeywordsEdit";
 import BlueskyForm from "features/components/specific/BlueskyForm";
+import {compressedToJsonString} from "features/utils/textAndKeywords";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -1144,7 +1145,13 @@ export default function Home({feed, updateSession, VIP}) {
 
                                                                     keywords = keywords?.map(x => {
                                                                         const {t, a} = x;
-                                                                        let o = JSON.parse(toJson(t));
+                                                                        let o:any;
+                                                                        try {
+                                                                            o = JSON.parse(toJson(t));
+                                                                        } catch (e) {
+                                                                            o = JSON.parse(compressedToJsonString(t));
+                                                                        }
+
                                                                         o.a = a;
                                                                         if ((o.t === "t" || o.t === "s") && !o.r) {
                                                                             o.r = [];

@@ -148,3 +148,41 @@ export const findKeywords = (text, _keywords) => {
     return keywords;
 }
 
+export const compressedToJsonString = (txt) => {
+    return txt.split("").reduce((acc, v, i, full) => {
+        switch (v) {
+            case "{": {
+                acc.push("{\"");
+                break;
+            }
+            case "}": {
+                if (full.at(i - 1) !== "]") {
+                    acc.push("\"");
+                }
+                acc.push("}");
+                break;
+            }
+            case ":": {
+                acc.push("\":");
+                if (full.at(i + 1) !== "[") {
+                    acc.push("\"");
+                }
+                break;
+            }
+            case ",": {
+                if (full.at(i - 1) !== "}") {
+                    acc.push("\"");
+                }
+                acc.push(",");
+                if (full.at(i + 1) !== "{") {
+                    acc.push("\"");
+                }
+                break;
+            }
+            default: {
+                acc.push(v);
+            }
+        }
+        return acc;
+    }, []).join("");
+}
