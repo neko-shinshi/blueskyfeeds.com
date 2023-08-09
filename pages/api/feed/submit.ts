@@ -151,7 +151,7 @@ export default async function handler(req, res) {
                 await editFeed(agent, {img, shortName, displayName, description});
 
                 const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight, sticky,
-                    sort, allowList, blockList, everyList, mustUrl, blockUrl, mode, updated: new Date()};
+                    sort, allowList, blockList, everyList, mustUrl, blockUrl, mode, updated: new Date().toISOString()};
 
                 // Update current feed
                 await db.feeds.updateOne({_id},
@@ -163,7 +163,7 @@ export default async function handler(req, res) {
                     return {
                         updateOne: {
                             filter: {_id: uri},
-                            update: {$set: y, $setOnInsert:{created:new Date()}},
+                            update: {$set: y, $setOnInsert:{created:new Date().toISOString()}},
                             upsert: true
                         }
                     };
