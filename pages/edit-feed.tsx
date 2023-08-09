@@ -6,8 +6,6 @@ import {useForm} from "react-hook-form";
 import RHForm from "features/input/RHForm";
 import clsx from "clsx";
 import InputRadio from "features/input/InputRadio";
-import InputTextAreaBasic from "features/input/InputTextAreaBasic";
-import InputFileDropzone from "features/input/InputFileDropzone";
 import {useRouter} from "next/router";
 import PageHeader from "features/components/PageHeader";
 import {getFeedDetails, getMyCustomFeedIds} from "features/utils/feedUtils";
@@ -15,10 +13,9 @@ import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import {localDelete, localGet, paramsToEncodedString} from "features/network/network";
-import InputTextButton from "features/input/InputTextButton";
+import {toJson} from 'really-relaxed-json'
 import Image from "next/image";
 import InputMultiWord from "features/input/InputMultiWord";
-import KeywordParser from "features/components/specific/KeywordParser";
 import {serializeFile} from "features/utils/fileUtils";
 import {
     FEED_MODES,
@@ -40,7 +37,6 @@ import {APP_SESSION} from "features/auth/authUtils";
 import {isValidDomain, isValidToken} from "features/utils/validationUtils";
 import {getActorsInfo, getPostInfo, isVIP} from "features/utils/bsky";
 import PopupLoading from "features/components/PopupLoading";
-import {compressedToJsonString} from "features/utils/textUtils";
 import Link from "next/link";
 import {IoArrowBackSharp} from "react-icons/io5";
 import {compressKeyword,} from "features/utils/objectUtils";
@@ -197,7 +193,7 @@ export default function Home({feed, updateSession, VIP}) {
 
             keywords = keywords?.map(x => {
                 const {t, a} = x;
-                let o = JSON.parse(compressedToJsonString(t));
+                let o = JSON.parse(toJson(t));
                 o.a = a;
                 if ((o.t === "t" || o.t === "s") && !o.r) {
                     o.r = [];
@@ -1148,7 +1144,7 @@ export default function Home({feed, updateSession, VIP}) {
 
                                                                     keywords = keywords?.map(x => {
                                                                         const {t, a} = x;
-                                                                        let o = JSON.parse(compressedToJsonString(t));
+                                                                        let o = JSON.parse(toJson(t));
                                                                         o.a = a;
                                                                         if ((o.t === "t" || o.t === "s") && !o.r) {
                                                                             o.r = [];

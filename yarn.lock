@@ -3160,6 +3160,11 @@ readdirp@~3.6.0:
   dependencies:
     picomatch "^2.2.1"
 
+really-relaxed-json@^0.3.2:
+  version "0.3.2"
+  resolved "https://registry.yarnpkg.com/really-relaxed-json/-/really-relaxed-json-0.3.2.tgz#0f7dd3bbf279d8c04d2654d501394d090927faf5"
+  integrity sha512-dWDnjzCnOyjfY26IHMEomqE5D3btCs5D7I8iSAeqPs+Jxm1m6W/jwn0cxlXW8u24RD29bi5llLOEVN87JUrqag==
+
 regenerator-runtime@^0.13.11:
   version "0.13.11"
   resolved "https://registry.yarnpkg.com/regenerator-runtime/-/regenerator-runtime-0.13.11.tgz#f6dca3e7ceec20590d07ada785636a90cdca17f9"

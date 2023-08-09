@@ -1,3 +1,5 @@
+import {toJson} from 'really-relaxed-json'
+
 const splitByNonAlpha = (txt) => {
     return txt.split(/[^a-zA-ZÀ-ÖØ-öø-ÿ]/).filter(x => x.length > 0);
 }
@@ -31,48 +33,10 @@ const multipleIndexOf = (text, term) => {
     return indices;
 }
 
-const compressedToJsonString = (txt) => {
-    return txt.split("").reduce((acc, v, i, full) => {
-        switch (v) {
-            case "{": {
-                acc.push("{\"");
-                break;
-            }
-            case "}": {
-                if (full.at(i-1) !== "]") {
-                    acc.push("\"");
-                }
-                acc.push("}");
-                break;
-            }
-            case ":": {
-                acc.push("\":");
-                if (full.at(i+1) !== "[") {
-                    acc.push("\"");
-                }
-                break;
-            }
-            case ",": {
-                if (full.at(i-1) !== "}") {
-                    acc.push("\"");
-                }
-                acc.push(",");
-                if (full.at(i+1) !== "{") {
-                    acc.push("\"");
-                }
-                break;
-            }
-            default: {
-                acc.push(v);
-            }
-        }
-        return acc;
-    }, []).join("");
-}
 
 export const preprocessKeywords = async (keywords) => {
     return keywords.map(x => {
-        let o = JSON.parse(compressedToJsonString(x.t));
+        let o = JSON.parse(toJson(x.t));
         o.o = x.t;
         return o;
     }).reduce((acc, x) => {

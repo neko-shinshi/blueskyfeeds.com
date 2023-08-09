@@ -1,3 +1,4 @@
+import {toRJson} from 'really-relaxed-json'
 export const dotObjectStringPath = (o, path) => {
     let oo = o;
     path.split(".").forEach(x => {
@@ -53,7 +54,7 @@ export const compressKeyword = (x) => {
         }
     }
     return {
-        t: JSON.stringify(y).replaceAll("\"", ""),
+        t: toRJson(JSON.stringify(y)),
         a: x.a // This is not used by the firehose
     };
 }
