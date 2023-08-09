@@ -54,7 +54,7 @@ export const compressKeyword = (x) => {
         }
     }
     return {
-        t: toRJson(JSON.stringify(y)),
+        t: toRJson(JSON.stringify(y).replaceAll(/(\/){2,}/g, "/")), // more than one backslash don't work
         a: x.a // This is not used by the firehose
     };
 }
