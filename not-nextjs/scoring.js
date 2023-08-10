@@ -93,21 +93,12 @@ const updateScores = async(db) => {
             return dbQuery;
         });
         commands = {$or: commands};
-        const posts = await db.posts.find(commands).project({_id:1, createdAt:1}).toArray();
-        const postIds = posts.map(x => x._id);
-
-
-        const [like, reply, repost] = await Promise.all([
-            db.likes.find({parent:{$in: postIds}}).project({_id:0, parent:1}).toArray(),
-            db.replies.find({parent:{$in: postIds}}).project({_id:0, parent:1}).toArray(),
-            db.reposts.find({parent:{$in: postIds}}).project({_id:0, parent:1}).toArray()
-        ]);
-
+        const posts = await db.posts.find(commands).project({_id:1, createdAt:1, idLikes:1, idReposts:1, idReplies:1}).toArray();
         const now = new Date();
         const writeCommands = posts.map(post => {
             const {createdAt:then, _id} = post;
-            const likes = like.filter(x => x.parent === _id).length;
-            const ups = likes + reply.filter(x => x.parent === _id).length + repost.filter(x => x.parent === _id).length;
+            const likes = post.idLikes.length;
+            const ups = likes + post.idReposts.length + post.idReplies.length;
             const likeV = generateScoreWithTime(likes, now, then, GRAVITY);
             const upV = generateScoreWithTime(ups, now, then, GRAVITY);
 

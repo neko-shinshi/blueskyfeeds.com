@@ -29,9 +29,6 @@ const connectToDatabase = async () => {
                 feedViews: db.collection("feedViews"),
                 posts: db.collection("posts"),
                 keywords: db.collection("keywords"),
-                reposts: db.collection("reposts"),
-                likes: db.collection("likes"),
-                replies: db.collection("replies"),
             };
             return global.cachedDb;
         })
@@ -49,9 +46,9 @@ module.exports = {
 db.sessions.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.data.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.posts.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
-db.replies.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
-db.likes.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
-db.reposts.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
+db.posts.createIndex( { idLikes: 1 } )
+db.posts.createIndex( { idReposts: 1 } )
+db.posts.createIndex( { idReplies: 1 } )
 db.dataAlgoFeed.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.feedViews.createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 } )
 
