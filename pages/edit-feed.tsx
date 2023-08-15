@@ -224,7 +224,15 @@ export default function Home({feed, updateSession, VIP}) {
 
     const multiWordCallback = (fieldName:string) => {
         return async(val, callback) => {
-            const user = val.startsWith("@")? val.slice(1) : val;
+            let user = val;
+            if (user.startsWith("@")) {
+                user = user.slice(1);
+            } else if (user.startsWith("bsky.app/profile/")) {
+                user = user.slice(17).split("/")[0];
+            } else if (user.startsWith("https://bsky.app/profile/")) {
+                user = user.slice(25).split("/")[0];
+            }
+
             const everyList = getValues("everyList") || [];
             const allowList = getValues("allowList") || [];
             const blockList = getValues("blockList") || [];
@@ -233,7 +241,7 @@ export default function Home({feed, updateSession, VIP}) {
             } else if (blockList.find(x => x.did === user || x.handle === user)) {
                 setError(fieldName, {type:'custom', message:`${user} is already in Block List`});
             } else if (allowList.find(x => x.did === user || x.handle === user)) {
-                setError(fieldName, {type:'custom', message:`${user} is already in Allow List`});
+                setError(fieldName, {type:'custom', message:`${user} is already in Only List`});
             } else {
                 if (typeof recaptcha !== 'undefined') {
                     recaptcha.ready(async () => {
@@ -297,7 +305,9 @@ export default function Home({feed, updateSession, VIP}) {
             message="Copy whole or part of url from browser or share button. Submit empty text to remove sticky"
             placeholder="[user]/post/[post-id]"
             validateCallback={(v) => {
-                return (v.startsWith("at://did:plc:") || v.startsWith("https://bsky.app/profile/")) ? "" : "Invalid Sticky";
+                return ((v.startsWith("at://did:plc:") && v.includes("/app.bsky.feed.post/")) ||
+                    (v.startsWith("https://bsky.app/profile/") && v.includes("/post/")) ||
+                    (v.startsWith("bsky.app/profile/") && v.includes("/post/"))) ? "" : "Invalid Sticky";
             }}
             yesCallback={(v:string, callback) => {
                 if (v.trim() === "") {
@@ -308,10 +318,11 @@ export default function Home({feed, updateSession, VIP}) {
                     if (typeof recaptcha !== 'undefined') {
                         setBusy(true);
                         recaptcha.ready(async () => {
+                            const post = v.startsWith("bsky.app/profile/")? `https://${v}` : v;
                             //@ts-ignore
                             const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
                             //@ts-ignore
-                            const result = await localGet("/check/post", {captcha, post:v});
+                            const result = await localGet("/check/post", {captcha, post});
                             setBusy(false);
                             if (result.status === 200) {
                                 const {uri, text} = result.data;
@@ -854,7 +865,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 mode === "live" &&
                                 [
                                     {id:"everyList", c:"bg-lime-100", t:"Every List: Show all posts from these users"},
-                                    {id:"allowList", c:"bg-yellow-100", t:"Allow List: Only search posts from these Users, if empty, will search all users for keywords"},
+                                    {id:"allowList", c:"bg-yellow-100", t:"Only List: Only search posts from these Users, if empty, will search all users for keywords"},
                                     {id:"blockList", c:"bg-pink-100", t:"Block List: Block all posts from these Users"}].map(({id, t,c})=>
                                     <InputMultiWord
                                         key={id}
