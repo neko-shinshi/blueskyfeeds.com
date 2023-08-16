@@ -232,6 +232,7 @@ export default function Home({feed, updateSession, VIP}) {
             } else if (user.startsWith("https://bsky.app/profile/")) {
                 user = user.slice(25).split("/")[0];
             }
+            console.log("user", user);
 
             const everyList = getValues("everyList") || [];
             const allowList = getValues("allowList") || [];
