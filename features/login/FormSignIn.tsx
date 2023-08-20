@@ -78,10 +78,15 @@ export default function FormSignIn() {
                     const result = await signIn(APP_PASSWORD, {redirect:false, service:domain, usernameOrEmail, password, captcha});
                     if (result.status === 200) { // If signin successful
                         location.reload();
+                    } else if (result.status === 401) {
+                        setError([{msg:"Authentication Failed", part:"password"}]);
+                    } else {
+                        setError([{msg:"Unknown Error, try again later or contact @blueskyfeeds.com", part:"all"}]);
                     }
                 });
             }
         } catch (e) {
+            setError([{msg:"Unknown Caught Error, try again later or contact @blueskyfeeds.com", part:"all"}]);
             console.log("ERROR");
             console.log(e);
             if (e.response) {
