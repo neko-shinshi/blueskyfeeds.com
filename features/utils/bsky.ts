@@ -327,3 +327,28 @@ export const getPostsInfo = async (agent, postIds, filter = x => true) => {
 
     return results;
 }
+
+export const feedHasUserLike = async (agent, feedId, userId) => {
+    let cursor:any = {};
+    do {
+        const params = {uri:feedId, limit:100, ...cursor};
+        const {data} = await agent.api.app.bsky.feed.getLikes(params);
+        const {cursor:newCursor, likes} = data;
+        if (newCursor === cursor?.cursor) {
+            break;
+        }
+
+        for (const x of likes) {
+            if (x.actor.did === userId) {
+                return true;
+            }
+        }
+
+        if (!newCursor) {
+            cursor = null;
+        } else {
+            cursor = {cursor: newCursor};
+        }
+    } while (cursor);
+    return false;
+}

@@ -3,6 +3,7 @@ import {randomInt} from "crypto";
 import {parseJwt} from "features/utils/jwtUtils";
 import {algos} from 'features/algos'
 import {handler as userFeedHandler} from 'features/algos/user-feed'
+import {feedHasUserLike, getAgent} from "features/utils/bsky";
 
 const getSortMethod = (sort) => {
     switch (sort) {
@@ -70,7 +71,7 @@ export async function getServerSideProps({req, res, query}) {
         cursor = cursorV;
     } else {
         let {allowList, blockList, everyList, keywordSetting,
-            keywords, languages, pics, postLevels, sort, mode, sticky} = feedObj;
+            keywords, languages, pics, postLevels, sort, mode, sticky, hideLikeSticky} = feedObj;
         if (mode === "user-likes" || mode === "user-posts") {
             const {feed: feedV, cursor: cursorV} = await userFeedHandler(feedId, feedObj, user, queryCursor, limit);
             feed = feedV;
@@ -101,7 +102,7 @@ export async function getServerSideProps({req, res, query}) {
                 dbQuery.lang = {$in: languages};
             }
 
-            let keywordSearch = [];
+            let keywordSearch = [], fail=false;
             const findKeywords = keywords.filter(x => x.a).map(x => x.t);
             const blockKeywords = keywords.filter(x => !x.a).map(x => x.t);
             if (keywordSetting.indexOf("alt") >= 0 && findKeywords.length > 0) {
@@ -142,7 +143,7 @@ export async function getServerSideProps({req, res, query}) {
                 }
             } else {
                 if (findKeywords.length === 0) {
-                    dbQuery = {author:"_"}; // Block everything
+                    fail = true;
                     sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3k4ematehei27";
                 }
             }
@@ -154,7 +155,7 @@ export async function getServerSideProps({req, res, query}) {
                     const [_postId, tss] = queryCursor.split("::");
                     const [userId, __postId] = _postId.split("/");
                     const postId = `at://${userId}/app.bsky.feed.post/${__postId}`;
-                    result = await db.posts.find(dbQuery).sort(sortMethod).limit(1000).project({createdAt: 1}).toArray(); // don't bother querying beyond 500
+                    result = fail? [] : await db.posts.find(dbQuery).sort(sortMethod).limit(1000).project({createdAt: 1}).toArray(); // don't bother querying beyond 500
                     if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
                     let index = result.findIndex(x => x._id === postId);
                     if (index === -1) {
@@ -172,14 +173,20 @@ export async function getServerSideProps({req, res, query}) {
                     }
                 } else {
                     const skip = parseInt(queryCursor);
-                    result = await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project({_id: 1}).toArray();
+                    result = fail? [] : await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project({_id: 1}).toArray();
                     if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}}
                     cursor = `${limit+skip}`;
                 }
             } else {
+                if (!fail && hideLikeSticky === true) {
+                    const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
+                    if (agent && await feedHasUserLike(agent, feedId, user)) {
+                        sticky = null;
+                    }
+                }
                 if (sort === "new") {
                     if (sticky) {limit = limit -1;}
-                    result = await db.posts.find(dbQuery).sort(sortMethod).project({createdAt: 1}).limit(limit).toArray();
+                    result = fail? [] :await db.posts.find(dbQuery).sort(sortMethod).project({createdAt: 1}).limit(limit).toArray();
 
                     if (result.length === 0) {
                         const feed = sticky? [{post:sticky}] : [];
@@ -196,7 +203,7 @@ export async function getServerSideProps({req, res, query}) {
                     }
                 } else {
                     if (sticky) {limit = limit -1;}
-                    result = await db.posts.find(dbQuery).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
+                    result = fail? [] : await db.posts.find(dbQuery).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
                     if (result.length === 0) {
                         const feed = sticky? [{post:sticky}] : [];
                         res.write(JSON.stringify({cursor:"", feed})); res.end(); return {props: {}};
