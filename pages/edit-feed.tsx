@@ -520,15 +520,15 @@ export default function Home({feed, updateSession, VIP}) {
                         <ul className="list-disc pl-4 py-4">
                             {
                                 mode === "live" &&
-                                <li>It will take a while for posts to populate a new live feed as we do not store any post text in our servers. It only process new posts as they arrive via the firehose API. </li>
+                                <li>It may <span className="-m-0.5 px-0.5 font-semibold bg-yellow-200">take a while (at most 20 min)</span> for posts to populate the feed as post data is not stored in the servers, only metadata. It only process <span className="font-semibold">NEW</span> posts as they arrive via the firehose API. If you do not see any test posts by then, <a className="underline text-blue-500 hover:text-blue-800" href="https://bsky.app/profile/blueskyfeeds.com" target="_blank" rel="noreferrer">let me know</a> and {"I'll"} look into it. </li>
                             }
                             {
                                 mode === "user" &&
                                 <li>User feeds fetch data directly from Bluesky, and trigger when the feed is first opened, and can be re-triggered about ten minutes after the last trigger.</li>
                             }
-                            <li><div className="flex place-items-center">Check your feed out
+                            <li><div className="flex place-items-center">Your feed is accessible
                                 <a className="ml-1 inline-flex underline text-blue-500 hover:text-blue-800" href={`https://bsky.app/profile/${userDid}/feed/${getValues("shortName")}`} target="_blank" rel="noreferrer">here</a>.
-                                Or copy it
+                                Or copy it to clipboard
                                 <BiCopy onClick={() => { navigator.clipboard.writeText(`https://bsky.app/profile/${userDid}/feed/${getValues("shortName")}`); alert("Url copied to clipboard")}} className="ml-1 h-4 w-4 text-blue-500 hover:text-blue-800"/></div></li>
                             <li>
                                 <div className="">It costs money to operate BlueskyFeeds.com servers, if you would like to contribute, please visit my
@@ -539,6 +539,9 @@ export default function Home({feed, updateSession, VIP}) {
                                         </div>
                                     </a>
                                 </div>
+                            </li>
+                            <li>
+                                {"I'm currently running the server as cheaply as I possibly can, but it's still about US$40/mo and I don't have many contributions for it yet"}
                             </li>
                         </ul>
 
