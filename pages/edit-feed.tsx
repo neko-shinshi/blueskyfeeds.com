@@ -43,7 +43,7 @@ import {compressKeyword,} from "features/utils/objectUtils";
 import InputTextBasic from "features/input/InputTextBasic";
 import PopupWithInputText from "features/components/PopupWithInputText";
 import {BiCopy} from "react-icons/bi";
-import {HiArrowLongRight} from "react-icons/hi2";
+import {HiArrowLongLeft, HiArrowLongRight} from "react-icons/hi2";
 import KeywordsEdit from "features/components/specific/KeywordsEdit";
 import BlueskyForm from "features/components/specific/BlueskyForm";
 import {compressedToJsonString} from "features/utils/textAndKeywords";
@@ -134,6 +134,7 @@ export default function Home({feed, updateSession, VIP}) {
     const [subMode, setSubMode] = useState("");
     const [stickyText, setStickyText] = useState("");
     const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"edit"|"done">(feed? "edit" : "wizard");
+    const [backFromBsky, setBackFromBsky] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"edit"|"done">("wizard");
 
     const recaptcha = useRecaptcha();
 
@@ -381,6 +382,12 @@ export default function Home({feed, updateSession, VIP}) {
                             <>
                                 <div className="font-bold text-xl">What kind of feed do you want to make?</div>
                                 <div>
+                                    <button type="button" className="w-full bg-blue-100 hover:bg-blue-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-keywords")}}>
+                                        I want to create a feed to show the latest posts of a community or fandom
+                                    </button>
+                                    <button type="button" className="w-full bg-yellow-100 hover:bg-yellow-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-everyList")}}>
+                                        I want to create a feed showing the latest posts of specific users
+                                    </button>
                                     <button type="button" className="w-full bg-lime-100 p-8 hover:bg-lime-400 p-8 hover:font-bold border border-black"
                                             onClick={async () => {
                                                 setBusy(true);
@@ -397,6 +404,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                             setPics(["pics"]);
                                                             setPostLevels(["top"]);
                                                             setValue("allowList", result.data);
+                                                            setBackFromBsky("wizard");
                                                             setModal("wizard-bsky");
                                                         } else if (result.status === 400) {
                                                             alert("Error setting to self");
@@ -408,12 +416,7 @@ export default function Home({feed, updateSession, VIP}) {
                                             }}>
                                         I want to create feed to show my media
                                     </button>
-                                    <button type="button" className="w-full bg-yellow-100 hover:bg-yellow-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-everyList")}}>
-                                        I want to create a feed showing the latest posts of some users
-                                    </button>
-                                    <button type="button" className="w-full bg-blue-100 hover:bg-blue-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-keywords")}}>
-                                        I want to create a feed to show the latest posts of a community or fandom
-                                    </button>
+
                                     <button type="button" className="w-full bg-red-100 p-8 hover:bg-red-400 p-8 hover:font-bold border border-black" onClick={() => {setModal("edit")}}>
                                         I want to create some other type of feed (sorry, more templates will be added in the future).
                                     </button>
@@ -424,7 +427,18 @@ export default function Home({feed, updateSession, VIP}) {
                         {
                             modal === "wizard-keywords" &&
                             <>
-                                <div className="font-bold text-xl">Which keywords do you want to find posts to show into the feed?</div>
+                                <button
+                                    type="button"
+                                    className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                    onClick={() => {
+                                        setModal("wizard");
+                                        setKeywords([]);
+                                    }}
+                                >
+                                    <HiArrowLongLeft className="mr-3 h-5 w-5 text-gray-400" />
+                                    Back
+                                </button>
+                                <div className="font-bold text-xl">Which keywords do you want to look for in posts to show into the feed?</div>
                                 <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP} />
 
                                 <div className="flex justify-end">
@@ -435,6 +449,7 @@ export default function Home({feed, updateSession, VIP}) {
                                             if (keywords.length === 0) {
                                                 alert("Add at least 1 keyword to continue");
                                             } else {
+                                                setBackFromBsky("wizard-keywords");
                                                 setModal("wizard-bsky");
                                             }
                                         }}
@@ -450,6 +465,17 @@ export default function Home({feed, updateSession, VIP}) {
                         {
                             modal === "wizard-everyList" &&
                             <>
+                                <button
+                                    type="button"
+                                    className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                    onClick={() => {
+                                        setModal("wizard");
+                                        setValue("everyList", []);
+                                    }}
+                                >
+                                    <HiArrowLongLeft className="mr-3 h-5 w-5 text-gray-400" />
+                                    Back
+                                </button>
                                 <div className="font-bold text-xl">Which users` posts do you want to show?</div>
                                 <InputMultiWord
                                     className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
@@ -476,6 +502,7 @@ export default function Home({feed, updateSession, VIP}) {
                                             if (getValues("everyList").length === 0) {
                                                 alert("Add at least 1 user to the Every List to continue");
                                             } else {
+                                                setBackFromBsky("wizard-everyList");
                                                 setModal("wizard-bsky");
                                                 console.log("modal set");
                                             }
@@ -489,6 +516,20 @@ export default function Home({feed, updateSession, VIP}) {
                         }
                         {
                             modal === "wizard-bsky" && <>
+                                <button
+                                    type="button"
+                                    className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                    onClick={() => {
+                                        setMode("live");
+                                        setPics(PICS_SETTING.map(x => x.id));
+                                        setPostLevels(POST_LEVELS.map(x => x.id));
+                                        setValue("allowList", []);
+                                        setModal(backFromBsky);
+                                    }}
+                                >
+                                    <HiArrowLongLeft className="mr-3 h-5 w-5 text-gray-400" />
+                                    Back
+                                </button>
                                 <div className="font-bold text-xl">Fill in your new feed`s description</div>
                                 <BlueskyForm useFormReturn={useFormReturn} setPopupState={setPopupState} shortNameLocked={shortNameLocked} />
                                 <div className="flex justify-end">
