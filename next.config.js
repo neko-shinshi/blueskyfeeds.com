@@ -9,9 +9,15 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'cdn.bsky.social',
         port: '',
-        pathname: '/imgproxy/**',
+        pathname: '/imgproxy/**'
       },
-    ],
+      {
+        protocol: 'https',
+        hostname: 'av-cdn.bsky.app',
+        port: '',
+        pathname: '/img/**'
+      }
+    ]
   },
   rewrites: async () => [
     {
