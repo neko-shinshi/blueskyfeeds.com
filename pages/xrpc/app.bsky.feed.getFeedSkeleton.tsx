@@ -192,7 +192,9 @@ export async function getServerSideProps({req, res, query}) {
                         const feed = sticky? [{post:sticky}] : [];
                         res.write(JSON.stringify({cursor:"", feed})); res.end(); return {props: {}};
                     }
-                    if (sticky) {result.splice(1,0, {_id: sticky})}
+                    if (sticky && !result.find(x => x._id === sticky)) {
+                        result.splice(1,0, {_id: sticky});
+                    }
                     // return last item + timestamp
                     const last = result.at(-1);
                     if (last) {
@@ -208,7 +210,9 @@ export async function getServerSideProps({req, res, query}) {
                         const feed = sticky? [{post:sticky}] : [];
                         res.write(JSON.stringify({cursor:"", feed})); res.end(); return {props: {}};
                     }
-                    if (sticky) {result.splice(randomInt(0, 2),0, {_id: sticky})}
+                    if (sticky && !result.find(x => x._id === sticky)) {
+                        result.splice(randomInt(0, 2),0, {_id: sticky});
+                    }
                     cursor = `${limit}`;
                 }
             }
