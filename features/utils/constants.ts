@@ -1,5 +1,5 @@
-export const MAX_FEEDS_PER_USER = 3;
-export const MAX_KEYWORDS_PER_LIVE_FEED = 40;
+export const MAX_FEEDS_PER_USER = 10;
+export const MAX_KEYWORDS_PER_LIVE_FEED = 100;
 export const MAX_KEYWORDS_PER_USER_FEED = 3;
 
 export const SUPPORTED_LANGUAGES = ["", "en", "pt", "ja", "ko", "uk", "es", "fa", "tr", "de", "nl", "fr", "id"];

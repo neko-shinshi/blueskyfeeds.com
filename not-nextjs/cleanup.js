@@ -1,19 +1,11 @@
 const deleteDeadPosts = async (db) => {
-    const feeds = await db.feeds.find({
-        _id: {$nin: ["at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/gordonramses",
-                "at://did:plc:j42qiirtvqmzwb2im77rdsuk/app.bsky.feed.generator/RuneScape", // Empty feed
-                "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/rare-posters"]},
-        mode: "live",
-    }).toArray();
-
-
-    let ops = [];
-
+    const feeds = await db.feeds.find({mode:"live"}).toArray();
+    let postIds = new Set();
     for (const feedObj of feeds) {
-        let dbQuery = {};
-        const {allowList, blockList, everyList, keywordSetting,
-            keywords, languages, pics, postLevels} = feedObj;
+        let {allowList, blockList, everyList, keywordSetting,
+            keywords, languages, pics, postLevels, sort, sticky, hideLikeSticky} = feedObj;
 
+        let dbQuery = {};
         if (allowList.length > 0) {
             // Only search posts from x users
             dbQuery.author = {$in: allowList};
@@ -38,7 +30,7 @@ const deleteDeadPosts = async (db) => {
             dbQuery.lang = {$in: languages};
         }
 
-        let keywordSearch = [];
+        let keywordSearch = [], fail=false;
         const findKeywords = keywords.filter(x => x.a).map(x => x.t);
         const blockKeywords = keywords.filter(x => !x.a).map(x => x.t);
         if (keywordSetting.indexOf("alt") >= 0 && findKeywords.length > 0) {
@@ -79,14 +71,36 @@ const deleteDeadPosts = async (db) => {
             }
         } else {
             if (findKeywords.length === 0) {
-                dbQuery = {author:"_"}; // Block everything
-                //sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3k4ematehei27";
+                fail = true;
+                sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3k4ematehei27";
             }
         }
-        ops.push(dbQuery);
+
+        if (!fail) {
+            console.log(JSON.stringify(dbQuery));
+            const getSortMethod = (sort) => {
+                switch (sort) {
+                    case "like": return {likes:-1, createdAt:-1};
+                    case "ups": return {ups:-1, createdAt: -1};
+                    case "sLike": return {likeV:-1, createdAt: -1};
+                    case "sUps": return {upV:-1, createdAt:-1};
+
+                    // "new" also
+                    default: return {createdAt: -1};
+                }
+            }
+            const sortMethod = getSortMethod(sort);
+            const result = await db.posts.find(dbQuery).sort(sortMethod).limit(1000).project({_id: 1}).toArray();
+            result.forEach(x => {
+                postIds.add(x._id);
+            });
+        }
     }
 
-    const deletePosts = await db.posts.deleteMany({$nor: ops}).toArray();
+    let cutOff = new Date();
+    cutOff.setHours(cutOff.getHours()-2);
+    const result = await db.posts.deleteMany({_id: {$nin: postIds}, createdAt: {$lt: cutOff}});
+    console.log(result);
 }
 
 module.exports = {
