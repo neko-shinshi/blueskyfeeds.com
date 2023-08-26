@@ -7,11 +7,13 @@ import {BsFillInfoCircleFill} from "react-icons/bs";
 import {HiAtSymbol} from "react-icons/hi";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import Link from "next/link";
+import {AiFillLock} from "react-icons/ai";
 
 export default function FormSignIn() {
     const [password, setPassword] = useState("");
     const [domain, setDomain] = useState("bsky.social");
     const [rememberMe, setRememberMe] = useState(false);
+    const [warning, setWarning] = useState(false);
 
     const emailRef = useRef(null);
     const rememberMeRef = useRef(null);
@@ -115,11 +117,17 @@ export default function FormSignIn() {
             <form className="space-y-4" onSubmit={handleSubmit}>
                 <div>
                     <label htmlFor="domain" className="block text-sm font-medium text-gray-700">
-                        Domain
+                        Federated PDS Domain (not your @handle.domain)
                     </label>
-                    <div className="mt-1 relative">
+                    <div className="mt-1 flex place-items-center">
                         <input id="domain"
                                name="domain"
+                               onClick={() => {
+                                   if (!warning) {
+                                       alert("Only change this if you are on a FEDERATED server");
+                                       setWarning(true);
+                                   }
+                               }}
                                defaultValue="bsky.social"
                                type="text"
                                onChange={(event) => {
@@ -136,7 +144,7 @@ export default function FormSignIn() {
 
                 <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        Username or email address
+                        @Handle, Email, or `user` from `user`.bsky.social
                     </label>
                     <div className="mt-1 relative">
                         <input ref={emailRef}
