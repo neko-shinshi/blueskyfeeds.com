@@ -179,7 +179,7 @@ export default function Home({feed, updateSession, VIP}) {
 
     useEffect(() => {
         if (!feed) {
-            reset({sticky:"", sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes"});
+            reset({sticky:"", sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes", posts:[]});
             setMode("live");
             setLanguages([]);
             setPostLevels(POST_LEVELS.map(x => x.id));
@@ -1354,7 +1354,7 @@ export default function Home({feed, updateSession, VIP}) {
 
                                                                         let o:any = {
                                                                             sort,displayName, description, copy: copy || [], highlight: highlight || "yes",
-                                                                            shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [], sticky
+                                                                            shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [], sticky, posts:[]
                                                                         };
                                                                         setMode(mode);
                                                                         if (subMode) {
