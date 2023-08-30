@@ -656,7 +656,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 }
                             }
                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
-                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, copy, highlight, sticky, posts:posts.map(x => x.uri),
+                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, copy, highlight, sticky, posts:posts? posts.map(x => x.uri) : [],
                                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode:modeText};
                             console.log(result);
 
