@@ -7,7 +7,6 @@ import {BsFillInfoCircleFill} from "react-icons/bs";
 import {HiAtSymbol} from "react-icons/hi";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import Link from "next/link";
-import {AiFillLock} from "react-icons/ai";
 
 export default function FormSignIn() {
     const [password, setPassword] = useState("");
@@ -81,8 +80,10 @@ export default function FormSignIn() {
                     if (result.status === 200) { // If signin successful
                         location.reload();
                     } else if (result.status === 401) {
+                        console.log(result);
                         setError([{msg:"Authentication Failed", part:"password"}]);
                     } else {
+                        console.log(result);
                         setError([{msg:"Unknown Error, try again later or contact @blueskyfeeds.com", part:"all"}]);
                     }
                 });

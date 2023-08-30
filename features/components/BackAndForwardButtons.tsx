@@ -14,7 +14,7 @@ export default function BackAndForwardButtons({basePath, params}) {
                 getCurrentPage() === 1 && "invisible",
                 "-mt-px flex w-0 flex-1")}>
                 <Link
-                    href={`${basePath}${paramsToEncodedString({...params, p: getCurrentPage()-1})}`}
+                    href={`${basePath}/${paramsToEncodedString({...params, p: getCurrentPage()-1})}`}
                     className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pr-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                 >
                     <HiArrowLongLeft className="mr-3 h-5 w-5 text-gray-400" />
@@ -26,7 +26,7 @@ export default function BackAndForwardButtons({basePath, params}) {
                 clsx("-mt-px flex w-0 flex-1 justify-end")
             }>
                 <Link
-                    href={`${basePath}${paramsToEncodedString({...params, p: getCurrentPage()+1})}`}
+                    href={`${basePath}/${paramsToEncodedString({...params, p: getCurrentPage()+1})}`}
                     className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                 >
                     Next

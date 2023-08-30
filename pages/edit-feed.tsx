@@ -12,7 +12,7 @@ import {getFeedDetails, getMyCustomFeedIds} from "features/utils/feedUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
-import {localDelete, localGet, paramsToEncodedString} from "features/network/network";
+import {localDelete, localGet} from "features/network/network";
 import {toJson} from 'really-relaxed-json'
 import Image from "next/image";
 import InputMultiWord from "features/input/InputMultiWord";
@@ -20,21 +20,17 @@ import {serializeFile} from "features/utils/fileUtils";
 import {
     FEED_MODES,
     FeedKeyword,
-    KEYWORD_SETTING,
-    KEYWORD_TYPES,
-    KeywordType, KeywordTypeToShort, MAX_FEEDS_PER_USER, MAX_KEYWORDS_PER_LIVE_FEED, MAX_KEYWORDS_PER_USER_FEED,
+    KEYWORD_SETTING, MAX_FEEDS_PER_USER, MAX_KEYWORDS_PER_LIVE_FEED, MAX_KEYWORDS_PER_USER_FEED,
     PICS_SETTING,
     POST_LEVELS,
     SORT_ORDERS,
     SUPPORTED_LANGUAGES, USER_FEED_MODE
 } from "features/utils/constants";
 import {SIGNATURE} from "features/utils/signature";
-import SortableWordBubbles from "features/components/SortableWordBubbles";
 import {getLoggedInData} from "features/network/session";
-import { HiTrash} from "react-icons/hi";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {APP_SESSION} from "features/auth/authUtils";
-import {isValidDomain, isValidToken} from "features/utils/validationUtils";
+import {isValidDomain} from "features/utils/validationUtils";
 import {getActorsInfo, getPostInfo, isVIP} from "features/utils/bsky";
 import PopupLoading from "features/components/PopupLoading";
 import Link from "next/link";
@@ -47,6 +43,8 @@ import {HiArrowLongLeft, HiArrowLongRight} from "react-icons/hi2";
 import KeywordsEdit from "features/components/specific/KeywordsEdit";
 import BlueskyForm from "features/components/specific/BlueskyForm";
 import {compressedToJsonString} from "features/utils/textAndKeywords";
+import PostsEdit from "features/components/specific/PostsEdit";
+import PopupWithAddPost from "features/components/PopupWithAddPost";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -59,24 +57,39 @@ export async function getServerSideProps({req, res, query}) {
         if (_feed) {
             const feedData: any = await getFeedDetails(agent, db, _feed);
             if (feedData) {
-                let {allowList, blockList, everyList, sticky} = feedData;
-                allowList = allowList || [];
-                blockList = blockList || [];
-                everyList = everyList || [];
-                const actors = [...allowList, ...blockList, ...everyList];
-                if (actors.length > 0) {
-                    const profiles = await getActorsInfo(agent, actors);
-                    allowList = profiles.filter(x =>  allowList.find(y => y === x.did));
-                    blockList = profiles.filter(x =>  blockList.find(y => y === x.did));
-                    everyList = profiles.filter(x =>  everyList.find(y => y === x.did));
-                }
-                if (sticky) {
-                    sticky = await getPostInfo(agent, sticky);
+                let {allowList, blockList, everyList, sticky, posts:_posts, mode} = feedData;
+                if (mode === "posts") {
+                    if (Array.isArray(_posts)) {
+                        const posts = (await getPostInfo(agent, _posts)).map(post => {
+                            const {text, uri} = post;
+                            return {text, uri};
+                        });
+                        feed = {...feedData, posts};
+                    } else {
+                        console.log("posts not formatted correctly");
+                        res.status(401).send("error");
+                        return;
+                    }
                 } else {
-                    sticky = "";
+                    allowList = allowList || [];
+                    blockList = blockList || [];
+                    everyList = everyList || [];
+                    const actors = [...allowList, ...blockList, ...everyList];
+                    if (actors.length > 0) {
+                        const profiles = await getActorsInfo(agent, actors);
+                        allowList = profiles.filter(x =>  allowList.find(y => y === x.did));
+                        blockList = profiles.filter(x =>  blockList.find(y => y === x.did));
+                        everyList = profiles.filter(x =>  everyList.find(y => y === x.did));
+                    }
+                    if (sticky) {
+                        [sticky] = await getPostInfo(agent, [sticky]) || [""];
+                    } else {
+                        sticky = "";
+                    }
+
+                    feed = {...feedData, allowList, blockList, everyList, sticky};
                 }
 
-                feed = {...feedData, allowList, blockList, everyList, sticky};
             } else {
                 return {redirect: {destination: '/404', permanent: false}}
             }
@@ -130,12 +143,10 @@ export default function Home({feed, updateSession, VIP}) {
     const [busy, setBusy] = useState(false);
 
     const [userDid, setUserDid] = useState("");
-    const [mode, setMode] = useState("keyword");
+    const [mode, setMode] = useState<"live"|"user"|"posts">("live");
     const [subMode, setSubMode] = useState("");
     const [stickyText, setStickyText] = useState("");
-    const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"edit"|"done">(feed? "edit" : "wizard");
-    const [backFromBsky, setBackFromBsky] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"edit"|"done">("wizard");
-
+    const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"wizard-posts"|"edit"|"done">(feed? "edit" : "wizard");
     const recaptcha = useRecaptcha();
 
     const formRef = useRef(null);
@@ -173,19 +184,25 @@ export default function Home({feed, updateSession, VIP}) {
             setLanguages([]);
             setPostLevels(POST_LEVELS.map(x => x.id));
             setKeywordSetting(["text"]);
-            setPics(["text", "pics"])
+            setPics(["text", "pics"]);
         } else {
-            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode, sticky} = feed;
-           console.log("sticky", sticky);
-            const {uri:stickyUri, text} = sticky;
-            if (stickyUri) {
-                setStickyText(text);
+            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode, sticky, posts} = feed;
+
+            let stickyUri;
+            if (sticky) {
+                console.log("sticky", sticky);
+                const {uri:_stickyUri, text} = sticky;
+                if (_stickyUri) {
+                    stickyUri = _stickyUri;
+                    setStickyText(text);
+                }
             }
+
 
             let o:any = {
                 sticky:stickyUri || "",
                 sort,displayName, description: description.replaceAll(SIGNATURE, ""), copy: copy || [], highlight: highlight || "yes",
-                shortName: uri.split("/").at(-1), blockList, allowList, everyList, mustUrl: mustUrl || [], blockUrl: blockUrl || [],
+                shortName: uri.split("/").at(-1), blockList, allowList, everyList, mustUrl: mustUrl || [], blockUrl: blockUrl || [], posts: posts || [],
             };
 
             if (avatar) {
@@ -300,46 +317,23 @@ export default function Home({feed, updateSession, VIP}) {
                     });
                 }
             }}/>
-        <PopupWithInputText
+        <PopupWithAddPost
             isOpen={popupState === "edit_sticky"}
             setOpen={setPopupState}
-            title="Set Sticky"
-            message="Copy whole or part of url from browser or share button. Submit empty text to remove sticky"
-            placeholder="[user]/post/[post-id]"
-            validateCallback={(v) => {
-                return ((v.startsWith("at://did:plc:") && v.includes("/app.bsky.feed.post/")) ||
-                    (v.startsWith("https://bsky.app/profile/") && v.includes("/post/")) ||
-                    (v.startsWith("bsky.app/profile/") && v.includes("/post/"))) ? "" : "Invalid Sticky";
-            }}
-            yesCallback={(v:string, callback) => {
-                if (v.trim() === "") {
+            title="Set Sticky Post"
+            message="Copy whole or part of url from browser or share button. Submit blank to remove sticky"
+            recaptcha={recaptcha}
+            setBusy={setBusy}
+            limitOne={true}
+            resultCallback={result => {
+                const {uri, text} = result;
+                console.log("result",result);
+                if (!uri) {
                     setValue("sticky", "");
                     setStickyText("");
-                    callback();
                 } else {
-                    if (typeof recaptcha !== 'undefined') {
-                        setBusy(true);
-                        recaptcha.ready(async () => {
-                            const post = v.startsWith("bsky.app/profile/")? `https://${v}` : v;
-                            //@ts-ignore
-                            const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                            //@ts-ignore
-                            const result = await localGet("/check/post", {captcha, post});
-                            setBusy(false);
-                            if (result.status === 200) {
-                                const {uri, text} = result.data;
-                                setStickyText(text);
-                                setValue("sticky", uri);
-                                callback();
-                            } else if (result.status === 400) {
-                                callback("Invalid post or post not found");
-                            } else if (result.status === 401) {
-                                callback("Bluesky account error, please logout and login again");
-                            } else {
-                                callback("Unknown error");
-                            }
-                        });
-                    }
+                    setStickyText(text);
+                    setValue("sticky", uri);
                 }
             }}/>
 
@@ -383,10 +377,10 @@ export default function Home({feed, updateSession, VIP}) {
                                 <div className="font-bold text-xl">What kind of feed do you want to make?</div>
                                 <div>
                                     <button type="button" className="w-full bg-blue-100 hover:bg-blue-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-keywords")}}>
-                                        I want to create a feed to show the latest posts of a community or fandom
+                                        <span className="font-bold">Latest Posts with Keywords:</span> I want to create a feed to show the latest posts of a community or fandom
                                     </button>
                                     <button type="button" className="w-full bg-yellow-100 hover:bg-yellow-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-everyList")}}>
-                                        I want to create a feed showing the latest posts of specific users
+                                        <span className="font-bold">Users` Latest Posts:</span> I want to create a feed showing the latest posts of specific users
                                     </button>
                                     <button type="button" className="w-full bg-lime-100 p-8 hover:bg-lime-400 p-8 hover:font-bold border border-black"
                                             onClick={async () => {
@@ -401,11 +395,9 @@ export default function Home({feed, updateSession, VIP}) {
                                                         if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
                                                             setMode("user");
                                                             setSubMode("posts");
-                                                            setPics(["pics"]);
                                                             setPostLevels(["top"]);
                                                             setValue("allowList", result.data);
-                                                            setBackFromBsky("wizard");
-                                                            setModal("wizard-bsky");
+                                                            setModal("wizard-keywords");
                                                         } else if (result.status === 400) {
                                                             alert("Error setting to self");
                                                         }
@@ -414,16 +406,62 @@ export default function Home({feed, updateSession, VIP}) {
                                                 }
 
                                             }}>
-                                        I want to create feed to show my media
+                                        <span className="font-bold">My Posts:</span> I want to create feed to show MY posts, with some filtering
+                                    </button>
+                                    <button type="button" className="w-full bg-violet-100 p-8 hover:bg-violet-400 p-8 hover:font-bold border border-black"
+                                            onClick={() => {
+                                                setModal("wizard-posts");
+                                                setMode("posts");
+                                            }}>
+                                        <span className="font-bold">List of Posts:</span> I want to create feed to show a list of specific posts
                                     </button>
 
                                     <button type="button" className="w-full bg-red-100 p-8 hover:bg-red-400 p-8 hover:font-bold border border-black" onClick={() => {setModal("edit")}}>
-                                        I want to create some other type of feed (sorry, more templates will be added in the future).
+                                        <span className="font-bold">Other:</span> I want to create some other type of feed (sorry, more templates will be added in the future).
                                     </button>
                                 </div>
                             </>
 
                         }
+                        {
+                            modal === "wizard-posts" &&
+                            <>
+                                <button
+                                    type="button"
+                                    className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                    onClick={() => {
+                                        setModal("wizard");
+                                        setValue("posts", []);
+                                    }}
+                                >
+                                    <HiArrowLongLeft className="mr-3 h-5 w-5 text-gray-400" />
+                                    Back
+                                </button>
+                                <div className="font-bold text-xl">Which posts do you want to show into the feed?</div>
+                                <PostsEdit useFormReturn={useFormReturn} recaptcha={recaptcha} setBusy={setBusy}/>
+
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                        onClick={() => {
+                                            // TODO manage
+                                            /*
+                                            if (getValues("posts").length === 0) {
+                                                alert("Add at least 1 post to continue");
+                                            } else {*/
+                                                setModal("wizard-bsky");
+                                           // }
+                                        }}
+                                    >
+                                        Next
+                                        <HiArrowLongRight className="ml-3 h-5 w-5 text-gray-400" />
+                                    </button>
+                                </div>
+
+                            </>
+                        }
+
                         {
                             modal === "wizard-keywords" &&
                             <>
@@ -449,7 +487,6 @@ export default function Home({feed, updateSession, VIP}) {
                                             if (keywords.length === 0) {
                                                 alert("Add at least 1 keyword to continue");
                                             } else {
-                                                setBackFromBsky("wizard-keywords");
                                                 setModal("wizard-bsky");
                                             }
                                         }}
@@ -502,7 +539,6 @@ export default function Home({feed, updateSession, VIP}) {
                                             if (getValues("everyList").length === 0) {
                                                 alert("Add at least 1 user to the Every List to continue");
                                             } else {
-                                                setBackFromBsky("wizard-everyList");
                                                 setModal("wizard-bsky");
                                                 console.log("modal set");
                                             }
@@ -524,7 +560,8 @@ export default function Home({feed, updateSession, VIP}) {
                                         setPics(PICS_SETTING.map(x => x.id));
                                         setPostLevels(POST_LEVELS.map(x => x.id));
                                         setValue("allowList", []);
-                                        setModal(backFromBsky);
+                                        setValue("posts", []);
+                                        setModal("wizard");
                                     }}
                                 >
                                     <HiArrowLongLeft className="mr-3 h-5 w-5 text-gray-400" />
@@ -604,7 +641,7 @@ export default function Home({feed, updateSession, VIP}) {
                         useFormReturn={useFormReturn}
                         cleanUpData={async (data) => {
                             setBusy(true);
-                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky} = data;
+                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts} = data;
                             const allowList = (_allowList || []).map(x => x.did);
                             const blockList = (_blockList || []).map(x => x.did);
                             const everyList = (_everyList || []).map(x => x.did);
@@ -619,7 +656,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 }
                             }
                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
-                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, copy, highlight, sticky,
+                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, copy, highlight, sticky, posts:posts.map(x => x.uri),
                                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode:modeText};
                             console.log(result);
 
@@ -644,15 +681,22 @@ export default function Home({feed, updateSession, VIP}) {
                                         FEED_MODES.map(({id, txt}) => {
                                             const updateMode = (id) => {
                                                 setMode(id);
-                                                if (id === "user") {
-                                                    setValue("sort", "new");
-                                                    setKeywords([]);
-                                                    setValue("allowList", []);
-                                                    setValue("blockList", []);
-                                                    setValue("everyList", []);
-                                                    setSubMode("posts")
+                                                setValue("posts", []);
+                                                setValue("allowList", []);
+                                                setValue("blockList", []);
+                                                setValue("everyList", []);
+                                                setSubMode("posts")
+                                                switch (id) {
+                                                    case "user": {
+                                                        setValue("sort", "new");
+                                                        break;
+                                                    }
+                                                    case "post": {
+                                                        setKeywords([]);
+                                                        setLanguages([]);
+                                                        break;
+                                                    }
                                                 }
-
                                             }
                                             return <div key={id}
                                                         className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1 h-full"
@@ -706,366 +750,408 @@ export default function Home({feed, updateSession, VIP}) {
                                 }
                             </div>
                             <div className="bg-sky-100 p-2 space-y-2">
-                                <div className="">
-                                    <label className="block font-semibold text-gray-700">
-                                        Sticky Post URI or URL (This shows up at the 1st or 2nd position of your feed)
-                                    </label>
-                                </div>
-
-                                <button
-                                    type="button"
-                                    className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
-                                    onClick={() => {
-                                        setPopupState("edit_sticky");
-                                    }}
-                                >
-                                    <span>{watchSticky? "Change Sticky Post": "Set Sticky Post"}</span>
-                                </button>
-
-                                {
-                                    watchSticky &&
-                                    <a href={`https://bsky.app/profile/${watchSticky.slice(5).replace("app.bsky.feed.post", "post")}`} target="_blank" rel="noreferrer">
-                                        <div className="mt-2 p-2 border border-2 border-transparent hover:bg-yellow-100 hover:border-black rounded-xl">
-                                            <div className="text-sm">Preview</div>
-                                            <InputTextBasic fieldName="sticky" disabled={true} fieldReadableName="" useFormReturn={useFormReturn} options={{}}/>
-                                            <div className="bg-gray-50 p-2">{stickyText}</div>
-                                        </div>
-                                    </a>
-                                    
-                                }
-                            </div>
-                            <div className="bg-lime-100 p-2 space-y-2">
                                 <InputRadio entriesPerRow={2} modifyText={_ => {
                                     return "text-base font-semibold";
                                 }} fieldName="highlight" fieldReadableName="Show in Highlights on BlueskyFeeds.com?" subtext="Your feed will still publicly available in other feed directories" useFormReturn={useFormReturn} items={[{id:"yes", txt:"Yes"}, {id:"no", txt:"No"}]}/>
                             </div>
 
-                            <div className="bg-sky-100 p-2 space-y-2">
-                                <InputRadio entriesPerRow={2} modifyText={_ => {
-                                    return "text-base font-semibold";
-                                }} fieldName="sort" fieldReadableName="Sort Order" subtext="Determines which post is on top" useFormReturn={useFormReturn} items={SORT_ORDERS.filter(x => x.mode.indexOf(mode) >= 0)}/>
-                                {
-                                    mode === "live" &&
-                                    <a href="https://medium.com/hacking-and-gonzo/how-hacker-news-ranking-algorithm-works-1d9b0cf2c08d" target="_blank" rel="noreferrer">
-                                        <div className="p-2 hover:underline text-blue-500 hover:text-blue-800 inline-flex place-items-center text-sm gap-2">
-                                            <BsFillInfoCircleFill className="h-4 w-4"/>
-                                            <span>What is the Hacker News ranking algorithm?</span>
-                                        </div>
-                                    </a>
-                                }
-
-                            </div>
-                            <div className="bg-lime-100 p-2 space-y-2">
-                                <div className="font-semibold">Post Type Filter</div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {
-                                        POST_LEVELS.map(x =>
-                                            <div key={x.id}
-                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
-                                                 onClick={() => {
-                                                     if (postLevels.indexOf(x.id) >= 0) {
-                                                         setPostLevels([...postLevels.filter(y => y !== x.id)]);
-                                                     } else {
-                                                         postLevels.push(x.id);
-                                                         setPostLevels([...postLevels]);
-                                                     }
-                                                 }}>
-                                                <input type="checkbox"
-                                                       onChange={() => {}}
-                                                       onClick={(e) => {
-                                                           e.stopPropagation();
-                                                           if (postLevels.indexOf(x.id) >= 0) {
-                                                               setPostLevels([...postLevels.filter(y => y !== x.id)]);
-                                                           } else {
-                                                               postLevels.push(x.id);
-                                                               setPostLevels([...postLevels]);
-                                                           }
-                                                       }}
-                                                       checked={postLevels.indexOf(x.id) >= 0}
-                                                       className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
-                                                />
-                                                <div>{x.txt}</div>
-                                            </div>)
-                                    }
-                                </div>
-                                {
-                                    postLevels.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
-                                }
-                            </div>
-
-                            <div className="bg-sky-100 p-2 space-y-2">
-                                <div className="font-semibold">Picture Posts Filter</div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {
-                                        PICS_SETTING.map(x =>
-                                            <div key={x.id}
-                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
-                                                 onClick={() => {
-                                                     if (pics.indexOf(x.id) >= 0) {
-                                                         setPics([...pics.filter(y => y !== x.id)]);
-                                                     } else {
-                                                         setPics([...pics, x.id]);
-                                                     }
-                                                 }}>
-                                                <input type="checkbox"
-                                                       onChange={() => {}}
-                                                       onClick={(e) => {
-                                                           e.stopPropagation();
-                                                           if (pics.indexOf(x.id) >= 0) {
-                                                               setPics([...pics.filter(y => y !== x.id)]);
-                                                           } else {
-                                                               setPics([...pics, x.id]);
-                                                           }
-                                                       }}
-                                                       checked={pics.indexOf(x.id) >= 0}
-                                                       className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
-                                                />
-                                                <div>{x.txt}</div>
-                                            </div>)
-                                    }
-                                </div>
-                                {
-                                    pics.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
-                                }
-                            </div>
-
-                            <div className="bg-lime-100 p-2">
-                                <div className="font-semibold">Language Filters</div>
-                                <div className="text-sm">Note: This is calculated using cld2, which is not perfect and may be unable to process short posts</div>
-                                <div className="text-sm">Leave this completely empty to accept posts of all languages including those not listed</div>
-                                <div className="grid grid-cols-2">
-                                    <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                         onClick={() => {
-                                             if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
-                                                 setLanguages([]);
-                                             } else {
-                                                 setLanguages(SUPPORTED_LANG.map(x => x.id));
-                                             }
-                                         }}>
-                                        <div className="flex items-center p-2">
-                                            <input type="checkbox"
-                                                   onChange={() => {}}
-                                                   onClick={(e) => {
-                                                       e.stopPropagation();
-                                                       if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
-                                                           setLanguages([]);
-                                                       } else {
-                                                           setLanguages(SUPPORTED_LANG.map(x => x.id));
-                                                       }
-                                                   }}
-                                                   checked={SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)}
-                                                   className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
-                                            />
-                                            <div className={clsx("ml-3 text-gray-700")}>
-                                                {
-                                                    SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
-                                                        Deselect All (all posts no matter the language)
-                                                        <RxCross2 className="w-6 h-6 text-red-600"/>
-                                                    </div>: <div className="flex place-items-center">
-                                                        Select All listed here (some languages are not listed)
-                                                        <RxCheck className="w-6 h-6 text-green-600"/>
-                                                    </div>
-                                                }
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {
-                                        SUPPORTED_LANG.map(({txt, id}) => {
-                                            const onClick = (e) => {
-                                                e.stopPropagation();
-                                                if (languages.indexOf(id) < 0) {
-                                                    const lang = [...languages];
-                                                    lang.push(id)
-                                                    setLanguages(lang);
-                                                } else {
-                                                    setLanguages(languages.filter(x => x !== id));
-                                                }
-                                            }
-                                            return <div key={id}
-                                                        className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                                        onClick={onClick}>
-                                                <div className="flex items-center p-2">
-                                                    <input type="checkbox"
-                                                           checked={languages.indexOf(id) >= 0}
-                                                           onClick={onClick}
-                                                           onChange={()=>{}}
-                                                           className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
-                                                    />
-                                                    <div className={clsx("ml-3 text-gray-700")}>
-                                                        {txt}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        })
-                                    }
-                                </div>
-                            </div>
-                        </div>
-
-
-
-                        <div className="bg-white p-2 space-y-2">
-                            <div className="text-lg font-bold">User Filters</div>
                             {
-                                mode === "live" &&
-                                [
-                                    {id:"everyList", c:"bg-lime-100", t:"Every List: Show all posts from these users"},
-                                    {id:"allowList", c:"bg-yellow-100", t:"Only List: Only search posts from these Users, if empty, will search all users for keywords"},
-                                    {id:"blockList", c:"bg-pink-100", t:"Block List: Block all posts from these Users"}].map(({id, t,c})=>
-                                    <InputMultiWord
-                                        key={id}
-                                        className={clsx("border border-2 border-black p-2 rounded-xl", c)}
-                                        labelText={t}
-                                        placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
-                                        fieldName={id}
-                                        handleItem={(item, value, onChange) => {
-                                            value.push(item);
-                                            value.sort((a,b) => {
-                                                return a.handle.localeCompare(b.handle);
-                                            })
-                                            onChange(value);
-                                        }}
-                                        valueModifier={item => {
-                                            return `${item.displayName} @${item.handle}`
-                                        }}
-                                        useFormReturn={useFormReturn}
-                                        check={multiWordCallback(id)}/>
-                                )
-                            }
-                            {
-                                mode === "user" &&
-                                <div className="bg-sky-100 p-2 space-y-2">
-                                    <div className="">
-                                        <label className="block font-semibold text-gray-700">
-                                            User to Observe
-                                        </label>
-                                    </div>
+                                (mode === "live" || mode === "user") && <>
+                                    <div className="bg-lime-100 p-2 space-y-2">
+                                        <div className="">
+                                            <label className="block font-semibold text-gray-700">
+                                                Sticky Post URI or URL (This shows up at the 1st or 2nd position of your feed)
+                                            </label>
+                                        </div>
 
-                                    <div className="mt-1 flex rounded-md shadow-sm gap-2">
-                                        <button
-                                            type="button"
-                                            className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
-                                            onClick={async () => {
-                                                setBusy(true);
-                                                const {handle} = session.user;
-                                                if (typeof recaptcha !== 'undefined') {
-                                                    recaptcha.ready(async () => {
-                                                        //@ts-ignore
-                                                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                                                        //@ts-ignore
-                                                        const result = await localGet("/check/user", {captcha, actors:[handle]});
-                                                        if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
-                                                            console.log(result.data[0]);
-                                                            setValue("allowList", result.data);
-                                                        } else if (result.status === 400) {
-                                                            alert("Error setting to self");
-                                                        }
-                                                        setBusy(false);
-                                                    });
-                                                }
-                                            }}
-                                        >
-                                            <span>Set to Self</span>
-                                        </button>
                                         <button
                                             type="button"
                                             className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
                                             onClick={() => {
-                                                setPopupState("edit_user");
+                                                setPopupState("edit_sticky");
                                             }}
                                         >
-                                            <span>Set to Another User</span>
+                                            <span>{watchSticky? "Change Sticky Post": "Set Sticky Post"}</span>
                                         </button>
+
+                                        {
+                                            watchSticky &&
+                                            <a href={`https://bsky.app/profile/${watchSticky.slice(5).replace("app.bsky.feed.post", "post")}`} target="_blank" rel="noreferrer">
+                                                <div className="mt-2 p-2 border border-2 border-transparent hover:bg-yellow-100 hover:border-black rounded-xl">
+                                                    <div className="text-sm">Preview</div>
+                                                    <InputTextBasic fieldName="sticky" disabled={true} fieldReadableName="" useFormReturn={useFormReturn} options={{}}/>
+                                                    <div className="bg-gray-50 p-2">{stickyText}</div>
+                                                </div>
+                                            </a>
+                                        }
                                     </div>
 
-                                    {
-                                        Array.isArray(watchAllow) && watchAllow.length === 1 &&
-                                        <a href={`https://bsky.app/profile/${watchAllow[0].did}`}>
-                                            <div className="p-2">
-                                                <div>Observing:</div>
-                                                <div className="bg-gray-50 p-2">{`${watchAllow[0].displayName} @${watchAllow[0].handle}`}</div>
-                                            </div>
-                                        </a>
 
-                                    }
-                                </div>
-                            }
-                        </div>
-
-                        <div className="bg-white p-2 space-y-2">
-                            <div className="text-lg font-bold">Keyword Filters {VIP? "" : `(max ${mode === "live"? MAX_KEYWORDS_PER_LIVE_FEED : MAX_KEYWORDS_PER_USER_FEED})`}</div>
-                            <div>A post is blocked if it contains at least one blocked keyword, and is allowed only if it has no blocked keywords and at least one search keyword</div>
-                            <div className="bg-sky-200 p-2">
-                                <div className="font-semibold">Search location</div>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {
-                                        KEYWORD_SETTING.map(x =>
-                                            <div key={x.id}
-                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
-                                                 onClick={() => {
-                                                     if (keywordSetting.indexOf(x.id) >= 0) {
-                                                         setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
-                                                     } else {
-                                                         setKeywordSetting([...keywordSetting, x.id]);
-                                                     }
-                                                     console.log(keywordSetting);
-                                                 }}>
-                                                <input type="checkbox"
-                                                       onChange={() => {}}
-                                                       onClick={(e) => {
-                                                           e.stopPropagation();
-                                                           if (keywordSetting.indexOf(x.id) >= 0) {
-                                                               setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
-                                                           } else {
-                                                               keywordSetting.push(x.id);
-                                                               setKeywordSetting([...keywordSetting]);
-                                                           }
-                                                       }}
-                                                       checked={keywordSetting.indexOf(x.id) >= 0}
-                                                       className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
-                                                />
-                                                <div>{x.txt}</div>
-                                            </div>)
-                                    }
-                                </div>
-                                {
-                                    keywordSetting.length === 0 && <div className="text-red-700">Please select at least one keyword search method</div>
-                                }
-                            </div>
-                            {
-                                process.env.NEXT_PUBLIC_DEV === "1" &&
-                                <div>
-                                    <div>Copy keywords from: </div>
-                                    <InputMultiWord
-                                        key="feed id"
-                                        className={clsx("border border-2 border-yellow-700 p-2 rounded-xl")}
-                                        labelText="Feed Id (Copy this from the browser URL)"
-                                        placeHolder="bsky.app/profile/did:plc:<user>/feed/<id>"
-                                        orderedList={false}
-                                        fieldName="copy"
-                                        handleItem={(item, value, onChange) => {
-                                            value.push(item);
-                                            value.sort(); // sorting algo
-                                            onChange(value);
-                                        }}
-                                        useFormReturn={useFormReturn}
-                                        check={(val, callback) => {
-                                            const v = val.startsWith("https://")? val.slice(8) : val;
-                                            if (!v.startsWith("bsky.app/profile/did:plc:") || !v.includes("/feed/")) {
-                                                setError("copy", {type:'custom', message:`${val} is not following the feed url format`});
-                                            } else if (getValues("copy").indexOf(v) >= 0){
-                                                setError("copy", {type:'custom', message:`${val} is already in the list`});
-                                            } else {
-                                                // Check feed
-                                                callback(v);
+                                    <div className="bg-sky-100 p-2 space-y-2">
+                                        <InputRadio entriesPerRow={2} modifyText={_ => {
+                                            return "text-base font-semibold";
+                                        }} fieldName="sort" fieldReadableName="Sort Order" subtext="Determines which post is on top" useFormReturn={useFormReturn} items={SORT_ORDERS.filter(x => x.mode.indexOf(mode) >= 0)}/>
+                                        {
+                                            mode === "live" &&
+                                            <a href="https://medium.com/hacking-and-gonzo/how-hacker-news-ranking-algorithm-works-1d9b0cf2c08d" target="_blank" rel="noreferrer">
+                                                <div className="p-2 hover:underline text-blue-500 hover:text-blue-800 inline-flex place-items-center text-sm gap-2">
+                                                    <BsFillInfoCircleFill className="h-4 w-4"/>
+                                                    <span>What is the Hacker News ranking algorithm?</span>
+                                                </div>
+                                            </a>
+                                        }
+                                    </div>
+                                    <div className="bg-lime-100 p-2 space-y-2">
+                                        <div className="font-semibold">Post Type Filter</div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {
+                                                POST_LEVELS.map(x =>
+                                                    <div key={x.id}
+                                                         className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                                         onClick={() => {
+                                                             if (postLevels.indexOf(x.id) >= 0) {
+                                                                 setPostLevels([...postLevels.filter(y => y !== x.id)]);
+                                                             } else {
+                                                                 postLevels.push(x.id);
+                                                                 setPostLevels([...postLevels]);
+                                                             }
+                                                         }}>
+                                                        <input type="checkbox"
+                                                               onChange={() => {}}
+                                                               onClick={(e) => {
+                                                                   e.stopPropagation();
+                                                                   if (postLevels.indexOf(x.id) >= 0) {
+                                                                       setPostLevels([...postLevels.filter(y => y !== x.id)]);
+                                                                   } else {
+                                                                       postLevels.push(x.id);
+                                                                       setPostLevels([...postLevels]);
+                                                                   }
+                                                               }}
+                                                               checked={postLevels.indexOf(x.id) >= 0}
+                                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                                        />
+                                                        <div>{x.txt}</div>
+                                                    </div>)
                                             }
-                                        }}/>
-                                </div>
+                                        </div>
+                                        {
+                                            postLevels.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
+                                        }
+                                    </div>
+
+                                    <div className="bg-sky-100 p-2 space-y-2">
+                                        <div className="font-semibold">Picture Posts Filter</div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {
+                                                PICS_SETTING.map(x =>
+                                                    <div key={x.id}
+                                                         className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                                         onClick={() => {
+                                                             if (pics.indexOf(x.id) >= 0) {
+                                                                 setPics([...pics.filter(y => y !== x.id)]);
+                                                             } else {
+                                                                 setPics([...pics, x.id]);
+                                                             }
+                                                         }}>
+                                                        <input type="checkbox"
+                                                               onChange={() => {}}
+                                                               onClick={(e) => {
+                                                                   e.stopPropagation();
+                                                                   if (pics.indexOf(x.id) >= 0) {
+                                                                       setPics([...pics.filter(y => y !== x.id)]);
+                                                                   } else {
+                                                                       setPics([...pics, x.id]);
+                                                                   }
+                                                               }}
+                                                               checked={pics.indexOf(x.id) >= 0}
+                                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                                        />
+                                                        <div>{x.txt}</div>
+                                                    </div>)
+                                            }
+                                        </div>
+                                        {
+                                            pics.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
+                                        }
+                                    </div>
+
+                                    <div className="bg-lime-100 p-2">
+                                        <div className="font-semibold">Language Filters</div>
+                                        <div className="text-sm">Note: This is calculated using cld2, which is not perfect and may be unable to process short posts</div>
+                                        <div className="text-sm">Leave this completely empty to accept posts of all languages including those not listed</div>
+                                        <div className="grid grid-cols-2">
+                                            <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                 onClick={() => {
+                                                     if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
+                                                         setLanguages([]);
+                                                     } else {
+                                                         setLanguages(SUPPORTED_LANG.map(x => x.id));
+                                                     }
+                                                 }}>
+                                                <div className="flex items-center p-2">
+                                                    <input type="checkbox"
+                                                           onChange={() => {}}
+                                                           onClick={(e) => {
+                                                               e.stopPropagation();
+                                                               if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
+                                                                   setLanguages([]);
+                                                               } else {
+                                                                   setLanguages(SUPPORTED_LANG.map(x => x.id));
+                                                               }
+                                                           }}
+                                                           checked={SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)}
+                                                           className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                    />
+                                                    <div className={clsx("ml-3 text-gray-700")}>
+                                                        {
+                                                            SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
+                                                                Deselect All (all posts no matter the language)
+                                                                <RxCross2 className="w-6 h-6 text-red-600"/>
+                                                            </div>: <div className="flex place-items-center">
+                                                                Select All listed here (some languages are not listed)
+                                                                <RxCheck className="w-6 h-6 text-green-600"/>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {
+                                                SUPPORTED_LANG.map(({txt, id}) => {
+                                                    const onClick = (e) => {
+                                                        e.stopPropagation();
+                                                        if (languages.indexOf(id) < 0) {
+                                                            const lang = [...languages];
+                                                            lang.push(id)
+                                                            setLanguages(lang);
+                                                        } else {
+                                                            setLanguages(languages.filter(x => x !== id));
+                                                        }
+                                                    }
+                                                    return <div key={id}
+                                                                className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                                onClick={onClick}>
+                                                        <div className="flex items-center p-2">
+                                                            <input type="checkbox"
+                                                                   checked={languages.indexOf(id) >= 0}
+                                                                   onClick={onClick}
+                                                                   onChange={()=>{}}
+                                                                   className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                            />
+                                                            <div className={clsx("ml-3 text-gray-700")}>
+                                                                {txt}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                })
+                                            }
+                                        </div>
+                                    </div>
+                                </>
                             }
-
-                            <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP} />
-
                         </div>
+
+                        {
+                            (mode === "live" || mode === "user") && <>
+
+                                <div className="bg-white p-2 space-y-2">
+                                    <div className="text-lg font-bold">User Filters</div>
+                                    {
+                                        mode === "live" &&
+                                        [
+                                            {
+                                                id: "everyList",
+                                                c: "bg-lime-100",
+                                                t: "Every List: Show all posts from these users"
+                                            },
+                                            {
+                                                id: "allowList",
+                                                c: "bg-yellow-100",
+                                                t: "Only List: Only search posts from these Users, if empty, will search all users for keywords"
+                                            },
+                                            {
+                                                id: "blockList",
+                                                c: "bg-pink-100",
+                                                t: "Block List: Block all posts from these Users"
+                                            }].map(({id, t, c}) =>
+                                            <InputMultiWord
+                                                key={id}
+                                                className={clsx("border border-2 border-black p-2 rounded-xl", c)}
+                                                labelText={t}
+                                                placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
+                                                fieldName={id}
+                                                handleItem={(item, value, onChange) => {
+                                                    value.push(item);
+                                                    value.sort((a, b) => {
+                                                        return a.handle.localeCompare(b.handle);
+                                                    })
+                                                    onChange(value);
+                                                }}
+                                                valueModifier={item => {
+                                                    return `${item.displayName} @${item.handle}`
+                                                }}
+                                                useFormReturn={useFormReturn}
+                                                check={multiWordCallback(id)}/>
+                                        )
+                                    }
+                                    {
+                                        mode === "user" &&
+                                        <div className="bg-sky-100 p-2 space-y-2">
+                                            <div className="">
+                                                <label className="block font-semibold text-gray-700">
+                                                    User to Observe
+                                                </label>
+                                            </div>
+
+                                            <div className="mt-1 flex rounded-md shadow-sm gap-2">
+                                                <button
+                                                    type="button"
+                                                    className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
+                                                    onClick={async () => {
+                                                        setBusy(true);
+                                                        const {handle} = session.user;
+                                                        if (typeof recaptcha !== 'undefined') {
+                                                            recaptcha.ready(async () => {
+                                                                //@ts-ignore
+                                                                const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                                                                //@ts-ignore
+                                                                const result = await localGet("/check/user", {
+                                                                    captcha,
+                                                                    actors: [handle]
+                                                                });
+                                                                if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
+                                                                    console.log(result.data[0]);
+                                                                    setValue("allowList", result.data);
+                                                                } else if (result.status === 400) {
+                                                                    alert("Error setting to self");
+                                                                }
+                                                                setBusy(false);
+                                                            });
+                                                        }
+                                                    }}
+                                                >
+                                                    <span>Set to Self</span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
+                                                    onClick={() => {
+                                                        setPopupState("edit_user");
+                                                    }}
+                                                >
+                                                    <span>Set to Another User</span>
+                                                </button>
+                                            </div>
+
+                                            {
+                                                Array.isArray(watchAllow) && watchAllow.length === 1 &&
+                                                <a href={`https://bsky.app/profile/${watchAllow[0].did}`}>
+                                                    <div className="p-2">
+                                                        <div>Observing:</div>
+                                                        <div
+                                                            className="bg-gray-50 p-2">{`${watchAllow[0].displayName} @${watchAllow[0].handle}`}</div>
+                                                    </div>
+                                                </a>
+
+                                            }
+                                        </div>
+                                    }
+                                </div>
+
+                                <div className="bg-white p-2 space-y-2">
+                                    <div className="text-lg font-bold">Keyword
+                                        Filters {VIP ? "" : `(max ${mode === "live" ? MAX_KEYWORDS_PER_LIVE_FEED : MAX_KEYWORDS_PER_USER_FEED})`}</div>
+                                    <div>A post is blocked if it contains at least one blocked keyword, and is allowed only
+                                        if it has no blocked keywords and at least one search keyword
+                                    </div>
+                                    <div className="bg-sky-200 p-2">
+                                        <div className="font-semibold">Search location</div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {
+                                                KEYWORD_SETTING.map(x =>
+                                                    <div key={x.id}
+                                                         className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                                         onClick={() => {
+                                                             if (keywordSetting.indexOf(x.id) >= 0) {
+                                                                 setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
+                                                             } else {
+                                                                 setKeywordSetting([...keywordSetting, x.id]);
+                                                             }
+                                                             console.log(keywordSetting);
+                                                         }}>
+                                                        <input type="checkbox"
+                                                               onChange={() => {
+                                                               }}
+                                                               onClick={(e) => {
+                                                                   e.stopPropagation();
+                                                                   if (keywordSetting.indexOf(x.id) >= 0) {
+                                                                       setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
+                                                                   } else {
+                                                                       keywordSetting.push(x.id);
+                                                                       setKeywordSetting([...keywordSetting]);
+                                                                   }
+                                                               }}
+                                                               checked={keywordSetting.indexOf(x.id) >= 0}
+                                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                                        />
+                                                        <div>{x.txt}</div>
+                                                    </div>)
+                                            }
+                                        </div>
+                                        {
+                                            keywordSetting.length === 0 &&
+                                            <div className="text-red-700">Please select at least one keyword search
+                                                method</div>
+                                        }
+                                    </div>
+                                    {
+                                        process.env.NEXT_PUBLIC_DEV === "1" &&
+                                        <div>
+                                            <div>Copy keywords from:</div>
+                                            <InputMultiWord
+                                                key="feed id"
+                                                className={clsx("border border-2 border-yellow-700 p-2 rounded-xl")}
+                                                labelText="Feed Id (Copy this from the browser URL)"
+                                                placeHolder="bsky.app/profile/did:plc:<user>/feed/<id>"
+                                                orderedList={false}
+                                                fieldName="copy"
+                                                handleItem={(item, value, onChange) => {
+                                                    value.push(item);
+                                                    value.sort(); // sorting algo
+                                                    onChange(value);
+                                                }}
+                                                useFormReturn={useFormReturn}
+                                                check={(val, callback) => {
+                                                    const v = val.startsWith("https://") ? val.slice(8) : val;
+                                                    if (!v.startsWith("bsky.app/profile/did:plc:") || !v.includes("/feed/")) {
+                                                        setError("copy", {
+                                                            type: 'custom',
+                                                            message: `${val} is not following the feed url format`
+                                                        });
+                                                    } else if (getValues("copy").indexOf(v) >= 0) {
+                                                        setError("copy", {
+                                                            type: 'custom',
+                                                            message: `${val} is already in the list`
+                                                        });
+                                                    } else {
+                                                        // Check feed
+                                                        callback(v);
+                                                    }
+                                                }}/>
+                                        </div>
+                                    }
+
+                                    <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP}/>
+
+                                </div>
+                            </>
+                        }
+
+                        {
+                            mode === "posts" && <div className="bg-white p-2">
+                                <div className="text-lg font-bold">Post List</div>
+                                <PostsEdit useFormReturn={useFormReturn} recaptcha={recaptcha} setBusy={setBusy}/>
+                            </div>
+                        }
 
                         {
                             /*
@@ -1117,14 +1203,14 @@ export default function Home({feed, updateSession, VIP}) {
                             <div className="w-full lg:flex justify-between gap-4">
                                 <button type="button"
                                         onClick={() => {
-                                            const {sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky} = getValues();
+                                            const {sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts} = getValues();
                                             const allowList = (_allowList || []).map(x => x.did);
                                             const blockList = (_blockList || []).map(x => x.did);
                                             const everyList = (_everyList || []).map(x => x.did);
 
                                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
 
-                                            const result = {languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), copy, highlight, sticky,
+                                            const result = {languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), copy, highlight, sticky, posts: posts? posts.map(x => x.uri) : [],
                                                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode: modeText};
                                             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
                                             const dlAnchorElem = document.createElement('a');
@@ -1136,51 +1222,86 @@ export default function Home({feed, updateSession, VIP}) {
                                     Download JSON file backup
                                 </button>
 
-                                <button type="button"
-                                        onClick={() => {
-                                            const input = document.createElement('input');
-                                            input.type = 'file';
-                                            input.accept = "application/json"
-                                            input.onchange = () => {
-                                                // getting a hold of the file reference
-                                                let file = input.files[0];
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const input = document.createElement('input');
+                                        input.type = 'file';
+                                        input.accept = "application/json"
+                                        input.onchange = () => {
+                                            // getting a hold of the file reference
+                                            let file = input.files[0];
 
-                                                // setting up the reader
-                                                let reader = new FileReader();
-                                                reader.readAsText(file,'UTF-8');
+                                            // setting up the reader
+                                            let reader = new FileReader();
+                                            reader.readAsText(file,'UTF-8');
 
-                                                // here we tell the reader what to do when it's done reading...
-                                                reader.onload = (readerEvent) => {
-                                                    setBusy(true);
-                                                    try {
-                                                        let content = readerEvent.target.result as string; // this is the content!
-                                                        console.log( content );
+                                            // here we tell the reader what to do when it's done reading...
+                                            reader.onload = (readerEvent) => {
+                                                setBusy(true);
+                                                try {
+                                                    let content = readerEvent.target.result as string; // this is the content!
+                                                    console.log( content );
 
-                                                        let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, sticky, mode:_mode} = JSON.parse(content);
-                                                        let mode = _mode;
-                                                        let subMode = "";
-                                                        if (_mode.startsWith("user")) {
-                                                            mode = "user";
-                                                            subMode = _mode.slice(5);
+                                                    let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, sticky, mode:_mode, posts:_posts} = JSON.parse(content);
+                                                    let mode = _mode;
+                                                    let subMode = "";
+                                                    if (_mode.startsWith("user")) {
+                                                        mode = "user";
+                                                        subMode = _mode.slice(5);
 
-                                                            if (blockList.length +everyList.length > 0 || allowList.length > 1) {
-                                                                alert("Error recovering data, too many items in users for user mode");
-                                                                return;
-                                                            }
-                                                            if (keywords.length > MAX_KEYWORDS_PER_USER_FEED) {
-                                                                alert("Error recovering data, too many keywords for user mode");
-                                                                return;
-                                                            }
+                                                        if (blockList.length +everyList.length > 0 || allowList.length > 1) {
+                                                            alert("Error recovering data, too many items in users for user mode");
+                                                            return;
                                                         }
-                                                        if (!mode || !FEED_MODES.find(x => x.id === mode)) {
-                                                            mode = "live";
+                                                        if (keywords.length > MAX_KEYWORDS_PER_USER_FEED) {
+                                                            alert("Error recovering data, too many keywords for user mode");
+                                                            return;
                                                         }
+                                                    }
+                                                    if (!mode || !FEED_MODES.find(x => x.id === mode)) {
+                                                        mode = "live";
+                                                    }
 
-                                                        const actors = [...blockList, ...allowList, ...everyList];
+                                                    if (mode == "posts" && (!_posts || !Array.isArray(_posts))) {
+                                                        alert("Invalid posts or no posts");
+                                                        return;
+                                                    }
 
-                                                        if (typeof recaptcha !== 'undefined') {
-                                                            recaptcha.ready(async () => {
-                                                                let result, skip = true;
+                                                    if (typeof recaptcha !== 'undefined') {
+                                                        recaptcha.ready(async () => {
+                                                            let result, skip = true;
+
+                                                            if (mode === "posts") {
+                                                                recaptcha.ready(async () => {
+                                                                    let posts = [];
+                                                                    if (_posts.length > 0) {
+                                                                        //@ts-ignore
+                                                                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+
+                                                                        const result = await localGet("/check/posts", {captcha, posts:_posts});
+                                                                        if (result.status === 200 && result.data.posts.length > 0) {
+                                                                            posts = result.data.posts;
+                                                                        }
+                                                                    }
+
+                                                                    let o:any = {
+                                                                        sort, displayName, description, copy: copy || [], highlight: highlight || "yes", posts,
+                                                                        shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || []
+                                                                    };
+                                                                    setMode(mode);
+
+                                                                    setLanguages([]);
+                                                                    setPostLevels(POST_LEVELS.map(x => x.id));
+                                                                    setKeywordSetting(["text"]);
+                                                                    setPics(["text", "pics"]);
+                                                                    setKeywords([]);
+
+                                                                    reset(o);
+                                                                    setBusy(false);
+                                                                });
+                                                            } else {
+                                                                const actors = [...blockList, ...allowList, ...everyList];
                                                                 if (actors.length > 0) {
                                                                     skip = false;
                                                                     //@ts-ignore
@@ -1220,11 +1341,12 @@ export default function Home({feed, updateSession, VIP}) {
                                                                             //@ts-ignore
                                                                             const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
                                                                             //@ts-ignore
-                                                                            const result = await localGet("/check/post", {captcha, post:sticky});
-                                                                            if (result.status === 200) {
-                                                                                const {uri:stickyUri, text} = result.data;
-                                                                                if (stickyUri) {
-                                                                                    sticky = stickyUri;
+                                                                            const result = await localGet("/check/posts", {captcha, posts:[sticky]});
+                                                                            if (result.status === 200 && result.data.posts.length > 0) {
+                                                                                const [post] = result.data.posts;
+                                                                                if (post) {
+                                                                                    const {uri, text} = post;
+                                                                                    sticky = uri;
                                                                                     setStickyText(text);
                                                                                 }
                                                                             }
@@ -1239,7 +1361,6 @@ export default function Home({feed, updateSession, VIP}) {
                                                                             setSubMode(subMode);
                                                                         }
 
-                                                                        setShortNameLocked(true);
                                                                         setLanguages(languages || []);
                                                                         setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
                                                                         setKeywordSetting(keywordSetting || ["text"]);
@@ -1250,21 +1371,22 @@ export default function Home({feed, updateSession, VIP}) {
                                                                         setBusy(false);
                                                                     });
                                                                 }
+                                                            }
 
-                                                                setTimeout(() => {
-                                                                    input.remove();
-                                                                }, 100);
-                                                            });
-                                                        }
-                                                    } catch (e) {
-                                                        console.log(e);
-                                                        alert("error recovering data");
+                                                            setTimeout(() => {
+                                                                input.remove();
+                                                            }, 100);
+                                                        });
                                                     }
+                                                } catch (e) {
+                                                    console.log(e);
+                                                    alert("error recovering data");
                                                 }
                                             }
-                                            input.click();
-                                        }}
-                                        className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-lime-600 hover:bg-lime-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime-500">
+                                        }
+                                        input.click();
+                                    }}
+                                    className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-lime-600 hover:bg-lime-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime-500">
                                     Recover from JSON backup
                                 </button>
                             </div>

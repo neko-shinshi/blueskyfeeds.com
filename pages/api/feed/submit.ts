@@ -24,26 +24,44 @@ export default async function handler(req, res) {
             const agent = await rebuildAgentFromToken(token);
             if (!agent) {res.status(401).send(); return;}
 
-            let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, mode,
+            let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, mode, posts:_posts,
                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight, sticky} = req.body;
 
+            let posts = _posts;
+            if (_posts) {
+                if (Array.isArray(_posts)) {
+                    if (_posts.length > 0) {
+                        posts = (await getPostInfo(agent, _posts)).map(post => {
+                            const {uri} = post;
+                            return uri;
+                        });
+                    }
+                } else {
+                    console.log("invalid posts, not array")
+                    res.status(400).send("invalid posts"); return;
+                }
+            }
+
             if (sticky) {
-                const {uri} = await getPostInfo(agent, sticky);
-                if (!uri) {
+                const [post] = await getPostInfo(agent, [sticky]);
+                if (!post) {
+                    console.log("invalid sticky");
                     res.status(400).send("invalid sticky"); return;
                 } else {
-                    sticky = uri; // only store uri
+                    sticky = post.uri; // only store uri
                 }
             } else {
                 sticky = null;
             }
 
             if (!/^[a-zA-Z0-9_-]+$/.test(shortName)) {
+                console.log("invalid short name")
                 res.status(400).send("invalid short name"); return;
             }
 
             let modeParent = mode.startsWith("user")? "user" : mode;
-            if (!SORT_ORDERS.find(x => x.id === sort && x.mode.indexOf(modeParent) >= 0)) {
+            if (mode !== "posts" && !SORT_ORDERS.find(x => x.id === sort && x.mode.indexOf(modeParent) >= 0)) {
+                console.log("invalid sort");
                 res.status(400).send("invalid sort"); return;
             }
 
@@ -51,6 +69,7 @@ export default async function handler(req, res) {
                 if (mode.startsWith("user")) {
                     const subMode = mode.slice(5);
                     if (!USER_FEED_MODE.find(x => x.id === subMode)) {
+                        console.log("invalid user mode")
                         res.status(400).send("Invalid user mode"); return;
                     }
                 } else {
@@ -66,6 +85,7 @@ export default async function handler(req, res) {
             if (!isVIP(agent)) {
                 const feedIds = await getMyCustomFeedIds(agent, db);
                 if (feedIds.indexOf(_id) < 0 && feedIds.length >= MAX_FEEDS_PER_USER && !isVIP(agent)) {
+                    console.log("too many feeds");
                     res.status(400).send("too many feeds"); return;
                 }
             }
@@ -75,15 +95,18 @@ export default async function handler(req, res) {
             keywordSetting = keywordSetting.filter(x => KEYWORD_SETTING.find(y => y.id === x));
             const pics = _pics.filter(x => PICS_SETTING.find(y => y.id === x));
             if (pics.length === 0 || pics.length !== _pics.length) {
+                console.log("missing pics");
                 res.status(400).send("missing pics"); return;
             }
             const postLevels = _postLevels.filter(x => POST_LEVELS.find(y => y.id === x));
             if (postLevels.length === 0 || postLevels.length !== _postLevels.length) {
+                console.log("missing levels");
                 res.status(400).send("missing levels"); return;
             }
             const languages = _languages.filter(x => SUPPORTED_LANGUAGES.indexOf(x) >= 0);
             if (languages.length !== _languages.length) {
                 // Empty languages means skip filtering language
+                console.log("missing languages");
                 res.status(400).send("missing languages"); return;
             }
 
@@ -106,15 +129,21 @@ export default async function handler(req, res) {
             });
 
             if (keywords.length > MAX_KEYWORDS_PER_LIVE_FEED && !isVIP(agent)) {
-                res.status(400).send("too many keywords"); return;
+                console.log("too many keywords");
+                res.status(400).send("too many keywords");
+                return;
             }
 
             if (mode === "user" && keywords.length > MAX_KEYWORDS_PER_USER_FEED) {
-                res.status(400).send("too many keywords"); return;
+                console.log("too many keywords");
+                res.status(400).send("too many keywords");
+                return;
             }
 
             if (keywords.length !== _keywords.length) {
-                res.status(400).send("missing keywords"); return;
+                console.log("missing keywords");
+                res.status(400).send("missing keywords");
+                return;
             }
             keywords = keywords.map(x => compressKeyword(x));
             keywords.sort((a,b) => {
@@ -123,11 +152,13 @@ export default async function handler(req, res) {
 
             if ([...new Set([...mustUrl, ...blockUrl])]
                 .filter(x => isValidDomain(x)).length !== mustUrl.length + blockUrl.length) {
+                console.log("missing urls");
                 res.status(400).send("missing urls"); return;
             }
 
             const actors = [...new Set([...allowList, ...blockList, ...everyList])]; // dids
             if (actors.length !== allowList.length + blockList.length + everyList.length) {
+                console.log("duplicate actor");
                 res.status(400).send("duplicate"); return;
             }
             if (actors.length > 0) {
@@ -150,12 +181,12 @@ export default async function handler(req, res) {
                 // Update feed at Bluesky's side
                 await editFeed(agent, {img, shortName, displayName, description});
 
-                const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight, sticky,
+                const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight, sticky, posts,
                     sort, allowList, blockList, everyList, mustUrl, blockUrl, mode, updated: new Date().toISOString()};
 
                 // Update current feed
                 await db.feeds.updateOne({_id},
-                    {$set: o},
+                    {$set: o, $setOnInsert:{created:new Date().toISOString()}},
                     {upsert:true});
                 // Reload all current user's feeds
                 const commands = (await getCustomFeeds(agent) as any[]).map(x => {
@@ -163,7 +194,7 @@ export default async function handler(req, res) {
                     return {
                         updateOne: {
                             filter: {_id: uri},
-                            update: {$set: y, $setOnInsert:{created:new Date().toISOString()}},
+                            update: {$set: y},
                             upsert: true
                         }
                     };

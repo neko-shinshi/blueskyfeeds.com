@@ -118,31 +118,66 @@ export const editFeed = async (agent, {img, shortName, displayName, description}
     return await agent.api.com.atproto.repo.putRecord(record);
 }
 
-export const getPostInfo = async (agent, postId) => {
-    let postUri = postId;
-    if (!postUri.startsWith("at://did:plc:")) {
-        if (postUri.startsWith("https://bsky.app/profile/")) {
-            //remove it
-            postUri = postUri.slice(25);
-        }
-        const [user, post] = postUri.split("/post/");
-        const [{did}] = await getActorsInfo(agent, [user]);
-        postUri = `at://${did}/app.bsky.feed.post/${post}`;
-    }
-    console.log(postUri);
-    try {
-
-        const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris:[postUri]}));
-        if (posts && Array.isArray(posts) && posts.length > 0) {
-            const {record, uri} =  posts[0];
-            if (uri) {
-                const {text} = record;
-                return {text: text || "", uri};
+export const getPostInfo = async (agent, postUris) => {
+    let users = new Set();
+    console.log("uris", postUris);
+    postUris.forEach(postUri => {
+        if (!postUri.startsWith("at://did:plc:")) {
+            if (postUri.startsWith("https://bsky.app/profile/")) {
+                //remove it
+                postUri = postUri.slice(25);
             }
+            const [user] = postUri.split("/post/");
+            users.add(user);
+        }
+    });
+
+    let handleToDid = new Map();
+    console.log("1");
+    (await getActorsInfo(agent, [...users])).forEach(actor => {
+        const {did, handle} = actor;
+        handleToDid.set(did, did);
+        handleToDid.set(handle, did);
+    });
+    console.log("2");
+
+    const uris = postUris.reduce((acc, postUri) => {
+        let uri = postUri;
+        if (!postUri.startsWith("at://did:plc:")) {
+            if (postUri.startsWith("https://bsky.app/profile/")) {
+                //remove it
+                postUri = postUri.slice(25);
+            }
+            const [user, post] = postUri.split("/post/");
+            const did = handleToDid.get(user);
+            uri = `at://${did}/app.bsky.feed.post/${post}`;
+        }
+
+        if (!acc.s.has(uri)) {
+            acc.v.push(uri);
+            acc.s.add(uri);
+            console.log("add", uri);
+        }
+        return acc;
+    }, {v:[], s:new Set()}).v;
+
+    console.log("3");
+
+    try {
+        const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris}));
+        if (posts && Array.isArray(posts) && posts.length > 0) {
+            return posts.reduce((acc,x) => {
+                const {record, uri}  = x;
+                if (uri) {
+                    const {text} = record;
+                    acc.push({text: text || "", uri});
+                }
+                return acc;
+            }, []);
         }
     } catch {}
 
-    return {};
+    return [];
 }
 
 export const getActorsInfo = async (agent, actors) => {

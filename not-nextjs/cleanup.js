@@ -99,7 +99,7 @@ const deleteDeadPosts = async (db) => {
 
     let cutOff = new Date();
     cutOff.setHours(cutOff.getHours()-2);
-    const result = await db.posts.deleteMany({_id: {$nin: postIds}, createdAt: {$lt: cutOff}});
+    const result = await db.posts.deleteMany({_id: {$nin: [...postIds]}, createdAt: {$lt: cutOff.toISOString()}});
     console.log(result);
 }
 

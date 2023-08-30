@@ -3,7 +3,11 @@ export const MAX_KEYWORDS_PER_LIVE_FEED = 100;
 export const MAX_KEYWORDS_PER_USER_FEED = 3;
 
 export const SUPPORTED_LANGUAGES = ["", "en", "pt", "ja", "ko", "uk", "es", "fa", "tr", "de", "nl", "fr", "id"];
-export const FEED_MODES = [{id:"live", txt:"Listens for live posts. Only stores posts for 3 days."}, {id:"user", txt:"Looks at a specific user's data."}];
+export const FEED_MODES = [
+    {id:"live", txt:"Listens for live posts. Only stores posts for 3 days."},
+    {id:"user", txt:"Looks at a specific user's data."},
+    {id:"posts", txt: "Shows a list of posts"}
+];
 export const USER_FEED_MODE = [{id:"posts", txt:"Search user's posts"}, {id:"likes", txt:"Search user's likes."}];
 
 export const POST_LEVELS = [{id:"top", txt:"Top-level posts"}, {id:"reply", txt: "Quote Posts & Replies"}];

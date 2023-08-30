@@ -48,7 +48,7 @@ export default function PopupWithInputText(
                     </div>
                 }
 
-                <input placeholder={placeholder} ref={ref} className="w-96" type="text"
+                <input placeholder={placeholder} ref={ref} className="w-full" type="text"
                        onKeyDown={async (e) => {
                            if (e.key === "Enter") {
                                yesCallback(ref.current.value, (error) => {
