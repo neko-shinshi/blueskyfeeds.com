@@ -48,15 +48,16 @@ app.prepare().then(async () => {
     server.listen(port, async (err) => {
         if (err) throw err;
 
-        if (process.env.NEXT_PUBLIC_DEV !== "1") {
-            schedule('*/10 * * * *', async () => {
-                const db = await connectToDatabase();
+
+        //if (process.env.NEXT_PUBLIC_DEV !== "1") {
+       //     schedule('*/10 * * * *', async () => {
+        /*        const db = await connectToDatabase();
                 await updateScores(db);
             }, {
                 scheduled: true,
                 timezone: "GMT"
             });
-        }
+        }*/
 
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
     });
