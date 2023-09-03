@@ -90,8 +90,6 @@ export default async function handler(req, res) {
                 }
             }
 
-
-
             keywordSetting = keywordSetting.filter(x => KEYWORD_SETTING.find(y => y.id === x));
             const pics = _pics.filter(x => PICS_SETTING.find(y => y.id === x));
             if (pics.length === 0 || pics.length !== _pics.length) {

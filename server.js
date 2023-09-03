@@ -48,6 +48,8 @@ app.prepare().then(async () => {
     server.listen(port, async (err) => {
         if (err) throw err;
 
+        // Listen to changes in feeds
+
 
         //if (process.env.NEXT_PUBLIC_DEV !== "1") {
        //     schedule('*/10 * * * *', async () => {

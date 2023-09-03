@@ -15,7 +15,7 @@ const connectToDatabase = async () => {
 
     return MongoClient.connect(uri)
         .then((client) => {
-            let db = client.db('anime');
+            let db = client.db('blueskyfeeds');
             global.cachedDb = {
                 db: db,
                 sticky: db.collection("sticky"),
