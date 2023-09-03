@@ -23,7 +23,7 @@ import {
     KEYWORD_SETTING, MAX_FEEDS_PER_USER, MAX_KEYWORDS_PER_LIVE_FEED, MAX_KEYWORDS_PER_USER_FEED,
     PICS_SETTING,
     POST_LEVELS,
-    SORT_ORDERS,
+    SORT_ORDERS, SUPPORTED_CW_LABELS,
     SUPPORTED_LANGUAGES, USER_FEED_MODE
 } from "features/utils/constants";
 import {SIGNATURE} from "features/utils/signature";
@@ -163,6 +163,8 @@ export default function Home({feed, updateSession, VIP}) {
 
     const watchSticky = watch("sticky");
     const watchAllow = watch("allowList");
+    const watchallowLabels = watch("allowLabels");
+    const watchMustLabels = watch("mustLabels");
 
     const showInstructionAlert = () => {
         alert("Review the feed and tap submit at the bottom to complete your new feed.\nYou can further customize the feed by filtering it with keywords or setting sticky post.");
@@ -179,14 +181,14 @@ export default function Home({feed, updateSession, VIP}) {
 
     useEffect(() => {
         if (!feed) {
-            reset({sticky:"", sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes", posts:[]});
+            reset({sticky:"", sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes", posts:[], allowLabels:SUPPORTED_CW_LABELS, mustLabels:[]});
             setMode("live");
             setLanguages([]);
             setPostLevels(POST_LEVELS.map(x => x.id));
             setKeywordSetting(["text"]);
             setPics(["text", "pics"]);
         } else {
-            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode, sticky, posts} = feed;
+            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode, sticky, posts, allowLabels, mustLabels} = feed;
 
             let stickyUri;
             if (sticky) {
@@ -200,7 +202,7 @@ export default function Home({feed, updateSession, VIP}) {
 
 
             let o:any = {
-                sticky:stickyUri || "",
+                sticky:stickyUri || "", allowLabels: allowLabels || SUPPORTED_CW_LABELS, mustLabels: mustLabels || [],
                 sort,displayName, description: description.replaceAll(SIGNATURE, ""), copy: copy || [], highlight: highlight || "yes",
                 shortName: uri.split("/").at(-1), blockList, allowList, everyList, mustUrl: mustUrl || [], blockUrl: blockUrl || [], posts: posts || [],
             };
@@ -641,7 +643,7 @@ export default function Home({feed, updateSession, VIP}) {
                         useFormReturn={useFormReturn}
                         cleanUpData={async (data) => {
                             setBusy(true);
-                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts} = data;
+                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts, allowLabels, mustLabels} = data;
                             const allowList = (_allowList || []).map(x => x.did);
                             const blockList = (_blockList || []).map(x => x.did);
                             const everyList = (_everyList || []).map(x => x.did);
@@ -657,7 +659,7 @@ export default function Home({feed, updateSession, VIP}) {
                             }
                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
                             const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, copy, highlight, sticky, posts:posts? posts.map(x => x.uri) : [],
-                                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode:modeText};
+                                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels};
                             console.log(result);
 
                             return result;
@@ -685,6 +687,8 @@ export default function Home({feed, updateSession, VIP}) {
                                                 setValue("allowList", []);
                                                 setValue("blockList", []);
                                                 setValue("everyList", []);
+                                                setValue("mustLabels", []);
+                                                setValue("allowLabels", SUPPORTED_CW_LABELS);
                                                 setSubMode("posts")
                                                 switch (id) {
                                                     case "user": {
@@ -847,10 +851,15 @@ export default function Home({feed, updateSession, VIP}) {
                                                     <div key={x.id}
                                                          className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
                                                          onClick={() => {
+                                                             let newValue;
                                                              if (pics.indexOf(x.id) >= 0) {
-                                                                 setPics([...pics.filter(y => y !== x.id)]);
+                                                                 newValue =[...pics.filter(y => y !== x.id)];
                                                              } else {
-                                                                 setPics([...pics, x.id]);
+                                                                 newValue = [...pics, x.id];
+                                                             }
+                                                             setPics(newValue);
+                                                             if (newValue.indexOf("text") < 0) {
+                                                                 setValue("mustLabels", []);
                                                              }
                                                          }}>
                                                         <input type="checkbox"
@@ -873,6 +882,82 @@ export default function Home({feed, updateSession, VIP}) {
                                         {
                                             pics.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
                                         }
+                                        {
+                                            pics.indexOf("pics") >= 0 && mode === "live" && <div className="flex place-items-center gap-2">
+                                                <div className="font-semibold text-sm">Pic Content Warnings <span className="underline">Allowed</span></div>
+                                                {
+                                                    SUPPORTED_CW_LABELS.map(label => {
+                                                        const onClick = (e) => {
+                                                            e.stopPropagation();
+                                                            let newAllowed;
+                                                            if (watchallowLabels.indexOf(label) < 0) {
+                                                                const temp = new Set([...watchallowLabels, label]);
+                                                                newAllowed = [...temp];
+                                                            } else {
+                                                                newAllowed = watchallowLabels.filter(x => x !== label);
+                                                            }
+                                                            setValue("allowLabels", newAllowed);
+                                                            setValue("mustLabels", watchMustLabels.filter(x => newAllowed.indexOf(x) >= 0));
+                                                        }
+                                                        return <div key={label}
+                                                                    className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                                    onClick={onClick}>
+                                                            <div className="flex items-center p-2">
+                                                                <input type="checkbox"
+                                                                       checked={watchallowLabels.indexOf(label) >= 0}
+                                                                       onClick={onClick}
+                                                                       onChange={()=>{}}
+                                                                       className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                                />
+                                                                <div className={clsx("ml-3 text-gray-700")}>
+                                                                    {label.slice(0,1).toUpperCase()}{label.slice(1)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    })
+                                                }
+                                            </div>
+                                        }
+                                        {
+                                            pics.length === 1 && pics.indexOf("pics") === 0 && <div className="flex place-items-center gap-2">
+                                                <div className="font-semibold text-sm">Pic Content Warnings <span className="underline">Required</span></div>
+                                                {
+                                                    SUPPORTED_CW_LABELS.map(label => {
+                                                        const onClick = (e) => {
+                                                            e.stopPropagation();
+                                                            let newRequired;
+                                                            if (watchMustLabels.indexOf(label) < 0) {
+                                                                const temp = new Set([...watchMustLabels, label]);
+                                                                newRequired = [...temp];
+                                                            } else {
+                                                                newRequired = watchMustLabels.filter(x => x !== label);
+                                                            }
+                                                            setValue("mustLabels", newRequired);
+
+                                                            const newAllowed = new Set([...watchallowLabels, ...newRequired]);
+                                                            setValue("allowLabels", [...newAllowed]);
+                                                        }
+                                                        return <div key={label}
+                                                                    className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                                    onClick={onClick}>
+                                                            <div className="flex items-center p-2">
+                                                                <input type="checkbox"
+                                                                       checked={watchMustLabels.indexOf(label) >= 0}
+                                                                       onClick={onClick}
+                                                                       onChange={()=>{}}
+                                                                       className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                                />
+                                                                <div className={clsx("ml-3 text-gray-700")}>
+                                                                    {label.slice(0,1).toUpperCase()}{label.slice(1)}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    })
+                                                }
+                                            </div>
+                                        }
+
+
                                     </div>
 
                                     <div className="bg-lime-100 p-2">
@@ -1243,7 +1328,10 @@ export default function Home({feed, updateSession, VIP}) {
                                                     let content = readerEvent.target.result as string; // this is the content!
                                                     console.log( content );
 
-                                                    let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, sticky, mode:_mode, posts:_posts} = JSON.parse(content);
+                                                    let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, sticky, mode:_mode, posts:_posts, mustLabels, allowLabels} = JSON.parse(content);
+                                                    allowLabels = allowLabels || SUPPORTED_CW_LABELS;
+                                                    mustLabels = mustLabels || [];
+
                                                     let mode = _mode;
                                                     let subMode = "";
                                                     if (_mode.startsWith("user")) {
@@ -1286,7 +1374,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                                     }
 
                                                                     let o:any = {
-                                                                        sort, displayName, description, copy: copy || [], highlight: highlight || "yes", posts,
+                                                                        sort, displayName, description, copy: copy || [], highlight: highlight || "yes", posts, mustLabels, allowLabels,
                                                                         shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || []
                                                                     };
                                                                     setMode(mode);
@@ -1353,7 +1441,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                                         }
 
                                                                         let o:any = {
-                                                                            sort,displayName, description, copy: copy || [], highlight: highlight || "yes",
+                                                                            sort,displayName, description, copy: copy || [], highlight: highlight || "yes", mustLabels, allowLabels,
                                                                             shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [], sticky, posts:[]
                                                                         };
                                                                         setMode(mode);

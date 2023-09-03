@@ -8,7 +8,7 @@ import {
     MAX_KEYWORDS_PER_LIVE_FEED, MAX_KEYWORDS_PER_USER_FEED,
     PICS_SETTING,
     POST_LEVELS,
-    SORT_ORDERS,
+    SORT_ORDERS, SUPPORTED_CW_LABELS,
     SUPPORTED_LANGUAGES, USER_FEED_MODE
 } from "features/utils/constants";
 import {isValidDomain} from "features/utils/validationUtils";
@@ -25,7 +25,10 @@ export default async function handler(req, res) {
             if (!agent) {res.status(401).send(); return;}
 
             let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, mode, posts:_posts,
-                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight, sticky} = req.body;
+                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight, sticky, mustLabels, allowLabels} = req.body;
+
+            mustLabels = mustLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
+            allowLabels = allowLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
 
             let posts = _posts;
             if (_posts) {
@@ -179,7 +182,7 @@ export default async function handler(req, res) {
                 // Update feed at Bluesky's side
                 await editFeed(agent, {img, shortName, displayName, description});
 
-                const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight, sticky, posts,
+                const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight, sticky, posts, allowLabels, mustLabels,
                     sort, allowList, blockList, everyList, mustUrl, blockUrl, mode, updated: new Date().toISOString()};
 
                 // Update current feed

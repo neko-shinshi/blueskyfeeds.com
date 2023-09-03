@@ -4,6 +4,7 @@ import {parseJwt} from "features/utils/jwtUtils";
 import {algos} from 'features/algos'
 import {handler as userFeedHandler} from 'features/algos/user-feed'
 import {feedHasUserLike, getAgent} from "features/utils/bsky";
+import {SUPPORTED_CW_LABELS} from "features/utils/constants";
 
 const getSortMethod = (sort) => {
     switch (sort) {
@@ -71,7 +72,7 @@ export async function getServerSideProps({req, res, query}) {
         cursor = cursorV;
     } else {
         let {allowList, blockList, everyList, keywordSetting,
-            keywords, languages, pics, postLevels, sort, mode, sticky, hideLikeSticky} = feedObj;
+            keywords, languages, pics, postLevels, sort, mode, sticky, hideLikeSticky, allowLabels, mustLabels} = feedObj;
         if (mode === "user-likes" || mode === "user-posts") {
             const {feed: feedV, cursor: cursorV} = await userFeedHandler(feedId, feedObj, user, queryCursor, limit);
             feed = feedV;
@@ -94,6 +95,19 @@ export async function getServerSideProps({req, res, query}) {
             if (!(wantPics && wantText)) {
                 dbQuery.hasImage = wantPics;
             }
+
+            if (dbQuery.hasImage && Array.isArray(mustLabels) && mustLabels.length > 0) {
+                // NSFW Image posts only
+                const rejectedLabels = SUPPORTED_CW_LABELS.filter(x => allowLabels.indexOf(x) < 0);
+                dbQuery.labels = {$in: mustLabels, $nin: rejectedLabels}
+            } else if (wantPics) {
+                // Check content warning requirements
+                if (Array.isArray(allowLabels)) {
+                    const rejectedLabels = SUPPORTED_CW_LABELS.filter(x => allowLabels.indexOf(x) < 0);
+                    dbQuery.labels = {$nin: rejectedLabels}
+                }
+            }
+
             const wantTop = postLevels.indexOf("top") >= 0;
             const wantReply = postLevels.indexOf("reply") >= 0;
             if (!(wantTop && wantReply)) {
@@ -134,11 +148,15 @@ export async function getServerSideProps({req, res, query}) {
                 if (dbQuery.lang) {
                     authorQuery.lang = dbQuery.lang;
                 }
-                if (dbQuery.hasImage) {
+                if (dbQuery.hasOwnProperty('hasImage')) {
                     authorQuery.hasImage = dbQuery.hasImage;
                 }
-                if (dbQuery.replyRoot) {
+
+                if (dbQuery.hasOwnProperty('replyRoot')) {
                     authorQuery.replyRoot = dbQuery.replyRoot;
+                }
+                if (dbQuery.hasOwnProperty('labels')) {
+                    authorQuery.labels = dbQuery.labels;
                 }
 
                 if (findKeywords.length === 0) {
@@ -153,6 +171,7 @@ export async function getServerSideProps({req, res, query}) {
                 }
             }
 
+            console.log(JSON.stringify(dbQuery, null, 2));
             const sortMethod = getSortMethod(sort);
             let result:any[];
             if (queryCursor) {
