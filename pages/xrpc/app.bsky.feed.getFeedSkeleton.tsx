@@ -76,6 +76,11 @@ export async function getServerSideProps({req, res, query}) {
             const {feed: feedV, cursor: cursorV} = await userFeedHandler(feedId, feedObj, user, queryCursor, limit);
             feed = feedV;
             cursor = cursorV;
+        } if (mode === "posts") {
+            let {posts} = feedObj;
+            const skip = parseInt(queryCursor) || 0;
+            feed = posts.slice(skip, limit).map(x => {return {post: x};});
+            cursor = `${feed.length+skip}`;
         } else {
             let dbQuery:any = {};
             if (allowList.length > 0) {
@@ -172,10 +177,10 @@ export async function getServerSideProps({req, res, query}) {
                         cursor = `${id}::${ts}`;
                     }
                 } else {
-                    const skip = parseInt(queryCursor);
+                    const skip = parseInt(queryCursor) || 0;
                     result = fail? [] : await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project({_id: 1}).toArray();
                     if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}}
-                    cursor = `${limit+skip}`;
+                    cursor = `${result.length+skip}`;
                 }
             } else {
                 if (!fail && hideLikeSticky === true) {
