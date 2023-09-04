@@ -171,7 +171,6 @@ export async function getServerSideProps({req, res, query}) {
                 }
             }
 
-            console.log(JSON.stringify(dbQuery, null, 2));
             const sortMethod = getSortMethod(sort);
             let result:any[];
             if (queryCursor) {
