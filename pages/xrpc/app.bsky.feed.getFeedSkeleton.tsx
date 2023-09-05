@@ -143,6 +143,7 @@ export async function getServerSideProps({req, res, query}) {
                 }
             }
 
+            let result:any[] = [];
             if (everyList.length > 0) {
                 let authorQuery:any = {author: {$in: everyList}};
                 if (dbQuery.lang) {
@@ -172,42 +173,43 @@ export async function getServerSideProps({req, res, query}) {
             }
 
             const sortMethod = getSortMethod(sort);
-            let result:any[];
-            if (queryCursor) {
+            if (queryCursor && !fail) {
                 if (sort === "new") {
-                    const [_postId, tss] = queryCursor.split("::");
-                    const [userId, __postId] = _postId.split("/");
-                    const postId = `at://${userId}/app.bsky.feed.post/${__postId}`;
-                    result = fail? [] : await db.posts.find(dbQuery).sort(sortMethod).limit(2000).project({createdAt: 1}).toArray(); // don't bother querying beyond 500
-                    if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
-                    let index = result.findIndex(x => x._id === postId);
-                    if (index === -1) {
-                        try {
-                            const tsss = new Date(tss).toISOString();
-                            index = result.findIndex(x => x.createdAt < tsss);
-                        } catch (e) {}
-                    }
-                    if (index === -1) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
-                    result = result.slice(index+1, index+1+limit);
-                    const last = result.at(-1);
-                    if (last) {
-                        try {
-                            const ts = new Date(last.createdAt).getTime();
-                            const parts = last._id.split("/");
-                            const id = `${parts[2]}/${parts[4]}`;
-                            cursor = `${id}::${ts}`;
-                        } catch (e) {
-                            cursor = "";
+                    try {
+                        let [_postId, tss] = queryCursor.split("::");
+                        const [userId, __postId] = _postId.split("/");
+                        const postId = `at://${userId}/app.bsky.feed.post/${__postId}`
+                        tss = parseInt(tss);
+                        tss = new Date(tss).toISOString();
+                        dbQuery.createdAt = {$lte: tss}
+                        result = await db.posts.find(dbQuery).sort(sortMethod).limit(limit+100).project({createdAt: 1}).toArray(); // don't bother querying beyond 500
+                        if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
+                        let index = result.findIndex(x => x._id === postId);
+                        if (index === -1) {
+                            index = result.findIndex(x => x.createdAt < tss);
                         }
-                    }
+                        if (index === -1) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
+                        result = result.slice(index+1, index+1+limit);
+                        const last = result.at(-1);
+                        if (last) {
+                            try {
+                                const ts = new Date(last.createdAt).getTime();
+                                const parts = last._id.split("/");
+                                const id = `${parts[2]}/${parts[4]}`;
+                                cursor = `${id}::${ts}`;
+                            } catch (e) {
+                                cursor = "";
+                            }
+                        }
+                    } catch (e) {}
                 } else {
                     const skip = parseInt(queryCursor) || 0;
-                    result = fail? [] : await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project({_id: 1}).toArray();
+                    result =  await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project({_id: 1}).toArray();
                     if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return {props: {}}}
                     cursor = `${result.length+skip}`;
                 }
             } else {
-                if (!fail && hideLikeSticky === true) {
+                if (hideLikeSticky === true) {
                     const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
                     if (agent && await feedHasUserLike(agent, feedId, user)) {
                         sticky = null;
@@ -215,7 +217,7 @@ export async function getServerSideProps({req, res, query}) {
                 }
                 if (sort === "new") {
                     if (sticky) {limit = limit -1;}
-                    result = fail? [] :await db.posts.find(dbQuery).sort(sortMethod).project({createdAt: 1}).limit(limit).toArray();
+                    result = await db.posts.find(dbQuery).sort(sortMethod).project({createdAt: 1}).limit(limit).toArray();
 
                     if (result.length === 0) {
                         const feed = sticky? [{post:sticky}] : [];
@@ -235,7 +237,7 @@ export async function getServerSideProps({req, res, query}) {
                     }
                 } else {
                     if (sticky) {limit = limit -1;}
-                    result = fail? [] : await db.posts.find(dbQuery).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
+                    result = await db.posts.find(dbQuery).sort(sortMethod).project({_id: 1}).limit(limit).toArray();
                     if (result.length === 0) {
                         const feed = sticky? [{post:sticky}] : [];
                         res.write(JSON.stringify({cursor:"", feed})); res.end(); return {props: {}};
