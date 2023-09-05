@@ -642,6 +642,11 @@ export default function Home({feed, updateSession, VIP}) {
                         recaptcha={recaptcha}
                         useFormReturn={useFormReturn}
                         cleanUpData={async (data) => {
+                            if (mode === "live" && keywords.length === 0) {
+                                alert("Your live data feed has no keywords! Please remember to tap 'Add' after typing the desired keyword")
+                                return false;
+                            }
+
                             setBusy(true);
                             const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts, allowLabels, mustLabels} = data;
                             const allowList = (_allowList || []).map(x => x.did);
