@@ -178,21 +178,27 @@ export async function getServerSideProps({req, res, query}) {
                     const [_postId, tss] = queryCursor.split("::");
                     const [userId, __postId] = _postId.split("/");
                     const postId = `at://${userId}/app.bsky.feed.post/${__postId}`;
-                    result = fail? [] : await db.posts.find(dbQuery).sort(sortMethod).limit(1000).project({createdAt: 1}).toArray(); // don't bother querying beyond 500
+                    result = fail? [] : await db.posts.find(dbQuery).sort(sortMethod).limit(2000).project({createdAt: 1}).toArray(); // don't bother querying beyond 500
                     if (result.length === 0) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
                     let index = result.findIndex(x => x._id === postId);
                     if (index === -1) {
-                        const tsss = new Date(tss).toISOString();
-                        index = result.findIndex(x => x.createdAt < tsss);
+                        try {
+                            const tsss = new Date(tss).toISOString();
+                            index = result.findIndex(x => x.createdAt < tsss);
+                        } catch (e) {}
                     }
                     if (index === -1) {res.write(JSON.stringify({cursor:"", feed:[]})); res.end(); return;}
                     result = result.slice(index+1, index+1+limit);
                     const last = result.at(-1);
                     if (last) {
-                        const ts = new Date(last.createdAt).getTime();
-                        const parts = last._id.split("/");
-                        const id = `${parts[2]}/${parts[4]}`;
-                        cursor = `${id}::${ts}`;
+                        try {
+                            const ts = new Date(last.createdAt).getTime();
+                            const parts = last._id.split("/");
+                            const id = `${parts[2]}/${parts[4]}`;
+                            cursor = `${id}::${ts}`;
+                        } catch (e) {
+                            cursor = "";
+                        }
                     }
                 } else {
                     const skip = parseInt(queryCursor) || 0;
