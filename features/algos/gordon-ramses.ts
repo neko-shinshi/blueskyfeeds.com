@@ -21,6 +21,7 @@ export const handler = async (user, cursor, limit) => {
 
 
 const generate = async() => {
+    /*
     const db = await connectToDatabase();
     if (!db) {return;}
     try {
@@ -39,6 +40,6 @@ const generate = async() => {
         let result = await db.postsAlgoFeed.bulkWrite(commands);
         console.log("gordon-ramses", result);
 
-    } catch {}
+    } catch {}*/
 }
 
