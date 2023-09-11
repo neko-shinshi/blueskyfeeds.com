@@ -7,12 +7,12 @@ export const SUPPORTED_LANGUAGES = ["", "en", "pt", "ja", "ko", "uk", "es", "fa"
 export const FEED_MODES = [
     {id:"live", txt:"Listens for live posts. Only stores posts for 3 days."},
     {id:"user", txt:"Looks at a specific user's data."},
-    {id:"posts", txt: "Shows a list of posts"}
+    {id:"posts", txt: "Shows a list of posts"},
+    {id:"responses", txt: "See live responses to a list of users' posts"}
 ];
 export const USER_FEED_MODE = [
     {id:"posts", txt:"Search user's posts"},
     {id:"likes", txt:"Search user's likes."},
-    {id:"responses", txt: "See live responses to user's posts"}
 ];
 
 export const POST_LEVELS = [{id:"top", txt:"Top-level posts"}, {id:"reply", txt: "Replies"}];

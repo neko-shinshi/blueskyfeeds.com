@@ -252,7 +252,7 @@ export async function getServerSideProps({req, res, query}) {
         cursor = cursorV;
     } else {
         let {mode} = feedObj;
-        if (mode === "user-responses") {
+        if (mode === "responses") {
             let {everyList, sort} = feedObj;
             everyList = everyList.map(x => `^at://${x}`);
             const $regex = RegExp(everyList.join("|"));
