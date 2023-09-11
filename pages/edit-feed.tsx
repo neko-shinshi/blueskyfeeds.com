@@ -144,7 +144,7 @@ export default function Home({feed, updateSession, VIP}) {
 
     const [userDid, setUserDid] = useState("");
     const [mode, setMode] = useState<"live"|"user"|"posts">("live");
-    const [subMode, setSubMode] = useState("");
+    const [subMode, setSubMode] = useState<""|"posts"|"likes"|"responses">("");
     const [stickyText, setStickyText] = useState("");
     const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"wizard-posts"|"edit"|"done">(feed? "edit" : "wizard");
     const recaptcha = useRecaptcha();
@@ -967,7 +967,7 @@ export default function Home({feed, updateSession, VIP}) {
 
                                     <div className="bg-lime-100 p-2">
                                         <div className="font-semibold">Language Filters</div>
-                                        <div className="text-sm">Note: This is calculated using cld2, which is not perfect and may be unable to process short posts</div>
+                                        <div className="text-sm">Note: This relies on user input</div>
                                         <div className="text-sm">Leave this completely empty to accept posts of all languages including those not listed</div>
                                         <div className="grid grid-cols-2">
                                             <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
@@ -1084,7 +1084,27 @@ export default function Home({feed, updateSession, VIP}) {
                                         )
                                     }
                                     {
-                                        mode === "user" &&
+                                        mode === "user" && subMode === "responses" && <InputMultiWord
+                                            key="everyList"
+                                            className="border border-2 border-black p-2 rounded-xl bg-lime-100"
+                                            labelText="Every List: All responses to posts by these users"
+                                            placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
+                                            fieldName="everyList"
+                                            handleItem={(item, value, onChange) => {
+                                                value.push(item);
+                                                value.sort((a, b) => {
+                                                    return a.handle.localeCompare(b.handle);
+                                                })
+                                                onChange(value);
+                                            }}
+                                            valueModifier={item => {
+                                                return `${item.displayName} @${item.handle}`
+                                            }}
+                                            useFormReturn={useFormReturn}
+                                            check={multiWordCallback("everyList")}/>
+                                    }
+                                    {
+                                        mode === "user" && subMode !== "responses" &&
                                         <div className="bg-sky-100 p-2 space-y-2">
                                             <div className="">
                                                 <label className="block font-semibold text-gray-700">
@@ -1147,92 +1167,95 @@ export default function Home({feed, updateSession, VIP}) {
                                     }
                                 </div>
 
-                                <div className="bg-white p-2 space-y-2">
-                                    <div className="text-lg font-bold">Keyword
-                                        Filters {VIP ? "" : `(max ${mode === "live" ? MAX_KEYWORDS_PER_LIVE_FEED : MAX_KEYWORDS_PER_USER_FEED})`}</div>
-                                    <div>A post is blocked if it contains at least one blocked keyword, and is allowed only
-                                        if it has no blocked keywords and at least one search keyword
-                                    </div>
-                                    <div className="bg-sky-200 p-2">
-                                        <div className="font-semibold">Search location</div>
-                                        <div className="grid grid-cols-2 gap-2">
+                                {
+                                    (mode !== "user" || subMode !== "responses") &&
+                                    <div className="bg-white p-2 space-y-2">
+                                        <div className="text-lg font-bold">Keyword
+                                            Filters {VIP ? "" : `(max ${mode === "live" ? MAX_KEYWORDS_PER_LIVE_FEED : MAX_KEYWORDS_PER_USER_FEED})`}</div>
+                                        <div>A post is blocked if it contains at least one blocked keyword, and is allowed only
+                                            if it has no blocked keywords and at least one search keyword
+                                        </div>
+                                        <div className="bg-sky-200 p-2">
+                                            <div className="font-semibold">Search location</div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {
+                                                    KEYWORD_SETTING.map(x =>
+                                                        <div key={x.id}
+                                                             className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                                             onClick={() => {
+                                                                 if (keywordSetting.indexOf(x.id) >= 0) {
+                                                                     setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
+                                                                 } else {
+                                                                     setKeywordSetting([...keywordSetting, x.id]);
+                                                                 }
+                                                                 console.log(keywordSetting);
+                                                             }}>
+                                                            <input type="checkbox"
+                                                                   onChange={() => {
+                                                                   }}
+                                                                   onClick={(e) => {
+                                                                       e.stopPropagation();
+                                                                       if (keywordSetting.indexOf(x.id) >= 0) {
+                                                                           setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
+                                                                       } else {
+                                                                           keywordSetting.push(x.id);
+                                                                           setKeywordSetting([...keywordSetting]);
+                                                                       }
+                                                                   }}
+                                                                   checked={keywordSetting.indexOf(x.id) >= 0}
+                                                                   className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                                            />
+                                                            <div>{x.txt}</div>
+                                                        </div>)
+                                                }
+                                            </div>
                                             {
-                                                KEYWORD_SETTING.map(x =>
-                                                    <div key={x.id}
-                                                         className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
-                                                         onClick={() => {
-                                                             if (keywordSetting.indexOf(x.id) >= 0) {
-                                                                 setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
-                                                             } else {
-                                                                 setKeywordSetting([...keywordSetting, x.id]);
-                                                             }
-                                                             console.log(keywordSetting);
-                                                         }}>
-                                                        <input type="checkbox"
-                                                               onChange={() => {
-                                                               }}
-                                                               onClick={(e) => {
-                                                                   e.stopPropagation();
-                                                                   if (keywordSetting.indexOf(x.id) >= 0) {
-                                                                       setKeywordSetting([...keywordSetting.filter(y => y !== x.id)]);
-                                                                   } else {
-                                                                       keywordSetting.push(x.id);
-                                                                       setKeywordSetting([...keywordSetting]);
-                                                                   }
-                                                               }}
-                                                               checked={keywordSetting.indexOf(x.id) >= 0}
-                                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
-                                                        />
-                                                        <div>{x.txt}</div>
-                                                    </div>)
+                                                keywordSetting.length === 0 &&
+                                                <div className="text-red-700">Please select at least one keyword search
+                                                    method</div>
                                             }
                                         </div>
                                         {
-                                            keywordSetting.length === 0 &&
-                                            <div className="text-red-700">Please select at least one keyword search
-                                                method</div>
+                                            process.env.NEXT_PUBLIC_DEV === "1" &&
+                                            <div>
+                                                <div>Copy keywords from:</div>
+                                                <InputMultiWord
+                                                    key="feed id"
+                                                    className={clsx("border border-2 border-yellow-700 p-2 rounded-xl")}
+                                                    labelText="Feed Id (Copy this from the browser URL)"
+                                                    placeHolder="bsky.app/profile/did:plc:<user>/feed/<id>"
+                                                    orderedList={false}
+                                                    fieldName="copy"
+                                                    handleItem={(item, value, onChange) => {
+                                                        value.push(item);
+                                                        value.sort(); // sorting algo
+                                                        onChange(value);
+                                                    }}
+                                                    useFormReturn={useFormReturn}
+                                                    check={(val, callback) => {
+                                                        const v = val.startsWith("https://") ? val.slice(8) : val;
+                                                        if (!v.startsWith("bsky.app/profile/did:plc:") || !v.includes("/feed/")) {
+                                                            setError("copy", {
+                                                                type: 'custom',
+                                                                message: `${val} is not following the feed url format`
+                                                            });
+                                                        } else if (getValues("copy").indexOf(v) >= 0) {
+                                                            setError("copy", {
+                                                                type: 'custom',
+                                                                message: `${val} is already in the list`
+                                                            });
+                                                        } else {
+                                                            // Check feed
+                                                            callback(v);
+                                                        }
+                                                    }}/>
+                                            </div>
                                         }
+
+                                        <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP}/>
+
                                     </div>
-                                    {
-                                        process.env.NEXT_PUBLIC_DEV === "1" &&
-                                        <div>
-                                            <div>Copy keywords from:</div>
-                                            <InputMultiWord
-                                                key="feed id"
-                                                className={clsx("border border-2 border-yellow-700 p-2 rounded-xl")}
-                                                labelText="Feed Id (Copy this from the browser URL)"
-                                                placeHolder="bsky.app/profile/did:plc:<user>/feed/<id>"
-                                                orderedList={false}
-                                                fieldName="copy"
-                                                handleItem={(item, value, onChange) => {
-                                                    value.push(item);
-                                                    value.sort(); // sorting algo
-                                                    onChange(value);
-                                                }}
-                                                useFormReturn={useFormReturn}
-                                                check={(val, callback) => {
-                                                    const v = val.startsWith("https://") ? val.slice(8) : val;
-                                                    if (!v.startsWith("bsky.app/profile/did:plc:") || !v.includes("/feed/")) {
-                                                        setError("copy", {
-                                                            type: 'custom',
-                                                            message: `${val} is not following the feed url format`
-                                                        });
-                                                    } else if (getValues("copy").indexOf(v) >= 0) {
-                                                        setError("copy", {
-                                                            type: 'custom',
-                                                            message: `${val} is already in the list`
-                                                        });
-                                                    } else {
-                                                        // Check feed
-                                                        callback(v);
-                                                    }
-                                                }}/>
-                                        </div>
-                                    }
-
-                                    <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP}/>
-
-                                </div>
+                                }
                             </>
                         }
 
@@ -1451,6 +1474,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                                         };
                                                                         setMode(mode);
                                                                         if (subMode) {
+                                                                            // @ts-ignore
                                                                             setSubMode(subMode);
                                                                         }
 

@@ -9,13 +9,17 @@ export const FEED_MODES = [
     {id:"user", txt:"Looks at a specific user's data."},
     {id:"posts", txt: "Shows a list of posts"}
 ];
-export const USER_FEED_MODE = [{id:"posts", txt:"Search user's posts"}, {id:"likes", txt:"Search user's likes."}];
+export const USER_FEED_MODE = [
+    {id:"posts", txt:"Search user's posts"},
+    {id:"likes", txt:"Search user's likes."},
+    {id:"responses", txt: "See live responses to user's posts"}
+];
 
-export const POST_LEVELS = [{id:"top", txt:"Top-level posts"}, {id:"reply", txt: "Quote Posts & Replies"}];
+export const POST_LEVELS = [{id:"top", txt:"Top-level posts"}, {id:"reply", txt: "Replies"}];
 export const SORT_ORDERS = [
     {id:"new", txt:"Latest - Most recent post on top", mode:["live", "user"]},
     {id:"like", txt:"Likes - Highest Likes on top", mode:["live", "user"]},
-    {id:"ups", txt:"Engagement - Highest Likes, Reposts, & Quote Posts on top", mode:["live"]},
+    {id:"ups", txt:"Engagement - Highest Total Likes & Reposts on top", mode:["live"]},
     {id:"sLike", txt:"Hot (Likes) - Hacker News ranking algorithm using likes only", mode:["live"]},
     {id:"sUps", txt:"Hot (Engagement) - Hacker News ranking algorithm using engagement", mode:["live"]},
 ];

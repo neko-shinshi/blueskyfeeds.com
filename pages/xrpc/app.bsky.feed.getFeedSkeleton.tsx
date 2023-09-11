@@ -25,7 +25,7 @@ const makeExpiryDate = (nowTs) => {
     return new Date(nowTs + MS_ONE_WEEK);
 }
 
-const processLiveFeed = async (db, feedObj, queryCursor, feedId, user, limit) => {
+const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) => {
     let feed=[], cursor="";
     let {allowList, blockList, everyList, keywordSetting,
         keywords, languages, pics, postLevels, sort, mode, sticky, hideLikeSticky, allowLabels, mustLabels} = feedObj;
@@ -88,7 +88,6 @@ const processLiveFeed = async (db, feedObj, queryCursor, feedId, user, limit) =>
             break;
         }
     }
-
     let result:any[] = [];
     if (everyList.length > 0) {
         let authorQuery:any = {author: {$in: everyList}};
@@ -253,7 +252,16 @@ export async function getServerSideProps({req, res, query}) {
         cursor = cursorV;
     } else {
         let {mode} = feedObj;
-        if (mode === "user-likes" || mode === "user-posts") {
+        if (mode === "user-responses") {
+            let {everyList, sort} = feedObj;
+            everyList = everyList.map(x => `^at://${x}`);
+            const $regex = RegExp(everyList.join("|"));
+            const dbQuery = {$or:[{quote: {$regex}}, {replyParent:{$regex}}, {replyRoot:{$regex}}]}
+            const skip = parseInt(queryCursor) || 0;
+            feed = await db.posts.find(dbQuery).sort(getSortMethod(sort)).skip(skip).limit(limit).project({_id: 1}).toArray();
+            feed = feed.map(x => {return {post: x._id}})
+            cursor = `${feed.length+skip}`;
+        } else if (mode === "user-likes" || mode === "user-posts") {
             const {feed: feedV, cursor: cursorV} = await userFeedHandler(feedId, feedObj, user, queryCursor, limit);
             feed = feedV;
             cursor = cursorV;
@@ -263,7 +271,7 @@ export async function getServerSideProps({req, res, query}) {
             feed = posts.slice(skip, limit).map(x => {return {post: x};});
             cursor = `${feed.length+skip}`;
         } else {
-            const {feed: feedV, cursor: cursorV} = await processLiveFeed (db, feedObj, queryCursor, feedId, user, limit);
+            const {feed: feedV, cursor: cursorV} = await liveFeedHandler (db, feedObj, queryCursor, feedId, user, limit);
             feed = feedV;
             cursor = cursorV;
         }
