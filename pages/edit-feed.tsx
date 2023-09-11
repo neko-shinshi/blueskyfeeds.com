@@ -224,6 +224,7 @@ export default function Home({feed, updateSession, VIP}) {
 
             reset(o);
 
+            console.log("mode", mode);
             if (mode.startsWith("user")) {
                 setMode("user");
                 setSubMode(mode.slice(5));
@@ -290,6 +291,7 @@ export default function Home({feed, updateSession, VIP}) {
 
 
 
+    // @ts-ignore
     return <>
         <PopupWithInputText
             isOpen={popupState === "edit_user"}
@@ -696,6 +698,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                 setValue("allowLabels", SUPPORTED_CW_LABELS);
                                                 setSubMode("posts")
                                                 switch (id) {
+                                                    case "responses":
                                                     case "user": {
                                                         setValue("sort", "new");
                                                         break;
@@ -764,303 +767,309 @@ export default function Home({feed, updateSession, VIP}) {
                                 }} fieldName="highlight" fieldReadableName="Show in Highlights on BlueskyFeeds.com?" subtext="Your feed will still publicly available in other feed directories" useFormReturn={useFormReturn} items={[{id:"yes", txt:"Yes"}, {id:"no", txt:"No"}]}/>
                             </div>
 
-                            {
-                                (mode === "live" || mode === "user") && <>
-                                    <div className="bg-lime-100 p-2 space-y-2">
-                                        <div className="">
-                                            <label className="block font-semibold text-gray-700">
-                                                Sticky Post URI or URL (This shows up at the 1st or 2nd position of your feed)
-                                            </label>
+
+                            <div className="bg-lime-100 p-2 space-y-2">
+                                <div className="">
+                                    <label className="block font-semibold text-gray-700">
+                                        Sticky Post URI or URL (This shows up at the 1st or 2nd position of your feed)
+                                    </label>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
+                                    onClick={() => {
+                                        setPopupState("edit_sticky");
+                                    }}
+                                >
+                                    <span>{watchSticky? "Change Sticky Post": "Set Sticky Post"}</span>
+                                </button>
+
+                                {
+                                    watchSticky &&
+                                    <a href={`https://bsky.app/profile/${watchSticky.slice(5).replace("app.bsky.feed.post", "post")}`} target="_blank" rel="noreferrer">
+                                        <div className="mt-2 p-2 border border-2 border-transparent hover:bg-yellow-100 hover:border-black rounded-xl">
+                                            <div className="text-sm">Preview</div>
+                                            <InputTextBasic fieldName="sticky" disabled={true} fieldReadableName="" useFormReturn={useFormReturn} options={{}}/>
+                                            <div className="bg-gray-50 p-2">{stickyText}</div>
                                         </div>
-
-                                        <button
-                                            type="button"
-                                            className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
-                                            onClick={() => {
-                                                setPopupState("edit_sticky");
-                                            }}
-                                        >
-                                            <span>{watchSticky? "Change Sticky Post": "Set Sticky Post"}</span>
-                                        </button>
-
-                                        {
-                                            watchSticky &&
-                                            <a href={`https://bsky.app/profile/${watchSticky.slice(5).replace("app.bsky.feed.post", "post")}`} target="_blank" rel="noreferrer">
-                                                <div className="mt-2 p-2 border border-2 border-transparent hover:bg-yellow-100 hover:border-black rounded-xl">
-                                                    <div className="text-sm">Preview</div>
-                                                    <InputTextBasic fieldName="sticky" disabled={true} fieldReadableName="" useFormReturn={useFormReturn} options={{}}/>
-                                                    <div className="bg-gray-50 p-2">{stickyText}</div>
-                                                </div>
-                                            </a>
-                                        }
-                                    </div>
+                                    </a>
+                                }
+                            </div>
 
 
-                                    <div className="bg-sky-100 p-2 space-y-2">
-                                        <InputRadio entriesPerRow={2} modifyText={_ => {
-                                            return "text-base font-semibold";
-                                        }} fieldName="sort" fieldReadableName="Sort Order" subtext="Determines which post is on top" useFormReturn={useFormReturn} items={SORT_ORDERS.filter(x => x.mode.indexOf(mode) >= 0)}/>
-                                        {
-                                            mode === "live" &&
-                                            <a href="https://medium.com/hacking-and-gonzo/how-hacker-news-ranking-algorithm-works-1d9b0cf2c08d" target="_blank" rel="noreferrer">
-                                                <div className="p-2 hover:underline text-blue-500 hover:text-blue-800 inline-flex place-items-center text-sm gap-2">
-                                                    <BsFillInfoCircleFill className="h-4 w-4"/>
-                                                    <span>What is the Hacker News ranking algorithm?</span>
-                                                </div>
-                                            </a>
-                                        }
-                                    </div>
-                                    <div className="bg-lime-100 p-2 space-y-2">
-                                        <div className="font-semibold">Post Type Filter</div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {
-                                                POST_LEVELS.map(x =>
-                                                    <div key={x.id}
-                                                         className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
-                                                         onClick={() => {
-                                                             if (postLevels.indexOf(x.id) >= 0) {
-                                                                 setPostLevels([...postLevels.filter(y => y !== x.id)]);
-                                                             } else {
-                                                                 postLevels.push(x.id);
-                                                                 setPostLevels([...postLevels]);
-                                                             }
-                                                         }}>
-                                                        <input type="checkbox"
-                                                               onChange={() => {}}
-                                                               onClick={(e) => {
-                                                                   e.stopPropagation();
-                                                                   if (postLevels.indexOf(x.id) >= 0) {
-                                                                       setPostLevels([...postLevels.filter(y => y !== x.id)]);
-                                                                   } else {
-                                                                       postLevels.push(x.id);
-                                                                       setPostLevels([...postLevels]);
-                                                                   }
-                                                               }}
-                                                               checked={postLevels.indexOf(x.id) >= 0}
-                                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
-                                                        />
-                                                        <div>{x.txt}</div>
-                                                    </div>)
-                                            }
+                            <div className="bg-sky-100 p-2 space-y-2">
+                                <InputRadio entriesPerRow={2}
+                                            modifyText={_ => {return "text-base font-semibold";}}
+                                            fieldName="sort"
+                                            fieldReadableName="Sort Order"
+                                            subtext="Determines which post is on top"
+                                            useFormReturn={useFormReturn}
+                                            items={SORT_ORDERS.filter(x => x.mode.indexOf(mode) >= 0)}/>
+                                {
+                                    mode === "live" &&
+                                    <a href="https://medium.com/hacking-and-gonzo/how-hacker-news-ranking-algorithm-works-1d9b0cf2c08d" target="_blank" rel="noreferrer">
+                                        <div className="p-2 hover:underline text-blue-500 hover:text-blue-800 inline-flex place-items-center text-sm gap-2">
+                                            <BsFillInfoCircleFill className="h-4 w-4"/>
+                                            <span>What is the Hacker News ranking algorithm?</span>
                                         </div>
-                                        {
-                                            postLevels.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
-                                        }
-                                    </div>
-
-                                    <div className="bg-sky-100 p-2 space-y-2">
-                                        <div className="font-semibold">Picture Posts Filter</div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {
-                                                PICS_SETTING.map(x =>
-                                                    <div key={x.id}
-                                                         className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
-                                                         onClick={() => {
-                                                             let newValue;
-                                                             if (pics.indexOf(x.id) >= 0) {
-                                                                 newValue =[...pics.filter(y => y !== x.id)];
-                                                             } else {
-                                                                 newValue = [...pics, x.id];
-                                                             }
-                                                             setPics(newValue);
-                                                             if (newValue.indexOf("text") < 0) {
-                                                                 setValue("mustLabels", []);
-                                                             }
-                                                         }}>
-                                                        <input type="checkbox"
-                                                               onChange={() => {}}
-                                                               onClick={(e) => {
-                                                                   e.stopPropagation();
-                                                                   if (pics.indexOf(x.id) >= 0) {
-                                                                       setPics([...pics.filter(y => y !== x.id)]);
-                                                                   } else {
-                                                                       setPics([...pics, x.id]);
-                                                                   }
-                                                               }}
-                                                               checked={pics.indexOf(x.id) >= 0}
-                                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
-                                                        />
-                                                        <div>{x.txt}</div>
-                                                    </div>)
-                                            }
-                                        </div>
-                                        {
-                                            pics.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
-                                        }
-                                        {
-                                            pics.indexOf("pics") >= 0 && mode === "live" && <div className="flex place-items-center gap-2">
-                                                <div className="font-semibold text-sm">Pic Content Warnings <span className="underline">Allowed</span></div>
-                                                {
-                                                    SUPPORTED_CW_LABELS.map(label => {
-                                                        const onClick = (e) => {
-                                                            e.stopPropagation();
-                                                            let newAllowed;
-                                                            if (watchallowLabels.indexOf(label) < 0) {
-                                                                const temp = new Set([...watchallowLabels, label]);
-                                                                newAllowed = [...temp];
-                                                            } else {
-                                                                newAllowed = watchallowLabels.filter(x => x !== label);
-                                                            }
-                                                            setValue("allowLabels", newAllowed);
-                                                            setValue("mustLabels", watchMustLabels.filter(x => newAllowed.indexOf(x) >= 0));
-                                                        }
-                                                        return <div key={label}
-                                                                    className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                                                    onClick={onClick}>
-                                                            <div className="flex items-center p-2">
-                                                                <input type="checkbox"
-                                                                       checked={watchallowLabels.indexOf(label) >= 0}
-                                                                       onClick={onClick}
-                                                                       onChange={()=>{}}
-                                                                       className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
-                                                                />
-                                                                <div className={clsx("ml-3 text-gray-700")}>
-                                                                    {label.slice(0,1).toUpperCase()}{label.slice(1)}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    })
-                                                }
-                                            </div>
-                                        }
-                                        {
-                                            pics.length === 1 && pics.indexOf("pics") === 0 && <div className="flex place-items-center gap-2">
-                                                <div className="font-semibold text-sm">Pic Content Warnings <span className="underline">Required</span></div>
-                                                {
-                                                    SUPPORTED_CW_LABELS.map(label => {
-                                                        const onClick = (e) => {
-                                                            e.stopPropagation();
-                                                            let newRequired;
-                                                            if (watchMustLabels.indexOf(label) < 0) {
-                                                                const temp = new Set([...watchMustLabels, label]);
-                                                                newRequired = [...temp];
-                                                            } else {
-                                                                newRequired = watchMustLabels.filter(x => x !== label);
-                                                            }
-                                                            setValue("mustLabels", newRequired);
-
-                                                            const newAllowed = new Set([...watchallowLabels, ...newRequired]);
-                                                            setValue("allowLabels", [...newAllowed]);
-                                                        }
-                                                        return <div key={label}
-                                                                    className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                                                    onClick={onClick}>
-                                                            <div className="flex items-center p-2">
-                                                                <input type="checkbox"
-                                                                       checked={watchMustLabels.indexOf(label) >= 0}
-                                                                       onClick={onClick}
-                                                                       onChange={()=>{}}
-                                                                       className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
-                                                                />
-                                                                <div className={clsx("ml-3 text-gray-700")}>
-                                                                    {label.slice(0,1).toUpperCase()}{label.slice(1)}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    })
-                                                }
-                                            </div>
-                                        }
-
-
-                                    </div>
-
-                                    <div className="bg-lime-100 p-2">
-                                        <div className="font-semibold">Language Filters</div>
-                                        <div className="text-sm">Note: This relies on user input</div>
-                                        <div className="text-sm">Leave this completely empty to accept posts of all languages including those not listed</div>
-                                        <div className="grid grid-cols-2">
-                                            <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                    </a>
+                                }
+                            </div>
+                            <div className="bg-lime-100 p-2 space-y-2">
+                                <div className="font-semibold">Post Type Filter</div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {
+                                        POST_LEVELS.map(x =>
+                                            <div key={x.id}
+                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
                                                  onClick={() => {
-                                                     if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
-                                                         setLanguages([]);
+                                                     if (postLevels.indexOf(x.id) >= 0) {
+                                                         setPostLevels([...postLevels.filter(y => y !== x.id)]);
                                                      } else {
-                                                         setLanguages(SUPPORTED_LANG.map(x => x.id));
+                                                         postLevels.push(x.id);
+                                                         setPostLevels([...postLevels]);
                                                      }
                                                  }}>
+                                                <input type="checkbox"
+                                                       onChange={() => {}}
+                                                       onClick={(e) => {
+                                                           e.stopPropagation();
+                                                           if (postLevels.indexOf(x.id) >= 0) {
+                                                               setPostLevels([...postLevels.filter(y => y !== x.id)]);
+                                                           } else {
+                                                               postLevels.push(x.id);
+                                                               setPostLevels([...postLevels]);
+                                                           }
+                                                       }}
+                                                       checked={postLevels.indexOf(x.id) >= 0}
+                                                       className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                                />
+                                                <div>{x.txt}</div>
+                                            </div>)
+                                    }
+                                </div>
+                                {
+                                    postLevels.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
+                                }
+                            </div>
+
+                            <div className="bg-sky-100 p-2 space-y-2">
+                                <div className="font-semibold">Picture Posts Filter</div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {
+                                        PICS_SETTING.map(x =>
+                                            <div key={x.id}
+                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                                 onClick={() => {
+                                                     let newValue;
+                                                     if (pics.indexOf(x.id) >= 0) {
+                                                         newValue =[...pics.filter(y => y !== x.id)];
+                                                     } else {
+                                                         newValue = [...pics, x.id];
+                                                     }
+                                                     setPics(newValue);
+                                                     if (newValue.indexOf("text") < 0) {
+                                                         setValue("mustLabels", []);
+                                                     }
+                                                 }}>
+                                                <input type="checkbox"
+                                                       onChange={() => {}}
+                                                       onClick={(e) => {
+                                                           e.stopPropagation();
+                                                           if (pics.indexOf(x.id) >= 0) {
+                                                               setPics([...pics.filter(y => y !== x.id)]);
+                                                           } else {
+                                                               setPics([...pics, x.id]);
+                                                           }
+                                                       }}
+                                                       checked={pics.indexOf(x.id) >= 0}
+                                                       className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                                />
+                                                <div>{x.txt}</div>
+                                            </div>)
+                                    }
+                                </div>
+                                {
+                                    pics.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
+                                }
+                                {
+                                    pics.indexOf("pics") >= 0 && mode === "live" && <div className="flex place-items-center gap-2">
+                                        <div className="font-semibold text-sm">Pic Content Warnings <span className="underline">Allowed</span></div>
+                                        {
+                                            SUPPORTED_CW_LABELS.map(label => {
+                                                const onClick = (e) => {
+                                                    e.stopPropagation();
+                                                    let newAllowed;
+                                                    if (watchallowLabels.indexOf(label) < 0) {
+                                                        const temp = new Set([...watchallowLabels, label]);
+                                                        newAllowed = [...temp];
+                                                    } else {
+                                                        newAllowed = watchallowLabels.filter(x => x !== label);
+                                                    }
+                                                    setValue("allowLabels", newAllowed);
+                                                    setValue("mustLabels", watchMustLabels.filter(x => newAllowed.indexOf(x) >= 0));
+                                                }
+                                                return <div key={label}
+                                                            className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                            onClick={onClick}>
+                                                    <div className="flex items-center p-2">
+                                                        <input type="checkbox"
+                                                               checked={watchallowLabels.indexOf(label) >= 0}
+                                                               onClick={onClick}
+                                                               onChange={()=>{}}
+                                                               className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                        />
+                                                        <div className={clsx("ml-3 text-gray-700")}>
+                                                            {label.slice(0,1).toUpperCase()}{label.slice(1)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            })
+                                        }
+                                    </div>
+                                }
+                                {
+                                    pics.length === 1 && pics.indexOf("pics") === 0 && <div className="flex place-items-center gap-2">
+                                        <div className="font-semibold text-sm">Pic Content Warnings <span className="underline">Required</span></div>
+                                        {
+                                            SUPPORTED_CW_LABELS.map(label => {
+                                                const onClick = (e) => {
+                                                    e.stopPropagation();
+                                                    let newRequired;
+                                                    if (watchMustLabels.indexOf(label) < 0) {
+                                                        const temp = new Set([...watchMustLabels, label]);
+                                                        newRequired = [...temp];
+                                                    } else {
+                                                        newRequired = watchMustLabels.filter(x => x !== label);
+                                                    }
+                                                    setValue("mustLabels", newRequired);
+
+                                                    const newAllowed = new Set([...watchallowLabels, ...newRequired]);
+                                                    setValue("allowLabels", [...newAllowed]);
+                                                }
+                                                return <div key={label}
+                                                            className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                            onClick={onClick}>
+                                                    <div className="flex items-center p-2">
+                                                        <input type="checkbox"
+                                                               checked={watchMustLabels.indexOf(label) >= 0}
+                                                               onClick={onClick}
+                                                               onChange={()=>{}}
+                                                               className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                        />
+                                                        <div className={clsx("ml-3 text-gray-700")}>
+                                                            {label.slice(0,1).toUpperCase()}{label.slice(1)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            })
+                                        }
+                                    </div>
+                                }
+
+
+                            </div>
+
+                            <div className="bg-lime-100 p-2">
+                                <div className="font-semibold">Language Filters</div>
+                                <div className="text-sm">Note: This relies on user input</div>
+                                <div className="text-sm">Leave this completely empty to accept posts of all languages including those not listed</div>
+                                <div className="grid grid-cols-2">
+                                    <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                         onClick={() => {
+                                             if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
+                                                 setLanguages([]);
+                                             } else {
+                                                 setLanguages(SUPPORTED_LANG.map(x => x.id));
+                                             }
+                                         }}>
+                                        <div className="flex items-center p-2">
+                                            <input type="checkbox"
+                                                   onChange={() => {}}
+                                                   onClick={(e) => {
+                                                       e.stopPropagation();
+                                                       if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
+                                                           setLanguages([]);
+                                                       } else {
+                                                           setLanguages(SUPPORTED_LANG.map(x => x.id));
+                                                       }
+                                                   }}
+                                                   checked={SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)}
+                                                   className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                            />
+                                            <div className={clsx("ml-3 text-gray-700")}>
+                                                {
+                                                    SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
+                                                        Deselect All (all posts no matter the language)
+                                                        <RxCross2 className="w-6 h-6 text-red-600"/>
+                                                    </div>: <div className="flex place-items-center">
+                                                        Select All listed here (some languages are not listed)
+                                                        <RxCheck className="w-6 h-6 text-green-600"/>
+                                                    </div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {
+                                        SUPPORTED_LANG.map(({txt, id}) => {
+                                            const onClick = (e) => {
+                                                e.stopPropagation();
+                                                if (languages.indexOf(id) < 0) {
+                                                    const lang = [...languages];
+                                                    lang.push(id)
+                                                    setLanguages(lang);
+                                                } else {
+                                                    setLanguages(languages.filter(x => x !== id));
+                                                }
+                                            }
+                                            return <div key={id}
+                                                        className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                        onClick={onClick}>
                                                 <div className="flex items-center p-2">
                                                     <input type="checkbox"
-                                                           onChange={() => {}}
-                                                           onClick={(e) => {
-                                                               e.stopPropagation();
-                                                               if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
-                                                                   setLanguages([]);
-                                                               } else {
-                                                                   setLanguages(SUPPORTED_LANG.map(x => x.id));
-                                                               }
-                                                           }}
-                                                           checked={SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)}
+                                                           checked={languages.indexOf(id) >= 0}
+                                                           onClick={onClick}
+                                                           onChange={()=>{}}
                                                            className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
                                                     />
                                                     <div className={clsx("ml-3 text-gray-700")}>
-                                                        {
-                                                            SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
-                                                                Deselect All (all posts no matter the language)
-                                                                <RxCross2 className="w-6 h-6 text-red-600"/>
-                                                            </div>: <div className="flex place-items-center">
-                                                                Select All listed here (some languages are not listed)
-                                                                <RxCheck className="w-6 h-6 text-green-600"/>
-                                                            </div>
-                                                        }
+                                                        {txt}
                                                     </div>
                                                 </div>
                                             </div>
-                                            {
-                                                SUPPORTED_LANG.map(({txt, id}) => {
-                                                    const onClick = (e) => {
-                                                        e.stopPropagation();
-                                                        if (languages.indexOf(id) < 0) {
-                                                            const lang = [...languages];
-                                                            lang.push(id)
-                                                            setLanguages(lang);
-                                                        } else {
-                                                            setLanguages(languages.filter(x => x !== id));
-                                                        }
-                                                    }
-                                                    return <div key={id}
-                                                                className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                                                onClick={onClick}>
-                                                        <div className="flex items-center p-2">
-                                                            <input type="checkbox"
-                                                                   checked={languages.indexOf(id) >= 0}
-                                                                   onClick={onClick}
-                                                                   onChange={()=>{}}
-                                                                   className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
-                                                            />
-                                                            <div className={clsx("ml-3 text-gray-700")}>
-                                                                {txt}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                })
-                                            }
-                                        </div>
-                                    </div>
-                                </>
-                            }
+                                        })
+                                    }
+                                </div>
+                            </div>
                         </div>
 
 
                         <div className="bg-white p-2 space-y-2">
                             <div className="text-lg font-bold">User Filters</div>
                             {
-                                mode === "live" &&
+                                (mode === "live" || mode === "responses") &&
                                 [
                                     {
                                         id: "everyList",
                                         c: "bg-lime-100",
-                                        t: "Every List: Show all posts from these users"
+                                        t: mode === "live"?
+                                            "Every List: Show all posts from these users" :
+                                            "Get responses to posts from these users"
                                     },
-                                    {
+                                    mode === "live"? {
                                         id: "allowList",
                                         c: "bg-yellow-100",
                                         t: "Only List: Only search posts from these Users, if empty, will search all users for keywords"
-                                    },
+                                    } : false,
                                     {
                                         id: "blockList",
                                         c: "bg-pink-100",
                                         t: "Block List: Block all posts from these Users"
-                                    }].map(({id, t, c}) =>
+                                    }]
+                                    .filter(x => x)
+                                    //@ts-ignore
+                                    .map(({id, t, c}) =>
                                     <InputMultiWord
                                         key={id}
                                         className={clsx("border border-2 border-black p-2 rounded-xl", c)}
@@ -1080,26 +1089,6 @@ export default function Home({feed, updateSession, VIP}) {
                                         useFormReturn={useFormReturn}
                                         check={multiWordCallback(id)}/>
                                 )
-                            }
-                            {
-                                mode === "responses" && <InputMultiWord
-                                    key="everyList"
-                                    className="border border-2 border-black p-2 rounded-xl bg-lime-100"
-                                    labelText="Every List: All responses to posts by these users"
-                                    placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
-                                    fieldName="everyList"
-                                    handleItem={(item, value, onChange) => {
-                                        value.push(item);
-                                        value.sort((a, b) => {
-                                            return a.handle.localeCompare(b.handle);
-                                        })
-                                        onChange(value);
-                                    }}
-                                    valueModifier={item => {
-                                        return `${item.displayName} @${item.handle}`
-                                    }}
-                                    useFormReturn={useFormReturn}
-                                    check={multiWordCallback("everyList")}/>
                             }
                             {
                                 mode === "user" &&

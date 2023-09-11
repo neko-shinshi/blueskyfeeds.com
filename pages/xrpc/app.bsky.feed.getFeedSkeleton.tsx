@@ -253,10 +253,11 @@ export async function getServerSideProps({req, res, query}) {
     } else {
         let {mode} = feedObj;
         if (mode === "responses") {
-            let {everyList, sort} = feedObj;
+            let {everyList, blockList, sort} = feedObj;
             everyList = everyList.map(x => `^at://${x}`);
+            blockList = blockList || [];
             const $regex = RegExp(everyList.join("|"));
-            const dbQuery = {$or:[{quote: {$regex}}, {replyParent:{$regex}}, {replyRoot:{$regex}}]}
+            const dbQuery = {author: {$nin: [...everyList, ...blockList]}, $or:[{quote: {$regex}}, {replyParent:{$regex}}, {replyRoot:{$regex}}]}
             const skip = parseInt(queryCursor) || 0;
             feed = await db.posts.find(dbQuery).sort(getSortMethod(sort)).skip(skip).limit(limit).project({_id: 1}).toArray();
             feed = feed.map(x => {return {post: x._id}})
