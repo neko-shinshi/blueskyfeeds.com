@@ -18,12 +18,47 @@ export async function getServerSideProps({req, res, query}) {
     const {all} = query;
     const search = all === "yes"? {} : {highlight:'yes'};
 
+    const feedsHere =  await db.feeds.find(search).toArray();
+    let feeds = [];
 
-    const feedsHere =  await db.feeds.find(search).project({_id:1}).toArray();
-    const feeds = (await db.allFeeds.find({_id: {$in: feedsHere.map(x => x._id)}}).sort({likeCount:-1}).toArray())
-        .map(x => {
-        const found = feedsHere.find(y => y._id === x._id) || {};
-        return {...x, ...found};
+    if (agent) {
+        const MAX_QUERY = 150;
+        const ts = Math.floor(new Date().getTime()/1000);
+        for (let i = 0; i < feedsHere.length; i += MAX_QUERY) {
+            const chunk = feedsHere.slice(i, i + MAX_QUERY).map(x => x._id);
+            const {data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: chunk});
+            data.feeds.forEach(x => feeds.push(x));
+        }
+
+        db.allFeeds.bulkWrite(feeds.map(x => {
+            const {uri: _id, ...o} = x;
+            return {
+                replaceOne: {
+                    filter: {_id},
+                    replacement: {...o, ts},
+                    upsert: true
+                }
+            }
+        }));
+
+        const updatedFeeds = feeds.map(x => {
+            const {uri, did, creator, avatar,
+                displayName, description, likeCount, indexedAt} = x;
+            return {uri, did, creator, avatar: avatar || null,
+                displayName, description, likeCount, indexedAt};
+        });
+        feeds = feedsHere.map(x => {
+            const {_id:uri, y} = x;
+            const temp = updatedFeeds.find(y => y.uri === uri);
+            return temp || {uri,...y};
+        });
+    }
+
+    feeds.sort((a,b) => {
+        if (b.likeCount === a.likeCount) {
+            return b.indexedAt > a.indexedAt? 1 : -1;
+        }
+        return b.likeCount - a.likeCount;
     });
 
     return {props: {updateSession, session, feeds}};

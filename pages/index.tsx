@@ -94,7 +94,7 @@ export async function getServerSideProps({req, res, query}) {
 
     const projection = {
         _id: 0, uri: "$_id",
-        cid:1, did:1, creator:1, avatar:1,
+        did:1, creator:1, avatar:1,
         displayName:1, description:1, likeCount:1, indexedAt:1
     };
 
@@ -107,7 +107,7 @@ export async function getServerSideProps({req, res, query}) {
             $project: projection,
         },
     ].filter(x => x);
-    const [feeds, feedsHere] = await Promise.all([
+    let [feeds, feedsHere] = await Promise.all([
         db.allFeeds.aggregate(agg).toArray(),
         db.feeds.find({highlight:'yes'}).project({_id:1}).toArray()
     ]);
@@ -117,12 +117,40 @@ export async function getServerSideProps({req, res, query}) {
         popularMadeHere = await db.allFeeds.find({_id: {$in: feedsHere.map(x => x._id)}, likeCount: {$gte: 2}})
             .sort({likeCount:-1}).limit(6).project(projection).toArray();
     }
-
-   /* let myFeeds = [];
-
     if (agent) {
-        myFeeds = await getMyFeedIds(agent);
-    }*/
+        const feedIds = [...feeds, ...popularMadeHere].map(x => x.uri);
+        let {data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feedIds});
+        const ts = Math.floor(new Date().getTime()/1000);
+
+        db.allFeeds.bulkWrite(data.feeds.map(x => {
+            const {uri: _id, ...o} = x;
+            return {
+                replaceOne: {
+                    filter: {_id},
+                    replacement: {...o, ts},
+                    upsert: true
+                }
+            }
+        }));
+
+        // Project
+        const updatedFeeds = data.feeds.map(x => {
+            const {uri, did, creator, avatar,
+                displayName, description, likeCount, indexedAt} = x;
+            return {uri, did, creator, avatar: avatar || null,
+                displayName, description, likeCount, indexedAt};
+        });
+        feeds = feeds.map(x => {
+            const temp = updatedFeeds.find(y => y.uri === x.uri);
+            return temp || x;
+        });
+
+        popularMadeHere = popularMadeHere.map(x => {
+            const temp = updatedFeeds.find(y => y.uri === x.uri);
+            return temp || x;
+        });
+    }
+
     return {props: {updateSession, session, feeds, popularMadeHere}};
 }
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
