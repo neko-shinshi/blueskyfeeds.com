@@ -13,9 +13,9 @@ const generateScoreWithTime = (ups, now, then, gravity) => {
 }
 
 const updateScores = async(db) => {
-    const GRAVITY = 2;
+    const GRAVITY = 1.6;
     try {
-        await db.data.insertOne({_id: "calculate_score", expireAt: secondsAfter(9.5*60)});
+        await db.data.insertOne({_id: "calculate_score", expireAt: secondsAfter(6.5*60)});
 
         const feeds = await db.feeds.find({sort: {$ne: "new"}, $or: [{"keywords.0":{$exists:true}}, {"everyList.0":{$exists:true}}]}).project({_id:0}).toArray();
         let commands = feeds.map(feed => {
@@ -93,24 +93,40 @@ const updateScores = async(db) => {
             return dbQuery;
         });
         commands = {$or: commands};
-        const posts = await db.posts.find(commands).project({_id:1, createdAt:1, idLikes:1, idReposts:1, idReplies:1}).toArray();
         const now = new Date();
-        const writeCommands = posts.map(post => {
+        let writeCommands = [];
+
+        const cursor = db.posts.find(commands).project({_id:1, createdAt:1, idLikes:1, idReposts:1, idReplies:1}).sort({createdAt:-1});
+        let i = 0;
+        for await (const post of cursor) {
             const {createdAt:then, _id} = post;
             const likes = post.idLikes.length;
             const ups = likes + post.idReposts.length + post.idReplies.length;
             const likeV = generateScoreWithTime(likes, now, then, GRAVITY);
             const upV = generateScoreWithTime(ups, now, then, GRAVITY);
 
-            return {
+            writeCommands.push({
                 updateOne: {
                     filter: {_id},
                     update: {$set: {likes, ups, likeV, upV}}
                 }
-            };
-        });
-        const result = await db.posts.bulkWrite(writeCommands, {ordered:false});
-        console.log("updated scores", result);
+            });
+
+            if (i % 5000 === 4999) {
+                const result = await db.posts.bulkWrite(writeCommands, {ordered:false});
+                console.log("updated scores", result);
+                writeCommands = [];
+            }
+
+            i++;
+        }
+
+        if (writeCommands.length > 0) {
+            const result = await db.posts.bulkWrite(writeCommands, {ordered:false});
+            console.log("updated scores", result);
+        }
+        console.log("complete scoring");
+
     } catch {}
 }
 
