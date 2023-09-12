@@ -253,11 +253,28 @@ export async function getServerSideProps({req, res, query}) {
     } else {
         let {mode} = feedObj;
         if (mode === "responses") {
-            let {everyList, blockList, sort} = feedObj;
+            let {everyList, blockList, sort, postLevels, pics} = feedObj;
             blockList = blockList || [];
             const $regex = RegExp(everyList.map(x => `^at://${x}`).join("|"));
-            const dbQuery = {author: {$nin: [...everyList, ...blockList]}, $or:[{quote: {$regex}}, {replyParent:{$regex}}, {replyRoot:{$regex}}]}
+            const dbQuery:any = {author: {$nin: [...everyList, ...blockList]}, $or:[{quote: {$regex}}, {replyParent:{$regex}}, {replyRoot:{$regex}}]}
             const skip = parseInt(queryCursor) || 0;
+
+            const wantTop = postLevels.indexOf("top") >= 0;
+            const wantReply = postLevels.indexOf("reply") >= 0;
+            if (!(wantTop && wantReply)) {
+                if (wantTop) {
+                    dbQuery.replyRoot = null;
+                } else { // wantReply
+                    dbQuery.replyRoot = {$ne: null};
+                }
+            }
+
+            const wantPics = pics.indexOf("pics") >= 0;
+            const wantText = pics.indexOf("text") >= 0;
+            if (!(wantPics && wantText)) {
+                dbQuery.hasImage = wantPics;
+            }
+
             feed = await db.posts.find(dbQuery).sort(getSortMethod(sort)).skip(skip).limit(limit).project({_id: 1}).toArray();
             feed = feed.map(x => {return {post: x._id}})
             cursor = `${feed.length+skip}`;
