@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import {HiChevronDoubleLeft, HiX} from "react-icons/hi";
 
-export default function SortableWordBubbles({value, orderedList=undefined, disabled=false, valueModifier , className="", buttonCallback, classModifier=(val, index, original)=>original, selectable=false}) {
+export default function SortableWordBubbles({value, orderedList=undefined, disabled=false, valueModifier , className="", buttonCallback, classModifier=(val, index, original)=>original, selectable=false, clickable=true}) {
     return <div className={clsx(className,"-m-1 flex flex-wrap items-center border-dashed border-2 border-black rounded-xl gap-2")}>
         {
             (!value || value.length == 0) &&
@@ -13,7 +13,7 @@ export default function SortableWordBubbles({value, orderedList=undefined, disab
                 const stringValue = valueModifier(tag);
                 return <span key={stringValue}
                              onClick={() => {
-                                 if (selectable) {
+                                 if (clickable && selectable) {
                                      buttonCallback(tag, "o");
                                  }
                              }}
@@ -22,7 +22,7 @@ export default function SortableWordBubbles({value, orderedList=undefined, disab
                                  "inline-flex rounded-full border items-center py-1.5 pl-3 pr-2 text-sm font-medium bg-white text-gray-900"))}>
                     <span>{stringValue}</span>
                     {
-                        orderedList && (value as Array<any>).length > 1 && index > 0 && (
+                        clickable && orderedList && (value as Array<any>).length > 1 && index > 0 && (
                             <button type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -37,17 +37,21 @@ export default function SortableWordBubbles({value, orderedList=undefined, disab
                             </button>
                         )
                     }
-                    <button type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                buttonCallback(tag, "x");
-                            }}
-                            disabled={disabled}
-                            className={clsx(
-                                disabled? "cursor-not-allowed":"hover:bg-gray-200 hover:text-gray-500",
-                                "flex-shrink-0 ml-1 rounded-full inline-flex text-gray-400")}>
-                        <HiX className="h-6 w-6 text-black" title={`Remove ${stringValue}`}/>
-                    </button>
+                    {
+                        clickable &&
+                        <button type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    buttonCallback(tag, "x");
+                                }}
+                                disabled={disabled}
+                                className={clsx(
+                                    disabled? "cursor-not-allowed":"hover:bg-gray-200 hover:text-gray-500",
+                                    "flex-shrink-0 ml-1 rounded-full inline-flex text-gray-400")}>
+                            <HiX className="h-6 w-6 text-black" title={`Remove ${stringValue}`}/>
+                        </button>
+                    }
+
                 </span>
             })
         }

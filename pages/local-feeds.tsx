@@ -52,6 +52,14 @@ export async function getServerSideProps({req, res, query}) {
             const temp = updatedFeeds.find(y => y.uri === uri);
             return temp || {uri,...y};
         });
+    } else {
+        feeds = await db.allFeeds.find({_id: {$in: feedsHere.map(x => x._id)}}).toArray();
+        feeds = feeds.map(x => {
+            const {_id:uri, did, creator, avatar,
+                displayName, description, likeCount, indexedAt} = x;
+            return {uri, did, creator, avatar: avatar || null,
+                displayName, description, likeCount, indexedAt};
+        });
     }
 
     feeds.sort((a,b) => {
@@ -120,25 +128,18 @@ export default function Home({updateSession, feeds:_feeds}) {
             }
         }/>
         <HeadExtended title={title} description={description}/>
-        {
-            !session && <div className="flex flex-col place-items-center gap-4">
-                <PageHeader title={title} description={description} />
-                <FormSignIn/>
-            </div>
-        }
 
-        {
-            session && <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
-                <PageHeader title={title} description={description} />
+       <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
+            <PageHeader title={title} description={description} />
 
-                <div className="border border-2 border-black p-4 bg-white rounded-xl">
-                    {
-                        feeds && feeds.map(x =>
-                            <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />
-                        )
-                    }
-                </div>
+            <div className="border border-2 border-black p-4 bg-white rounded-xl">
+                {
+                    feeds && feeds.map(x =>
+                        <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />
+                    )
+                }
             </div>
-        }
+        </div>
+
     </>
 }
