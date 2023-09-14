@@ -147,6 +147,9 @@ export default function Home({feed, updateSession, VIP}) {
     const [subMode, setSubMode] = useState<""|"posts"|"likes">("");
     const [stickyText, setStickyText] = useState("");
     const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"wizard-posts"|"edit"|"done">(feed? "edit" : "wizard");
+    const [specialQuote, setSpecialQuote] = useState(false);
+    const [keywordsQuote, setKeywordsQuote] = useState<string[]>([]);
+
     const recaptcha = useRecaptcha();
 
     const formRef = useRef(null);
@@ -163,7 +166,7 @@ export default function Home({feed, updateSession, VIP}) {
 
     const watchSticky = watch("sticky");
     const watchAllow = watch("allowList");
-    const watchallowLabels = watch("allowLabels");
+    const watchAllowLabels = watch("allowLabels");
     const watchMustLabels = watch("mustLabels");
 
     const showInstructionAlert = () => {
@@ -188,7 +191,7 @@ export default function Home({feed, updateSession, VIP}) {
             setKeywordSetting(["text"]);
             setPics(["text", "pics"]);
         } else {
-            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode, sticky, posts, allowLabels, mustLabels} = feed;
+            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode, sticky, posts, allowLabels, mustLabels, keywordsQuote} = feed;
 
             let stickyUri;
             if (sticky) {
@@ -222,6 +225,17 @@ export default function Home({feed, updateSession, VIP}) {
                 return o;
             }) || [];
 
+            keywordsQuote = keywordsQuote?.map(x => {
+                const {t, a} = x;
+                let o = JSON.parse(toJson(t));
+                o.a = a;
+                if ((o.t === "t" || o.t === "s") && !o.r) {
+                    o.r = [];
+                }
+                return o;
+            }) || [];
+
+
             reset(o);
 
             console.log("mode", mode);
@@ -237,10 +251,12 @@ export default function Home({feed, updateSession, VIP}) {
             setKeywordSetting(keywordSetting || ["text"]);
             setPics(pics || ["text", "pics"]);
             setKeywords(keywords);
+            if (keywordsQuote.length > 0) {
+                setSpecialQuote(true);
+                setKeywordsQuote(keywordsQuote);
+            }
         }
     }, [feed]);
-
-
 
 
     const multiWordCallback = (fieldName:string) => {
@@ -665,7 +681,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 }
                             }
                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
-                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, copy, highlight, sticky, posts:posts? posts.map(x => x.uri) : [],
+                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, posts:posts? posts.map(x => x.uri) : [],
                                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels};
                             console.log(result);
 
@@ -901,11 +917,11 @@ export default function Home({feed, updateSession, VIP}) {
                                                 const onClick = (e) => {
                                                     e.stopPropagation();
                                                     let newAllowed;
-                                                    if (watchallowLabels.indexOf(label) < 0) {
-                                                        const temp = new Set([...watchallowLabels, label]);
+                                                    if (watchAllowLabels.indexOf(label) < 0) {
+                                                        const temp = new Set([...watchAllowLabels, label]);
                                                         newAllowed = [...temp];
                                                     } else {
-                                                        newAllowed = watchallowLabels.filter(x => x !== label);
+                                                        newAllowed = watchAllowLabels.filter(x => x !== label);
                                                     }
                                                     setValue("allowLabels", newAllowed);
                                                     setValue("mustLabels", watchMustLabels.filter(x => newAllowed.indexOf(x) >= 0));
@@ -915,7 +931,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                             onClick={onClick}>
                                                     <div className="flex items-center p-2">
                                                         <input type="checkbox"
-                                                               checked={watchallowLabels.indexOf(label) >= 0}
+                                                               checked={watchAllowLabels.indexOf(label) >= 0}
                                                                onClick={onClick}
                                                                onChange={()=>{}}
                                                                className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
@@ -945,7 +961,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                     }
                                                     setValue("mustLabels", newRequired);
 
-                                                    const newAllowed = new Set([...watchallowLabels, ...newRequired]);
+                                                    const newAllowed = new Set([...watchAllowLabels, ...newRequired]);
                                                     setValue("allowLabels", [...newAllowed]);
                                                 }
                                                 return <div key={label}
@@ -1041,6 +1057,33 @@ export default function Home({feed, updateSession, VIP}) {
                                         })
                                     }
                                 </div>
+                            </div>
+
+                            <div>
+                                <div className="p-2 bg-blue-100 flex gap-2 place-items-center hover:bg-blue-200"
+                                     onClick={ () => {
+                                         const newV = !specialQuote;
+                                         setSpecialQuote(!specialQuote);
+                                         if (!newV) {
+                                             setKeywordsQuote([]);
+                                         }
+                                     }}>
+                                    <input type="checkbox"
+                                           onChange={()=>{}}
+                                           checked={specialQuote}
+                                           onClick={()=> {
+                                               const newV = !specialQuote;
+                                               setSpecialQuote(!specialQuote);
+                                               if (!newV) {
+                                                   setKeywordsQuote([]);
+                                               }
+                                           }} />
+                                    <div className="font-bold">Handle Quote Posts Separately</div>
+                                </div>
+                                {
+                                    specialQuote && <KeywordsEdit bg="bg-blue-100" keywords={keywordsQuote} setKeywords={setKeywordsQuote} VIP={VIP}/>
+                                }
+
                             </div>
                         </div>
 
@@ -1309,7 +1352,7 @@ export default function Home({feed, updateSession, VIP}) {
 
                                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
 
-                                            const result = {languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), copy, highlight, sticky, posts: posts? posts.map(x => x.uri) : [],
+                                            const result = {languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), keywordsQuote: keywordsQuote.map(x => compressKeyword(x)), copy, highlight, sticky, posts: posts? posts.map(x => x.uri) : [],
                                                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode: modeText};
                                             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
                                             const dlAnchorElem = document.createElement('a');
@@ -1342,7 +1385,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                     let content = readerEvent.target.result as string; // this is the content!
                                                     console.log( content );
 
-                                                    let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, sticky, mode:_mode, posts:_posts, mustLabels, allowLabels} = JSON.parse(content);
+                                                    let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, mode:_mode, posts:_posts, mustLabels, allowLabels} = JSON.parse(content);
                                                     allowLabels = allowLabels || SUPPORTED_CW_LABELS;
                                                     mustLabels = mustLabels || [];
 
@@ -1398,6 +1441,8 @@ export default function Home({feed, updateSession, VIP}) {
                                                                     setKeywordSetting(["text"]);
                                                                     setPics(["text", "pics"]);
                                                                     setKeywords([]);
+                                                                    setKeywordsQuote([]);
+                                                                    setSpecialQuote(false);
 
                                                                     reset(o);
                                                                     setBusy(false);
@@ -1439,6 +1484,23 @@ export default function Home({feed, updateSession, VIP}) {
                                                                         return o;
                                                                     }) || [];
 
+                                                                    keywordsQuote = keywordsQuote?.map(x => {
+                                                                        const {t, a} = x;
+                                                                        let o:any;
+                                                                        try {
+                                                                            o = JSON.parse(toJson(t));
+                                                                        } catch (e) {
+                                                                            o = JSON.parse(compressedToJsonString(t));
+                                                                        }
+
+                                                                        o.a = a;
+                                                                        if ((o.t === "t" || o.t === "s") && !o.r) {
+                                                                            o.r = [];
+                                                                        }
+                                                                        return o;
+                                                                    }) || [];
+
+
                                                                     recaptcha.ready(async () => {
                                                                         if (sticky) {
                                                                             //@ts-ignore
@@ -1471,6 +1533,13 @@ export default function Home({feed, updateSession, VIP}) {
                                                                         setKeywordSetting(keywordSetting || ["text"]);
                                                                         setPics(pics || ["text", "pics"]);
                                                                         setKeywords(keywords);
+                                                                        if (keywordsQuote.length > 0) {
+                                                                            setSpecialQuote(true);
+                                                                            setKeywordsQuote(keywordsQuote);
+                                                                        } else {
+                                                                            setSpecialQuote(false);
+                                                                            setKeywordsQuote([]);
+                                                                        }
 
                                                                         reset(o);
                                                                         console.log(o);

@@ -5,7 +5,7 @@ import {isValidToken} from "features/utils/validationUtils";
 import SortableWordBubbles from "features/components/SortableWordBubbles";
 import {useState} from "react";
 
-export default function KeywordsEdit({keywords, setKeywords, VIP}) {
+export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-100"}) {
     const [editTag, setEditTag] = useState<any>(null);
     const [newKeywordMode, setNewKeywordMode] = useState<KeywordType>("token");
 
@@ -35,7 +35,7 @@ export default function KeywordsEdit({keywords, setKeywords, VIP}) {
     }
 
     return  <div>
-        <div className="font-semibold text-lg bg-lime-100 p-2">There are three ways keywords are filtered, tap the <span className="text-pink-600">different</span> <span className="text-yellow-600">colored</span> <span className="text-sky-600">tabs</span> below to see their differences</div>
+        <div className={clsx("font-semibold text-lg p-2", bg)}>There are three ways keywords are filtered, tap the <span className="text-pink-600">different</span> <span className="text-yellow-600">colored</span> <span className="text-sky-600">tabs</span> below to see their differences</div>
         <div className={clsx("grid grid-cols-3")}>
             {
                 KEYWORD_TYPES.map((x, i) =>

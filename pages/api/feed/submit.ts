@@ -24,7 +24,7 @@ export default async function handler(req, res) {
             const agent = await rebuildAgentFromToken(token);
             if (!agent) {res.status(401).send(); return;}
 
-            let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, mode, posts:_posts,
+            let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, keywordsQuote:_keywordsQuote, mode, posts:_posts,
                 sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight, sticky, mustLabels, allowLabels} = req.body;
 
             mustLabels = mustLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
@@ -129,7 +129,26 @@ export default async function handler(req, res) {
                 return false;
             });
 
-            if (keywords.length > MAX_KEYWORDS_PER_LIVE_FEED && !isVIP(agent)) {
+            let keywordsQuote = _keywordsQuote.filter(x => {
+                const {w,t,r,a, ...other} = x;
+                if (Object.keys(other).length === 0 && (typeof w === 'string' || w instanceof String) && typeof a == "boolean" ) {
+                    switch (t) {
+                        case "t":
+                        case "s": {
+                            return Array.isArray(r) &&
+                                r.every(y => (typeof y.p === 'string' || y.p instanceof String || typeof y.s === 'string' || y.s instanceof String));
+                        }
+                        case "#": {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            });
+
+            if ((keywordsQuote.length > MAX_KEYWORDS_PER_LIVE_FEED || keywords.length > MAX_KEYWORDS_PER_LIVE_FEED)
+                && !isVIP(agent)) {
                 console.log("too many keywords");
                 res.status(400).send("too many keywords");
                 return;
@@ -146,9 +165,20 @@ export default async function handler(req, res) {
                 res.status(400).send("missing keywords");
                 return;
             }
+
+            if (keywordsQuote.length !== _keywordsQuote.length) {
+                console.log("missing keywords");
+                res.status(400).send("missing keywords");
+                return;
+            }
             keywords = keywords.map(x => compressKeyword(x));
             keywords.sort((a,b) => {
                return a.t.localeCompare(b.t);
+            });
+
+            keywordsQuote = keywordsQuote.map(x => compressKeyword(x));
+            keywordsQuote.sort((a,b) => {
+                return a.t.localeCompare(b.t);
             });
 
             if ([...new Set([...mustUrl, ...blockUrl])]
@@ -182,7 +212,7 @@ export default async function handler(req, res) {
                 // Update feed at Bluesky's side
                 await editFeed(agent, {img, shortName, displayName, description});
 
-                const o = {languages,  postLevels, pics, keywordSetting, keywords, copy, highlight, sticky, posts, allowLabels, mustLabels,
+                const o = {languages,  postLevels, pics, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, posts, allowLabels, mustLabels,
                     sort, allowList, blockList, everyList, mustUrl, blockUrl, mode, updated: new Date().toISOString()};
 
                 // Update current feed
