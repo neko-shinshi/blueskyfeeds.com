@@ -78,12 +78,6 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
         keywordSearch.push({kwText:{$in: findKeywords, $nin: blockKeywords}});
     }
 
-    const findKeywordsQuote = keywordsQuote?.filter(x => x.a).map(x => x.t) || [];
-
-    if (keywordsQuote?.length > 0) {
-        const blockKeywordsQuote = keywordsQuote.filter(x => !x.a).map(x => x.t);
-        keywordSearch.push({kwText:{$in: findKeywordsQuote, $nin: blockKeywordsQuote}, quote:{$ne:null}});
-    }
 
     switch (keywordSearch.length) {
         case 1: {
@@ -95,6 +89,10 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
             break;
         }
     }
+
+    const findKeywordsQuote = keywordsQuote?.filter(x => x.a).map(x => x.t) || [];
+    let queryOrs = [];
+
     let result:any[] = [];
     if (everyList.length > 0) {
         let authorQuery:any = {author: {$in: everyList}};
@@ -113,15 +111,33 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
         }
 
         if (findKeywords.length + findKeywordsQuote.length === 0) {
-            dbQuery = authorQuery; // Totally block not in everyList
+           // dbQuery = authorQuery; // Totally block not in everyList
+            queryOrs.push(authorQuery);
         } else {
-            dbQuery = {$or: [authorQuery, dbQuery]};
+            //dbQuery = {$or: [authorQuery, dbQuery]};
+            queryOrs.push(authorQuery);
+            queryOrs.push(dbQuery);
         }
     } else {
-        if (findKeywords.length + findKeywordsQuote.length === 0) {
-            fail = true;
-            sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3k4ematehei27";
+        if (findKeywords.length === 0) {
+            if (findKeywordsQuote.length === 0) {
+                fail = true;
+                sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3k4ematehei27";
+            } // else, ignore all other settings and just look for quote
+        } else {
+            queryOrs.push(dbQuery);
         }
+    }
+
+    if (keywordsQuote?.length > 0) {
+        const blockKeywordsQuote = keywordsQuote.filter(x => !x.a).map(x => x.t);
+        queryOrs.push({kwText:{$in: findKeywordsQuote, $nin: blockKeywordsQuote}, quote:{$ne:null}});
+    }
+
+    if (queryOrs.length === 1) {
+        dbQuery = queryOrs[0];
+    } else {
+        dbQuery = {$or: queryOrs};
     }
 
     const sortMethod = getSortMethod(sort);
