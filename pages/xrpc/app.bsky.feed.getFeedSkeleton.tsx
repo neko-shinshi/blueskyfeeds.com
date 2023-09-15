@@ -204,7 +204,6 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
             }
         }
         if (sort === "new") {
-            console.log("new");
             if (sticky) {limit = limit -1;}
 
             let projection:any = {createdAt: 1};
@@ -215,10 +214,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
                 return {cursor, feed};
             }
             if (searchQuoteKeywords) {
-                console.log("Swap");
-                console.log(result);
                 result = result.map(x => x.quote? {_id: x.quote, createdAt: x.createdAt} : x);
-                console.log(result);
             }
 
             if (sticky) {
