@@ -660,7 +660,7 @@ export default function Home({feed, updateSession, VIP}) {
                         recaptcha={recaptcha}
                         useFormReturn={useFormReturn}
                         cleanUpData={async (data) => {
-                            if (mode === "live" && keywords.length === 0) {
+                            if (mode === "live" && keywords.length + keywordsQuote.length === 0) {
                                 alert("Your live data feed has no keywords! Please remember to tap 'Add' after typing the desired keyword")
                                 return false;
                             }

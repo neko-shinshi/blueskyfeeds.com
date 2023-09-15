@@ -114,7 +114,12 @@ const updateScores = async(db) => {
 
             if (i % 5000 === 4999) {
                 const result = await db.posts.bulkWrite(writeCommands, {ordered:false});
-                console.log("updated scores", result);
+                if (!result.ok) {
+                    console.log(i, "error", result);
+                } else {
+                    console.log(i, "updated scores", result.nMatched, result.nModified);
+                }
+
                 writeCommands = [];
             }
 
@@ -123,7 +128,11 @@ const updateScores = async(db) => {
 
         if (writeCommands.length > 0) {
             const result = await db.posts.bulkWrite(writeCommands, {ordered:false});
-            console.log("updated scores", result);
+            if (!result.ok) {
+                console.log("error", result);
+            } else {
+                console.log("updated scores", result.nMatched, result.nModified);
+            }
         }
         console.log("complete scoring");
 
