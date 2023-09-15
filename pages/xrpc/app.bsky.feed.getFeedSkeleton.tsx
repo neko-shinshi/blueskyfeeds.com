@@ -28,7 +28,7 @@ const makeExpiryDate = (nowTs) => {
 const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) => {
     let feed=[], cursor="";
     let {allowList, blockList, everyList, keywordSetting,
-        keywords, languages, pics, postLevels, sort, mode, sticky, hideLikeSticky, allowLabels, mustLabels} = feedObj;
+        keywords, keywordsQuote, languages, pics, postLevels, sort, sticky, hideLikeSticky, allowLabels, mustLabels} = feedObj;
     let dbQuery:any = {};
     if (allowList.length > 0) {
         // Only search posts from x users
@@ -76,6 +76,12 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
 
     if (keywordSetting.indexOf("text") >= 0 && findKeywords.length > 0) {
         keywordSearch.push({kwText:{$in: findKeywords, $nin: blockKeywords}});
+    }
+
+    if (keywordsQuote?.length > 0) {
+        const findKeywordsQuote = keywordsQuote.filter(x => x.a).map(x => x.t);
+        const blockKeywordsQuote = keywordsQuote.filter(x => !x.a).map(x => x.t);
+        keywordSearch.push({kwText:{$in: findKeywordsQuote, $nin: blockKeywordsQuote}, quote:{$ne:null}});
     }
 
     switch (keywordSearch.length) {
