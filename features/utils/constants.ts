@@ -7,7 +7,7 @@ export const SUPPORTED_LANGUAGES = ["", "en", "pt", "ja", "ko", "uk", "es", "fa"
 export const FEED_MODES = [
     {id:"live", txt:"Listens for live posts. Only stores posts for 3 days."},
     {id:"user", txt:"Looks at a specific user's data."},
-    {id:"posts", txt: "Shows a list of posts"},
+    {id:"posts", txt: "Shows a specific list of posts"},
     {id:"responses", txt: "See live responses to posts from a list of users"}
 ];
 export const USER_FEED_MODE = [
