@@ -20,6 +20,7 @@ const getSortMethod = (sort) => {
 
 const MS_ONE_WEEK = 7*24*60*60*1000;
 const MS_HALF_DAY = 12*60*60*1000;
+const MS_FIVE_MINUTES = 5*60*1000;
 
 const makeExpiryDate = (nowTs) => {
     return new Date(nowTs + MS_ONE_WEEK);
@@ -197,11 +198,27 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
             cursor = `${result.length+skip}`;
         }
     } else {
-        if (hideLikeSticky === true) {
-            console.log("USER", feedId, user);
+        if (hideLikeSticky === true && user) {
             const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
-            if (agent && await feedHasUserLike(agent, feedId, user)) {
-                sticky = null;
+            if (agent) {
+                const now = new Date().getTime();
+                if (!global.likeChecks) {
+                    global.likeChecks = new Map();
+                }
+                const key = `${user} ${feedId}`;
+                const check = global.likeChecks.get(key);
+                let hasLike;
+                if (!check || now - check.then > MS_FIVE_MINUTES) { // don't check for at 5 min
+                    console.log("Checking");
+                    hasLike = await feedHasUserLike(agent, feedId, user);
+                    global.likeChecks.set(key, {then:now, hasLike});
+                } else {
+                    console.log("use cached");
+                    hasLike = check.hasLike;
+                }
+                if (hasLike) {
+                    sticky = null;
+                }
             }
         }
         if (sort === "new") {
