@@ -18,7 +18,7 @@ export const USER_FEED_MODE = [
 export const POST_LEVELS = [{id:"top", txt:"Top-level posts"}, {id:"reply", txt: "Replies"}];
 export const SORT_ORDERS = [
     {id:"new", txt:"Latest - Most recent post on top", mode:["live", "user", "responses"]},
-    {id:"like", txt:"Likes - Highest Likes on top", mode:["live", "user", "responses"]},
+    {id:"like", txt:"Likes - Highest Likes on top", mode:["live", "responses"]},
     {id:"ups", txt:"Engagement - Highest Total Likes & Reposts on top", mode:["live", "responses"]},
     {id:"sLike", txt:"Hot (Likes) - Hacker News ranking algorithm using likes only", mode:["live"]},
     {id:"sUps", txt:"Hot (Engagement) - Hacker News ranking algorithm using engagement", mode:["live"]},

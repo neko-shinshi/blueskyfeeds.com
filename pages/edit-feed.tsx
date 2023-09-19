@@ -986,77 +986,81 @@ export default function Home({feed, updateSession, VIP}) {
 
                                     </div>
 
-                                    <div className="bg-lime-100 p-2">
-                                        <div className="font-semibold">Language Filters</div>
-                                        <div className="text-sm">Note: This relies on user input</div>
-                                        <div className="text-sm">Leave this completely empty to accept posts of all languages including those not listed</div>
-                                        <div className="grid grid-cols-2">
-                                            <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                                 onClick={() => {
-                                                     if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
-                                                         setLanguages([]);
-                                                     } else {
-                                                         setLanguages(SUPPORTED_LANG.map(x => x.id));
-                                                     }
-                                                 }}>
-                                                <div className="flex items-center p-2">
-                                                    <input type="checkbox"
-                                                           onChange={() => {}}
-                                                           onClick={(e) => {
-                                                               e.stopPropagation();
-                                                               if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
-                                                                   setLanguages([]);
-                                                               } else {
-                                                                   setLanguages(SUPPORTED_LANG.map(x => x.id));
-                                                               }
-                                                           }}
-                                                           checked={SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)}
-                                                           className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
-                                                    />
-                                                    <div className={clsx("ml-3 text-gray-700")}>
-                                                        {
-                                                            SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
-                                                                Deselect All (all posts no matter the language)
-                                                                <RxCross2 className="w-6 h-6 text-red-600"/>
-                                                            </div>: <div className="flex place-items-center">
-                                                                Select All listed here (some languages are not listed)
-                                                                <RxCheck className="w-6 h-6 text-green-600"/>
-                                                            </div>
-                                                        }
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {
-                                                SUPPORTED_LANG.map(({txt, id}) => {
-                                                    const onClick = (e) => {
-                                                        e.stopPropagation();
-                                                        if (languages.indexOf(id) < 0) {
-                                                            const lang = [...languages];
-                                                            lang.push(id)
-                                                            setLanguages(lang);
-                                                        } else {
-                                                            setLanguages(languages.filter(x => x !== id));
-                                                        }
-                                                    }
-                                                    return <div key={id}
-                                                                className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                                                onClick={onClick}>
-                                                        <div className="flex items-center p-2">
-                                                            <input type="checkbox"
-                                                                   checked={languages.indexOf(id) >= 0}
-                                                                   onClick={onClick}
-                                                                   onChange={()=>{}}
-                                                                   className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
-                                                            />
-                                                            <div className={clsx("ml-3 text-gray-700")}>
-                                                                {txt}
-                                                            </div>
+                                    {
+                                        mode === "live" &&
+                                        <div className="bg-lime-100 p-2">
+                                            <div className="font-semibold">Language Filters</div>
+                                            <div className="text-sm">Note: This relies on user input</div>
+                                            <div className="text-sm">Leave this completely empty to accept posts of all languages including those not listed</div>
+                                            <div className="grid grid-cols-2">
+                                                <div className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                     onClick={() => {
+                                                         if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
+                                                             setLanguages([]);
+                                                         } else {
+                                                             setLanguages(SUPPORTED_LANG.map(x => x.id));
+                                                         }
+                                                     }}>
+                                                    <div className="flex items-center p-2">
+                                                        <input type="checkbox"
+                                                               onChange={() => {}}
+                                                               onClick={(e) => {
+                                                                   e.stopPropagation();
+                                                                   if (SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)) {
+                                                                       setLanguages([]);
+                                                                   } else {
+                                                                       setLanguages(SUPPORTED_LANG.map(x => x.id));
+                                                                   }
+                                                               }}
+                                                               checked={SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)}
+                                                               className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                        />
+                                                        <div className={clsx("ml-3 text-gray-700")}>
+                                                            {
+                                                                SUPPORTED_LANG.every(x => languages.indexOf(x.id) >= 0)? <div className="flex place-items-center">
+                                                                    Deselect All (all posts no matter the language)
+                                                                    <RxCross2 className="w-6 h-6 text-red-600"/>
+                                                                </div>: <div className="flex place-items-center">
+                                                                    Select All listed here (some languages are not listed)
+                                                                    <RxCheck className="w-6 h-6 text-green-600"/>
+                                                                </div>
+                                                            }
                                                         </div>
                                                     </div>
-                                                })
-                                            }
+                                                </div>
+                                                {
+                                                    SUPPORTED_LANG.map(({txt, id}) => {
+                                                        const onClick = (e) => {
+                                                            e.stopPropagation();
+                                                            if (languages.indexOf(id) < 0) {
+                                                                const lang = [...languages];
+                                                                lang.push(id)
+                                                                setLanguages(lang);
+                                                            } else {
+                                                                setLanguages(languages.filter(x => x !== id));
+                                                            }
+                                                        }
+                                                        return <div key={id}
+                                                                    className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                                    onClick={onClick}>
+                                                            <div className="flex items-center p-2">
+                                                                <input type="checkbox"
+                                                                       checked={languages.indexOf(id) >= 0}
+                                                                       onClick={onClick}
+                                                                       onChange={()=>{}}
+                                                                       className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                                />
+                                                                <div className={clsx("ml-3 text-gray-700")}>
+                                                                    {txt}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    })
+                                                }
+                                            </div>
                                         </div>
-                                    </div>
+                                    }
+
                                 </>
                             }
 
@@ -1174,13 +1178,10 @@ export default function Home({feed, updateSession, VIP}) {
                             </div>
                         }
 
-
-
                         {
-                            mode !== "responses" && mode !== "posts" &&
+                            mode !== "responses" && mode !== "posts" && !(mode === "user" && subMode === "likes") &&
                             <div className="bg-white p-2 space-y-2">
-                                <div className="text-lg font-bold">Keyword
-                                    Filters {VIP ? "" : `(max ${mode === "live" ? MAX_KEYWORDS_PER_LIVE_FEED : MAX_KEYWORDS_PER_USER_FEED})`}</div>
+                                <div className="text-lg font-bold">Keyword Filters {VIP ? "" : `(max ${mode === "live" ? MAX_KEYWORDS_PER_LIVE_FEED : MAX_KEYWORDS_PER_USER_FEED})`}</div>
                                 <div>A post is blocked if it contains at least one blocked keyword, and is allowed only
                                     if it has no blocked keywords and at least one search keyword
                                 </div>
@@ -1224,42 +1225,6 @@ export default function Home({feed, updateSession, VIP}) {
                                             method</div>
                                     }
                                 </div>
-                                {
-                                    process.env.NEXT_PUBLIC_DEV === "1" &&
-                                    <div>
-                                        <div>Copy keywords from:</div>
-                                        <InputMultiWord
-                                            key="feed id"
-                                            className={clsx("border border-2 border-yellow-700 p-2 rounded-xl")}
-                                            labelText="Feed Id (Copy this from the browser URL)"
-                                            placeHolder="bsky.app/profile/did:plc:<user>/feed/<id>"
-                                            orderedList={false}
-                                            fieldName="copy"
-                                            handleItem={(item, value, onChange) => {
-                                                value.push(item);
-                                                value.sort(); // sorting algo
-                                                onChange(value);
-                                            }}
-                                            useFormReturn={useFormReturn}
-                                            check={(val, callback) => {
-                                                const v = val.startsWith("https://") ? val.slice(8) : val;
-                                                if (!v.startsWith("bsky.app/profile/did:plc:") || !v.includes("/feed/")) {
-                                                    setError("copy", {
-                                                        type: 'custom',
-                                                        message: `${val} is not following the feed url format`
-                                                    });
-                                                } else if (getValues("copy").indexOf(v) >= 0) {
-                                                    setError("copy", {
-                                                        type: 'custom',
-                                                        message: `${val} is already in the list`
-                                                    });
-                                                } else {
-                                                    // Check feed
-                                                    callback(v);
-                                                }
-                                            }}/>
-                                    </div>
-                                }
 
                                 <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP}/>
 
