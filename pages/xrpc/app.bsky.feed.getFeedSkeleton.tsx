@@ -198,6 +198,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
         }
     } else {
         if (hideLikeSticky === true) {
+            console.log("USER", feedId, user);
             const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
             if (agent && await feedHasUserLike(agent, feedId, user)) {
                 sticky = null;
