@@ -310,7 +310,7 @@ export const getUserLikes = async (agent, target) => {
                 if (!uris.has(uri)) {
                     uris.add(uri);
                     const {createdAt, subject:{uri:post}} = value;
-                    likes.push({post, createdAt});
+                    likes.push({post, createdAt, likeUri: uri});
                 }
             });
             found += records.length;

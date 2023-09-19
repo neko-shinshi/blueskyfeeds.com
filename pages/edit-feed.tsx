@@ -831,160 +831,162 @@ export default function Home({feed, updateSession, VIP}) {
                                             </a>
                                         }
                                     </div>
-                                    <div className="bg-lime-100 p-2 space-y-2">
-                                        <div className="font-semibold">Post Type Filter</div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {
-                                                POST_LEVELS.map(x =>
-                                                    <div key={x.id}
-                                                         className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
-                                                         onClick={() => {
-                                                             if (postLevels.indexOf(x.id) >= 0) {
-                                                                 setPostLevels([...postLevels.filter(y => y !== x.id)]);
-                                                             } else {
-                                                                 postLevels.push(x.id);
-                                                                 setPostLevels([...postLevels]);
-                                                             }
-                                                         }}>
-                                                        <input type="checkbox"
-                                                               onChange={() => {}}
-                                                               onClick={(e) => {
-                                                                   e.stopPropagation();
-                                                                   if (postLevels.indexOf(x.id) >= 0) {
-                                                                       setPostLevels([...postLevels.filter(y => y !== x.id)]);
-                                                                   } else {
-                                                                       postLevels.push(x.id);
-                                                                       setPostLevels([...postLevels]);
-                                                                   }
-                                                               }}
-                                                               checked={postLevels.indexOf(x.id) >= 0}
-                                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
-                                                        />
-                                                        <div>{x.txt}</div>
-                                                    </div>)
-                                            }
-                                        </div>
-                                        {
-                                            postLevels.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
-                                        }
-                                    </div>
-
-                                    <div className="bg-sky-100 p-2 space-y-2">
-                                        <div className="font-semibold">Picture Posts Filter</div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {
-                                                PICS_SETTING.map(x =>
-                                                    <div key={x.id}
-                                                         className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
-                                                         onClick={() => {
-                                                             let newValue;
-                                                             if (pics.indexOf(x.id) >= 0) {
-                                                                 newValue =[...pics.filter(y => y !== x.id)];
-                                                             } else {
-                                                                 newValue = [...pics, x.id];
-                                                             }
-                                                             setPics(newValue);
-                                                             if (newValue.indexOf("text") < 0) {
-                                                                 setValue("mustLabels", []);
-                                                             }
-                                                         }}>
-                                                        <input type="checkbox"
-                                                               onChange={() => {}}
-                                                               onClick={(e) => {
-                                                                   e.stopPropagation();
-                                                                   if (pics.indexOf(x.id) >= 0) {
-                                                                       setPics([...pics.filter(y => y !== x.id)]);
-                                                                   } else {
-                                                                       setPics([...pics, x.id]);
-                                                                   }
-                                                               }}
-                                                               checked={pics.indexOf(x.id) >= 0}
-                                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
-                                                        />
-                                                        <div>{x.txt}</div>
-                                                    </div>)
-                                            }
-                                        </div>
-                                        {
-                                            pics.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
-                                        }
-                                        {
-                                            pics.indexOf("pics") >= 0 && mode === "live" && <div className="flex place-items-center gap-2">
-                                                <div className="font-semibold text-sm">Pic Content Warnings <span className="underline">Allowed</span></div>
-                                                {
-                                                    SUPPORTED_CW_LABELS.map(label => {
-                                                        const onClick = (e) => {
-                                                            e.stopPropagation();
-                                                            let newAllowed;
-                                                            if (watchAllowLabels.indexOf(label) < 0) {
-                                                                const temp = new Set([...watchAllowLabels, label]);
-                                                                newAllowed = [...temp];
-                                                            } else {
-                                                                newAllowed = watchAllowLabels.filter(x => x !== label);
-                                                            }
-                                                            setValue("allowLabels", newAllowed);
-                                                            setValue("mustLabels", watchMustLabels.filter(x => newAllowed.indexOf(x) >= 0));
-                                                        }
-                                                        return <div key={label}
-                                                                    className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                                                    onClick={onClick}>
-                                                            <div className="flex items-center p-2">
+                                    {
+                                        !(mode === "user" && subMode === "likes") && <>
+                                            <div className="bg-lime-100 p-2 space-y-2">
+                                                <div className="font-semibold">Post Type Filter</div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {
+                                                        POST_LEVELS.map(x =>
+                                                            <div key={x.id}
+                                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                                                 onClick={() => {
+                                                                     if (postLevels.indexOf(x.id) >= 0) {
+                                                                         setPostLevels([...postLevels.filter(y => y !== x.id)]);
+                                                                     } else {
+                                                                         postLevels.push(x.id);
+                                                                         setPostLevels([...postLevels]);
+                                                                     }
+                                                                 }}>
                                                                 <input type="checkbox"
-                                                                       checked={watchAllowLabels.indexOf(label) >= 0}
-                                                                       onClick={onClick}
-                                                                       onChange={()=>{}}
-                                                                       className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                                       onChange={() => {}}
+                                                                       onClick={(e) => {
+                                                                           e.stopPropagation();
+                                                                           if (postLevels.indexOf(x.id) >= 0) {
+                                                                               setPostLevels([...postLevels.filter(y => y !== x.id)]);
+                                                                           } else {
+                                                                               postLevels.push(x.id);
+                                                                               setPostLevels([...postLevels]);
+                                                                           }
+                                                                       }}
+                                                                       checked={postLevels.indexOf(x.id) >= 0}
+                                                                       className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
                                                                 />
-                                                                <div className={clsx("ml-3 text-gray-700")}>
-                                                                    {label.slice(0,1).toUpperCase()}{label.slice(1)}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    })
+                                                                <div>{x.txt}</div>
+                                                            </div>)
+                                                    }
+                                                </div>
+                                                {
+                                                    postLevels.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
                                                 }
                                             </div>
-                                        }
-                                        {
-                                            pics.length === 1 && pics.indexOf("pics") === 0 && <div className="flex place-items-center gap-2">
-                                                <div className="font-semibold text-sm">Pic Content Warnings <span className="underline">Required</span></div>
-                                                {
-                                                    SUPPORTED_CW_LABELS.map(label => {
-                                                        const onClick = (e) => {
-                                                            e.stopPropagation();
-                                                            let newRequired;
-                                                            if (watchMustLabels.indexOf(label) < 0) {
-                                                                const temp = new Set([...watchMustLabels, label]);
-                                                                newRequired = [...temp];
-                                                            } else {
-                                                                newRequired = watchMustLabels.filter(x => x !== label);
-                                                            }
-                                                            setValue("mustLabels", newRequired);
 
-                                                            const newAllowed = new Set([...watchAllowLabels, ...newRequired]);
-                                                            setValue("allowLabels", [...newAllowed]);
-                                                        }
-                                                        return <div key={label}
-                                                                    className={clsx("relative flex items-start items-center hover:bg-orange-200")}
-                                                                    onClick={onClick}>
-                                                            <div className="flex items-center p-2">
+                                            <div className="bg-sky-100 p-2 space-y-2">
+                                                <div className="font-semibold">Picture Posts Filter</div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    {
+                                                        PICS_SETTING.map(x =>
+                                                            <div key={x.id}
+                                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                                                 onClick={() => {
+                                                                     let newValue;
+                                                                     if (pics.indexOf(x.id) >= 0) {
+                                                                         newValue =[...pics.filter(y => y !== x.id)];
+                                                                     } else {
+                                                                         newValue = [...pics, x.id];
+                                                                     }
+                                                                     setPics(newValue);
+                                                                     if (newValue.indexOf("text") < 0) {
+                                                                         setValue("mustLabels", []);
+                                                                     }
+                                                                 }}>
                                                                 <input type="checkbox"
-                                                                       checked={watchMustLabels.indexOf(label) >= 0}
-                                                                       onClick={onClick}
-                                                                       onChange={()=>{}}
-                                                                       className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                                       onChange={() => {}}
+                                                                       onClick={(e) => {
+                                                                           e.stopPropagation();
+                                                                           if (pics.indexOf(x.id) >= 0) {
+                                                                               setPics([...pics.filter(y => y !== x.id)]);
+                                                                           } else {
+                                                                               setPics([...pics, x.id]);
+                                                                           }
+                                                                       }}
+                                                                       checked={pics.indexOf(x.id) >= 0}
+                                                                       className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
                                                                 />
-                                                                <div className={clsx("ml-3 text-gray-700")}>
-                                                                    {label.slice(0,1).toUpperCase()}{label.slice(1)}
+                                                                <div>{x.txt}</div>
+                                                            </div>)
+                                                    }
+                                                </div>
+                                                {
+                                                    pics.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
+                                                }
+                                                {
+                                                    pics.indexOf("pics") >= 0 && mode === "live" && <div className="flex place-items-center gap-2">
+                                                        <div className="font-semibold text-sm">Pic Content Warnings <span className="underline">Allowed</span></div>
+                                                        {
+                                                            SUPPORTED_CW_LABELS.map(label => {
+                                                                const onClick = (e) => {
+                                                                    e.stopPropagation();
+                                                                    let newAllowed;
+                                                                    if (watchAllowLabels.indexOf(label) < 0) {
+                                                                        const temp = new Set([...watchAllowLabels, label]);
+                                                                        newAllowed = [...temp];
+                                                                    } else {
+                                                                        newAllowed = watchAllowLabels.filter(x => x !== label);
+                                                                    }
+                                                                    setValue("allowLabels", newAllowed);
+                                                                    setValue("mustLabels", watchMustLabels.filter(x => newAllowed.indexOf(x) >= 0));
+                                                                }
+                                                                return <div key={label}
+                                                                            className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                                            onClick={onClick}>
+                                                                    <div className="flex items-center p-2">
+                                                                        <input type="checkbox"
+                                                                               checked={watchAllowLabels.indexOf(label) >= 0}
+                                                                               onClick={onClick}
+                                                                               onChange={()=>{}}
+                                                                               className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                                        />
+                                                                        <div className={clsx("ml-3 text-gray-700")}>
+                                                                            {label.slice(0,1).toUpperCase()}{label.slice(1)}
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        </div>
-                                                    })
+                                                            })
+                                                        }
+                                                    </div>
+                                                }
+                                                {
+                                                    pics.length === 1 && pics.indexOf("pics") === 0 && <div className="flex place-items-center gap-2">
+                                                        <div className="font-semibold text-sm">Pic Content Warnings <span className="underline">Required</span></div>
+                                                        {
+                                                            SUPPORTED_CW_LABELS.map(label => {
+                                                                const onClick = (e) => {
+                                                                    e.stopPropagation();
+                                                                    let newRequired;
+                                                                    if (watchMustLabels.indexOf(label) < 0) {
+                                                                        const temp = new Set([...watchMustLabels, label]);
+                                                                        newRequired = [...temp];
+                                                                    } else {
+                                                                        newRequired = watchMustLabels.filter(x => x !== label);
+                                                                    }
+                                                                    setValue("mustLabels", newRequired);
+
+                                                                    const newAllowed = new Set([...watchAllowLabels, ...newRequired]);
+                                                                    setValue("allowLabels", [...newAllowed]);
+                                                                }
+                                                                return <div key={label}
+                                                                            className={clsx("relative flex items-start items-center hover:bg-orange-200")}
+                                                                            onClick={onClick}>
+                                                                    <div className="flex items-center p-2">
+                                                                        <input type="checkbox"
+                                                                               checked={watchMustLabels.indexOf(label) >= 0}
+                                                                               onClick={onClick}
+                                                                               onChange={()=>{}}
+                                                                               className={clsx("focus:ring-orange-500 h-6 w-6 rounded-md")}
+                                                                        />
+                                                                        <div className={clsx("ml-3 text-gray-700")}>
+                                                                            {label.slice(0,1).toUpperCase()}{label.slice(1)}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            })
+                                                        }
+                                                    </div>
                                                 }
                                             </div>
-                                        }
-
-
-                                    </div>
+                                        </>
+                                    }
 
                                     {
                                         mode === "live" &&

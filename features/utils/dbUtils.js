@@ -46,9 +46,10 @@ module.exports = {
 db.sessions.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.data.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.posts.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
-db.posts.createIndex( { idLikes: 1 } )
-db.posts.createIndex( { idReposts: 1 } )
-db.posts.createIndex( { idReplies: 1 } )
+
+
+// Not sure if this makes sense :(
+db.posts.createIndex( { _id: 1, author:1, createdAt:-1, likes:-1, ups:-1, likeV:-1, upV:-1, replyParent:1, replyRoot:1, idReplies: 1, idReposts: 1, idLikes: 1, lang:1, labels:1, hasImage:1, quote:1, kwText:1, kwAlt:1 } )
 db.dataAlgoFeed.createIndex( { expireAt: 1 }, { expireAfterSeconds: 0 } )
 db.feedViews.createIndex({ expireAt: 1 }, { expireAfterSeconds: 0 } )
 
@@ -59,5 +60,4 @@ db.feedViews.createIndex({feed:1})
 db.dataAlgoFeed.createIndex( { _id: 1, indexedAt:-1 } )
 db.postsAlgoFeed.createIndex({feed:1})
 db.postsAlgoFeed.createIndex({feed:1, indexedAt:-1 } )
-db.postsAlgoFeed.createIndex({feed:1, likeCount:-1, indexedAt:-1 } )
  */

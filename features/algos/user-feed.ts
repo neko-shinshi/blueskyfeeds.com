@@ -1,7 +1,5 @@
-import {getAgent, getAllPosts, getPostsInfo, getUserLikes} from "features/utils/bsky";
-import {randomInt} from "crypto";
+import {getAllPosts, getPostsInfo, getUserLikes} from "features/utils/bsky";
 import {connectToDatabase} from "../utils/dbUtils";
-import {secondsAfter} from "features/utils/timeUtils";
 import {preprocessKeywords, findKeywords} from "features/utils/textAndKeywords";
 
 export const handler = async (feedId, feedConfig, user, cursor, limit) => {
@@ -22,7 +20,7 @@ export const handler = async (feedId, feedConfig, user, cursor, limit) => {
     }
 
     let feed = await db.postsAlgoFeed.find({feed: feedId}).sort(sortMethod).skip(start).limit(_limit).project({_id:0, post:1}).toArray();
-    generate(feedId, feedConfig); // try regenerating the feed in the background
+    //generate(feedId, feedConfig); // try regenerating the feed in the background
 
     if (feed.length === 0) {
         if (start === 0 && sticky) {feed = [{post:sticky}];}
@@ -35,17 +33,13 @@ export const handler = async (feedId, feedConfig, user, cursor, limit) => {
 }
 
 
-const generate = async(feedId, feedConfig) => {
-    const db = await connectToDatabase();
-    if (!db) {return;}
+export const generate = async(db, agent, feedId, feedConfig) => {
     try {
-        await db.dataAlgoFeed.insertOne({_id: `feed_lock_${feedId}`, expireAt: secondsAfter(randomInt(10, 15)*60)});
         // if successfully inserted, actually regenerate
         let {allowList, keywords, keywordSetting, postLevels, pics, v, mode} = feedConfig;
-        if (!Array.isArray(allowList) || allowList.length !== 1) {console.log("allowList issue", feedId, allowList);return;}
-
-        const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
-        if (!agent) {console.log("agent error"); return}
+        if (!Array.isArray(allowList) || allowList.length !== 1) {
+            console.log("allowList issue", feedId, allowList);return;
+        }
 
         const topLevel = postLevels.indexOf("top") >= 0;
         const replyLevel = postLevels.indexOf("reply") >= 0;
@@ -104,25 +98,41 @@ const generate = async(feedId, feedConfig) => {
 
 
         let posts;
+        const now = new Date().toISOString();
         if (mode === "user-likes") {
             const likes = await getUserLikes(agent, allowList[0]);
-            posts = await getPostsInfo(agent, likes.map(x => x.post), filter);
+            posts = await getPostsInfo(agent, likes.map(x => x.post));
             posts = posts.reduce((acc, x) => {
                 const {uri, likeCount} = x;
                 const found = likes.find(y => y.post === uri);
                 if (found) {
-                    acc.push({uri, likeCount, indexedAt: found.createdAt}); // Use timestamp from like
+                    acc.push({uri, likeCount, indexedAt: found.createdAt, likeUri: found.likeUri}); // Use timestamp from like action
                 }
                 return acc;
-            }, [])
+            }, []);
         } else {
             posts = await getAllPosts(agent, allowList[0], filter);
         }
 
-        let commands:any = posts.map(x => {return {insertOne: {feed: feedId, post:x.uri, indexedAt: x.indexedAt, likeCount:x.likeCount}}});
-        commands.splice(0, 0, {deleteMany: {filter: {feed: feedId}}});
-        let result = await db.postsAlgoFeed.bulkWrite(commands);
+        let commands:any = posts.map(x => {
+            const {uri:post, indexedAt, likeCount, likeUri} = x;
+            let update:any = {$set:{indexedAt, likeCount, updated: now}};
+            if (likeUri) {
+                update["$set"].likeUri = likeUri; // like-feed posts have likeUri
+            }
+            return {
+                updateOne: {
+                    filter: {feed: feedId, post},
+                    update,
+                    upsert: true
+                }
+            }
+        });
+        commands.push({deleteMany: {filter: {feed: feedId, indexedAt: {$lt:now}, updated:{$ne: now}}}});
+        let result = await db.postsAlgoFeed.bulkWrite(commands, {ordered: false});
         console.log(feedId, result);
 
-    } catch {}
+    } catch (e) {
+        console.log(e);
+    }
 }

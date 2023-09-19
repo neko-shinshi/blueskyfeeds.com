@@ -14,6 +14,7 @@ import {
 import {isValidDomain} from "features/utils/validationUtils";
 import {getMyCustomFeedIds} from "features/utils/feedUtils";
 import {compressKeyword} from "features/utils/objectUtils";
+import {generate as generateFeed} from "features/algos/user-feed";
 
 // Regular users are restricted to MAX_FEEDS_PER_USER feeds and MAX_KEYWORDS_PER_FEED keywords
 
@@ -231,6 +232,13 @@ export default async function handler(req, res) {
                     };
                 });
                 await db.allFeeds.bulkWrite(commands);
+
+                if (mode === "user-likes" || mode === "user-posts") {
+                    generateFeed(db, agent, _id, o).then(r => {
+                        // Nothing
+                    });
+                }
+
                 res.status(200).json({did});
             } catch (e) {
                 console.log(e);
