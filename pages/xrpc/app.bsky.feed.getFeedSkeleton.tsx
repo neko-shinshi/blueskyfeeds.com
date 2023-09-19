@@ -208,12 +208,10 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
                 const key = `${user} ${feedId}`;
                 const check = global.likeChecks.get(key);
                 let hasLike;
-                if (!check || now - check.then > MS_FIVE_MINUTES) { // don't check for at 5 min
-                    console.log("Checking");
+                if (!check || now - check.then > MS_FIVE_MINUTES) { // don't check for at least 5 min
                     hasLike = await feedHasUserLike(agent, feedId, user);
                     global.likeChecks.set(key, {then:now, hasLike});
                 } else {
-                    console.log("use cached");
                     hasLike = check.hasLike;
                 }
                 if (hasLike) {
