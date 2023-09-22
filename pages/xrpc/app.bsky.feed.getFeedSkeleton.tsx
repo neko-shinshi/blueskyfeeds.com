@@ -20,7 +20,7 @@ const getSortMethod = (sort) => {
 
 const MS_ONE_WEEK = 7*24*60*60*1000;
 const MS_HALF_DAY = 12*60*60*1000;
-const MS_THIRTY_MINUTES = 30*60*1000;
+const MS_CHECK_DELAY = 6*60*60*1000;
 
 const makeExpiryDate = (nowTs) => {
     return new Date(nowTs + MS_ONE_WEEK);
@@ -208,13 +208,14 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
                 const key = `${user} ${feedId}`;
                 const check = global.likeChecks.get(key);
                 let hasLike;
-                if (!check || now - check.then > MS_THIRTY_MINUTES) { // don't check for at least 30 min
+                if (!check || now - check.then > MS_CHECK_DELAY) { // don't check for at least 30 min
+                    console.log("feed", feedId, user);
                     hasLike = await feedHasUserLike(agent, feedId, user);
-                    console.log("check", user, hasLike);
+                    console.log("check", feedId, user, hasLike);
                     global.likeChecks.set(key, {then:now, hasLike});
                 } else {
                     hasLike = check.hasLike;
-                    console.log("cached", user, hasLike);
+                    console.log("cached", feedId, user, hasLike);
                 }
                 if (hasLike) {
                     sticky = null;

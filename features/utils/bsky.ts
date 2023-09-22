@@ -10,9 +10,12 @@ export const getAgent = async (service, identifier, password) => {
     } catch (e) {
         console.log("login fail", identifier);
         if (identifier === process.env.BLUESKY_USERNAME) {
-            console.log(e.status);
-            console.log(e.error);
-            console.log(e);
+            if (e.status === 429) {
+                console.log("MAIN RATE LIMITED");
+            } else {
+                console.log(e);
+            }
+
         }
         return null;
     }
@@ -367,6 +370,7 @@ export const feedHasUserLike = async (agent, feedId, userId) => {
     do {
         const params = {uri:feedId, limit:100, ...cursor};
         const {data} = await agent.api.app.bsky.feed.getLikes(params);
+        console.log("check like", userId);
         const {cursor:newCursor, likes} = data;
         if (newCursor === cursor?.cursor) {
             break;
