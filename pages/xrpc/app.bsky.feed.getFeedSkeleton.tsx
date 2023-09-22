@@ -209,13 +209,13 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
                 const check = global.likeChecks.get(key);
                 let hasLike;
                 if (!check || now - check.then > MS_CHECK_DELAY) { // don't check for at least 30 min
-                    console.log("feed", feedId, user);
+                    console.log("feed", feedId, user, limit);
                     hasLike = await feedHasUserLike(agent, feedId, user);
                     console.log("check", feedId, user, hasLike);
                     global.likeChecks.set(key, {then:now, hasLike});
                 } else {
                     hasLike = check.hasLike;
-                    console.log("cached", feedId, user, hasLike);
+                    console.log("cached", feedId, user, hasLike, limit);
                 }
                 if (hasLike) {
                     sticky = null;
