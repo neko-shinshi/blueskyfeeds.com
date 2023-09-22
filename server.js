@@ -48,14 +48,13 @@ app.prepare().then(async () => {
     server.listen(port, async (err) => {
         if (err) throw err;
         const db = await connectToDatabase();
+        console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
+
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             await updateScores(db);
             const job = Cron('*/12 * * * *', async () => {
                 await updateScores(db);
             });
         }
-
-
-        console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
     });
 });
