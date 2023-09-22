@@ -1,1 +1,1 @@
-export const SIGNATURE = " //Made at BlueskyFeeds.com"
+export const SIGNATURE = " // Made at BlueskyFeeds.com"
