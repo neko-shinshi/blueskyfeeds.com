@@ -20,7 +20,7 @@ const getSortMethod = (sort) => {
 
 const MS_ONE_WEEK = 7*24*60*60*1000;
 const MS_HALF_DAY = 12*60*60*1000;
-const MS_FIVE_MINUTES = 5*60*1000;
+const MS_THIRTY_MINUTES = 30*60*1000;
 
 const makeExpiryDate = (nowTs) => {
     return new Date(nowTs + MS_ONE_WEEK);
@@ -199,31 +199,27 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
         }
     } else {
         if (hideLikeSticky === true && user) {
-            try {
-                const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
-                if (agent) {
-                    const now = new Date().getTime();
-                    if (!global.likeChecks) {
-                        global.likeChecks = new Map();
-                    }
-                    const key = `${user} ${feedId}`;
-                    const check = global.likeChecks.get(key);
-                    let hasLike;
-                    if (!check || now - check.then > MS_FIVE_MINUTES) { // don't check for at least 5 min
-                        hasLike = await feedHasUserLike(agent, feedId, user);
-                        global.likeChecks.set(key, {then:now, hasLike});
-                    } else {
-                        hasLike = check.hasLike;
-                    }
-                    if (hasLike) {
-                        sticky = null;
-                    }
+            const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
+            if (agent) {
+                const now = new Date().getTime();
+                if (!global.likeChecks) {
+                    global.likeChecks = new Map();
                 }
-            } catch (e) {
-                console.error(e.status);
-                console.error(e);
+                const key = `${user} ${feedId}`;
+                const check = global.likeChecks.get(key);
+                let hasLike;
+                if (!check || now - check.then > MS_THIRTY_MINUTES) { // don't check for at least 30 min
+                    hasLike = await feedHasUserLike(agent, feedId, user);
+                    console.log("check", user, hasLike);
+                    global.likeChecks.set(key, {then:now, hasLike});
+                } else {
+                    hasLike = check.hasLike;
+                    console.log("cached", user, hasLike);
+                }
+                if (hasLike) {
+                    sticky = null;
+                }
             }
-
         }
         if (sort === "new") {
             if (sticky) {limit = limit -1;}

@@ -8,7 +8,12 @@ export const getAgent = async (service, identifier, password) => {
         await agent.login({identifier, password});
         return agent;
     } catch (e) {
-        console.log("login fail", e);
+        console.log("login fail", identifier);
+        if (identifier === process.env.BLUESKY_USERNAME) {
+            console.log(e.status);
+            console.log(e.error);
+            console.log(e);
+        }
         return null;
     }
 }
@@ -133,15 +138,13 @@ export const getPostInfo = async (agent, postUris) => {
     });
 
     let handleToDid = new Map();
-    console.log("1");
     (await getActorsInfo(agent, [...users])).forEach(actor => {
         const {did, handle} = actor;
         handleToDid.set(did, did);
         handleToDid.set(handle, did);
     });
-    console.log("2");
 
-    const uris = postUris.reduce((acc, postUri) => {
+    const uris = [...postUris.reduce((acc, postUri) => {
         let uri = postUri;
         if (!postUri.startsWith("at://did:plc:")) {
             if (postUri.startsWith("https://bsky.app/profile/")) {
@@ -152,32 +155,28 @@ export const getPostInfo = async (agent, postUris) => {
             const did = handleToDid.get(user);
             uri = `at://${did}/app.bsky.feed.post/${post}`;
         }
-
-        if (!acc.s.has(uri)) {
-            acc.v.push(uri);
-            acc.s.add(uri);
-            console.log("add", uri);
-        }
+        acc.add(uri);
         return acc;
-    }, {v:[], s:new Set()}).v;
+    }, new Set())];
 
-    console.log("3");
 
-    try {
-        const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris}));
+    const MAX_QUERY = 25;
+    let result = [];
+    for (let i = 0; i < uris.length; i += MAX_QUERY) {
+        const chunk = uris.slice(i, i + MAX_QUERY);
+        const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris:chunk}));
         if (posts && Array.isArray(posts) && posts.length > 0) {
-            return posts.reduce((acc,x) => {
+            posts.forEach(x => {
                 const {record, uri}  = x;
                 if (uri) {
                     const {text} = record;
-                    acc.push({text: text || "", uri});
+                    result.push({text: text || "", uri});
                 }
-                return acc;
-            }, []);
+            });
         }
-    } catch {}
+    }
 
-    return [];
+    return result;
 }
 
 export const getActorsInfo = async (agent, actors) => {
