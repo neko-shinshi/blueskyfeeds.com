@@ -199,25 +199,31 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
         }
     } else {
         if (hideLikeSticky === true && user) {
-            const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
-            if (agent) {
-                const now = new Date().getTime();
-                if (!global.likeChecks) {
-                    global.likeChecks = new Map();
+            try {
+                const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
+                if (agent) {
+                    const now = new Date().getTime();
+                    if (!global.likeChecks) {
+                        global.likeChecks = new Map();
+                    }
+                    const key = `${user} ${feedId}`;
+                    const check = global.likeChecks.get(key);
+                    let hasLike;
+                    if (!check || now - check.then > MS_FIVE_MINUTES) { // don't check for at least 5 min
+                        hasLike = await feedHasUserLike(agent, feedId, user);
+                        global.likeChecks.set(key, {then:now, hasLike});
+                    } else {
+                        hasLike = check.hasLike;
+                    }
+                    if (hasLike) {
+                        sticky = null;
+                    }
                 }
-                const key = `${user} ${feedId}`;
-                const check = global.likeChecks.get(key);
-                let hasLike;
-                if (!check || now - check.then > MS_FIVE_MINUTES) { // don't check for at least 5 min
-                    hasLike = await feedHasUserLike(agent, feedId, user);
-                    global.likeChecks.set(key, {then:now, hasLike});
-                } else {
-                    hasLike = check.hasLike;
-                }
-                if (hasLike) {
-                    sticky = null;
-                }
+            } catch (e) {
+                console.error(e.status);
+                console.error(e);
             }
+
         }
         if (sort === "new") {
             if (sticky) {limit = limit -1;}
