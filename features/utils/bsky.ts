@@ -93,13 +93,13 @@ export const deleteFeed = async (agent, rkey) => {
 }
 
 export const editFeed = async (agent, {img, shortName, displayName, description}) => {
-    try {
+    /*try {
         await agent.api.app.bsky.feed.describeFeedGenerator()
     } catch (err) {
         throw new Error(
             'The bluesky server is not ready to accept published custom feeds yet',
         )
-    }
+    }*/
     const {imageBlob, encoding} = img;
     let avatar = {};
     if (imageBlob) {
