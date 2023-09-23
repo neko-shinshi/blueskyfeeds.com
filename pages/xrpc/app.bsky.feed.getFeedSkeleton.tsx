@@ -199,27 +199,27 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
         }
     } else {
         if (hideLikeSticky === true && user) {
-            const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
-            if (agent) {
-                const now = new Date().getTime();
-                if (!global.likeChecks) {
-                    global.likeChecks = new Map();
-                }
-                const key = `${user} ${feedId}`;
-                const check = global.likeChecks.get(key);
-                let hasLike;
-                if (!check || now - check.then > MS_CHECK_DELAY) { // don't check for at least 30 min
-                    console.log("feed", feedId, user, limit);
+            if (!global.likeChecks) {
+                global.likeChecks = new Map();
+            }
+            const key = `${user} ${feedId}`;
+            const check = global.likeChecks.get(key);
+            let hasLike;
+            const now = new Date().getTime();
+            if (!check || now - check.then > MS_CHECK_DELAY) { // don't check for at least 30 min
+                console.log("feed", feedId, user, limit);
+                const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
+                if (agent) {
                     hasLike = await feedHasUserLike(agent, feedId, user);
                     console.log("check", feedId, user, hasLike);
                     global.likeChecks.set(key, {then:now, hasLike});
-                } else {
-                    hasLike = check.hasLike;
-                    console.log("cached", feedId, user, hasLike, limit);
                 }
-                if (hasLike) {
-                    sticky = null;
-                }
+            } else {
+                hasLike = check.hasLike;
+                console.log("cached", feedId, user, hasLike, limit);
+            }
+            if (hasLike) {
+                sticky = null;
             }
         }
         if (sort === "new") {
