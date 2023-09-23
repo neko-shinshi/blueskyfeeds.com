@@ -5,6 +5,7 @@ import {algos} from 'features/algos'
 import {handler as userFeedHandler} from 'features/algos/user-feed'
 import {feedHasUserLike, getAgent} from "features/utils/bsky";
 import {SUPPORTED_CW_LABELS} from "features/utils/constants";
+import {secondsAfter} from "features/utils/timeUtils";
 
 const getSortMethod = (sort) => {
     switch (sort) {
@@ -199,7 +200,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
         }
     } else {
         if (hideLikeSticky === true && user) {
-            /*
+            //db.dataAlgoFeed.insertOne({_id: `${feedId}_${user}`, expireAt: secondsAfter(2*60*60)});
             if (!global.likeChecks) {
                 global.likeChecks = new Map();
             }
@@ -221,7 +222,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
             }
             if (hasLike) {
                 sticky = null;
-            }*/
+            }
         }
         if (sort === "new") {
             if (sticky) {limit = limit -1;}
