@@ -2,7 +2,7 @@ export const MAX_FEEDS_PER_USER = 10;
 export const MAX_KEYWORDS_PER_LIVE_FEED = 100;
 export const MAX_KEYWORDS_PER_USER_FEED = 3;
 
-export const SUPPORTED_CW_LABELS = ["nudity", "sexual", "porn"];
+export const SUPPORTED_CW_LABELS = ["nudity", "sexual", "porn", "corpse"];
 export const SUPPORTED_LANGUAGES = ["", "en", "pt", "ja", "ko", "uk", "es", "fa", "tr", "de", "nl", "fr", "id"];
 export const FEED_MODES = [
     {id:"live", txt:"Listens for live posts. Only stores posts for 3 days."},
