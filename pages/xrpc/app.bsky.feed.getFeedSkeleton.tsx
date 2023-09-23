@@ -199,6 +199,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
         }
     } else {
         if (hideLikeSticky === true && user) {
+            /*
             if (!global.likeChecks) {
                 global.likeChecks = new Map();
             }
@@ -220,7 +221,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
             }
             if (hasLike) {
                 sticky = null;
-            }
+            }*/
         }
         if (sort === "new") {
             if (sticky) {limit = limit -1;}
