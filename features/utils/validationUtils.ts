@@ -15,7 +15,7 @@ export const isValidToken = (s:string) => {
 }
 
 export function removeUndefined(obj, nullInstead=false) {
-    if (typeof obj === "object") {
+    if (typeof obj === "object" && obj !== null) {
         Object.keys(obj).forEach(function (key) {
             // Get this value and its type
             var value = obj[key];
