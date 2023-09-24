@@ -4,6 +4,12 @@ export const MAX_KEYWORDS_PER_USER_FEED = 3;
 
 export const SUPPORTED_CW_LABELS = ["nudity", "sexual", "porn", "corpse"];
 export const SUPPORTED_LANGUAGES = ["", "en", "pt", "ja", "ko", "uk", "es", "fa", "tr", "de", "nl", "fr", "id"];
+
+export const PRIVACY_MODES = [
+    {id:"public", txt:"This feed is visible by everyone"},
+    {id:"private", txt:"This feed's contents should only be visible to me"},
+    {id:"shared", txt:"This feed's contents should only be visible to a list of users and myself"},
+]
 export const FEED_MODES = [
     {id:"live", txt:"Listens for live posts. Only stores posts for 3 days."},
     {id:"user", txt:"Looks at a specific user's data."},

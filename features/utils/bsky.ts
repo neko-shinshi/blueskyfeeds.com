@@ -15,7 +15,6 @@ export const getAgent = async (service, identifier, password) => {
             } else {
                 console.log(e);
             }
-
         }
         return null;
     }
@@ -128,7 +127,6 @@ export const editFeed = async (agent, {img, shortName, displayName, description}
 
 export const getPostInfo = async (agent, postUris) => {
     let users = new Set();
-    console.log("uris", postUris);
     postUris.forEach(postUri => {
         if (!postUri.startsWith("at://did:plc:")) {
             if (postUri.startsWith("https://bsky.app/profile/")) {
@@ -370,7 +368,6 @@ export const feedHasUserLike = async (agent, feedId, userId) => {
     do {
         const params = {uri:feedId, limit:100, ...cursor};
         const {data} = await agent.api.app.bsky.feed.getLikes(params);
-        console.log("check like", userId);
         const {cursor:newCursor, likes} = data;
         if (newCursor === cursor?.cursor) {
             break;
