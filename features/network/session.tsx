@@ -17,10 +17,12 @@ export const getLoggedInData = async (req, res) => {
     const db = await connectToDatabase();
     if (!db) { return { redirect: { destination: '/500', permanent: false } } }
     let updateSession = false, agent = null;
-    const [token, session] = await Promise.all([
+    let [token, session] = await Promise.all([
         getToken({ req }),
         getSessionData(req, res)
     ]);
+
+    session = removeUndefined(session);
 
     if (token) {
         agent = await rebuildAgentFromToken(token);
