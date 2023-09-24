@@ -26,7 +26,7 @@ export default async function handler(req, res) {
             if (!agent) {res.status(401).send(); return;}
 
             let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, keywordsQuote:_keywordsQuote, mode, posts:_posts,
-                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight, sticky, mustLabels, allowLabels} = req.body;
+                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight, sticky, mustLabels, allowLabels, viewers} = req.body;
 
             mustLabels = mustLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
             allowLabels = allowLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
@@ -188,16 +188,20 @@ export default async function handler(req, res) {
                 res.status(400).send("missing urls"); return;
             }
 
-            const actors = [...new Set([...allowList, ...blockList, ...everyList])]; // dids
-            if (actors.length !== allowList.length + blockList.length + everyList.length) {
+            let actors = new Set([...allowList, ...blockList, ...everyList]); // dids
+            if (actors.size !== allowList.length + blockList.length + everyList.length) {
                 console.log("duplicate actor");
                 res.status(400).send("duplicate"); return;
             }
-            if (actors.length > 0) {
-                const allProfiles = await getActorsInfo(agent, actors);
+
+            viewers.forEach(x => actors.add(x));
+
+            if (actors.size > 0) {
+                const allProfiles = await getActorsInfo(agent, [...actors]);
                 blockList = blockList.filter(x => allProfiles.find(y => y.did === x));
                 allowList = allowList.filter(x => allProfiles.find(y => y.did === x));
                 everyList = everyList.filter(x => allProfiles.find(y => y.did === x));
+                viewers = viewers.filter(x => allProfiles.find(y => y.did === x));
             }
 
             let img = {};
@@ -213,7 +217,7 @@ export default async function handler(req, res) {
                 // Update feed at Bluesky's side
                 await editFeed(agent, {img, shortName, displayName, description});
 
-                const o = {languages,  postLevels, pics, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, posts, allowLabels, mustLabels,
+                const o = {languages,  postLevels, pics, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, posts, allowLabels, mustLabels, viewers,
                     sort, allowList, blockList, everyList, mustUrl, blockUrl, mode, updated: new Date().toISOString()};
 
                 // Update current feed

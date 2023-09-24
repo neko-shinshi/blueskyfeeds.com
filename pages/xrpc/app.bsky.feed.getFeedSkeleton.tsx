@@ -275,22 +275,9 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
     return {feed, cursor};
 }
 
-
-export async function getServerSideProps({req, res, query}) {
-    try {
-        res.setHeader("Content-Type", "application/json");
-    } catch {}
-    let {feed:feedId, cursor:queryCursor, limit:_limit=50, did} = query;
-    if (!feedId) { return { redirect: { destination: '/400', permanent: false } } }
-
-    let limit = parseInt(_limit);
-    if (limit > 100) { return { redirect: { destination: '/400', permanent: false } } }
-
-    const db = await connectToDatabase();
-    if (!db) { return { redirect: { destination: '/500', permanent: false } } }
-
-    let user = did;
+const getAndLogUser = async (req, db, feedId) => {
     let {authorization} = req.headers;
+    let user;
     if (authorization && authorization.startsWith("Bearer ")) {
         authorization = authorization.slice(7);
         const {iss} = parseJwt(authorization);
@@ -309,9 +296,37 @@ export async function getServerSideProps({req, res, query}) {
             }
         }
     }
+    return user;
+}
+
+export async function getServerSideProps({req, res, query}) {
+    try {
+        res.setHeader("Content-Type", "application/json");
+    } catch {}
+    let {feed:feedId, cursor:queryCursor, limit:_limit=50, did} = query;
+    if (!feedId) { return { redirect: { destination: '/400', permanent: false } } }
+
+    let limit = parseInt(_limit);
+    if (limit > 100) { return { redirect: { destination: '/400', permanent: false } } }
+
+    const db = await connectToDatabase();
+    if (!db) { return { redirect: { destination: '/500', permanent: false } } }
 
     const feedObj = await db.feeds.findOne({_id: feedId});
     if (!feedObj) {return { redirect: { destination: '/404', permanent: false } } }
+    const {viewers} = feedObj;
+
+    let user;
+    if (process.env.NEXT_PUBLIC_DEV === "1" && did) {
+        user = did;
+    } else {
+        user = await getAndLogUser(req, db, feedId);
+    }
+
+    if (Array.isArray(viewers) && viewers.length > 0 && viewers.indexOf(user) < 0) {
+        res.write(JSON.stringify({feed:[], cursor:""}));
+        return {props: {}};
+    }
 
     const algo = algos[feedId];
     let cursor:string;

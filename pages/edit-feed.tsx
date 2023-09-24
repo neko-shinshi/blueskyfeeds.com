@@ -11,7 +11,7 @@ import PageHeader from "features/components/PageHeader";
 import {getFeedDetails, getMyCustomFeedIds} from "features/utils/feedUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
-import {useRecaptcha} from "features/auth/RecaptchaProvider";
+import {getCaptcha, useRecaptcha} from "features/auth/RecaptchaProvider";
 import {localDelete, localGet} from "features/network/network";
 import {toJson} from 'really-relaxed-json'
 import Image from "next/image";
@@ -24,9 +24,9 @@ import {
     PICS_SETTING,
     POST_LEVELS,
     SORT_ORDERS, SUPPORTED_CW_LABELS,
-    SUPPORTED_LANGUAGES, USER_FEED_MODE
+    SUPPORTED_LANGUAGES, USER_FEED_MODE, PRIVACY_MODES
 } from "features/utils/constants";
-import {SIGNATURE} from "features/utils/signature";
+import {OLD_SIGNATURES, SIGNATURE} from "features/utils/signature";
 import {getLoggedInData} from "features/network/session";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {APP_SESSION} from "features/auth/authUtils";
@@ -57,7 +57,7 @@ export async function getServerSideProps({req, res, query}) {
         if (_feed) {
             const feedData: any = await getFeedDetails(agent, db, _feed);
             if (feedData) {
-                let {allowList, blockList, everyList, sticky, posts:_posts, mode} = feedData;
+                let {allowList, blockList, everyList, viewers, sticky, posts:_posts, mode} = feedData;
                 if (mode === "posts") {
                     if (Array.isArray(_posts)) {
                         const posts = (await getPostInfo(agent, _posts)).map(post => {
@@ -65,6 +65,13 @@ export async function getServerSideProps({req, res, query}) {
                             return {text, uri};
                         });
                         feed = {...feedData, posts};
+
+                        if (Array.isArray(viewers) && viewers.length > 0) {
+                            const profiles = await getActorsInfo(agent, viewers);
+                            viewers = profiles.filter(x =>  viewers.find(y => y === x.did));
+                            feed = {...feed, viewers};
+                        }
+
                     } else {
                         console.log("posts not formatted correctly");
                         res.status(401).send("error");
@@ -74,12 +81,14 @@ export async function getServerSideProps({req, res, query}) {
                     allowList = allowList || [];
                     blockList = blockList || [];
                     everyList = everyList || [];
-                    const actors = [...allowList, ...blockList, ...everyList];
+                    viewers = viewers || [];
+                    const actors = [...new Set([...allowList, ...blockList, ...everyList, ...viewers])];
                     if (actors.length > 0) {
                         const profiles = await getActorsInfo(agent, actors);
                         allowList = profiles.filter(x =>  allowList.find(y => y === x.did));
                         blockList = profiles.filter(x =>  blockList.find(y => y === x.did));
                         everyList = profiles.filter(x =>  everyList.find(y => y === x.did));
+                        viewers = profiles.filter(x =>  viewers.find(y => y === x.did));
                     }
                     if (sticky) {
                         [sticky] = await getPostInfo(agent, [sticky]) || [""];
@@ -87,9 +96,8 @@ export async function getServerSideProps({req, res, query}) {
                         sticky = "";
                     }
 
-                    feed = {...feedData, allowList, blockList, everyList, sticky};
+                    feed = {...feedData, allowList, blockList, everyList, viewers, sticky};
                 }
-
             } else {
                 return {redirect: {destination: '/404', permanent: false}}
             }
@@ -144,6 +152,7 @@ export default function Home({feed, updateSession, VIP}) {
 
     const [userDid, setUserDid] = useState("");
     const [mode, setMode] = useState<"live"|"user"|"posts"|"responses">("live");
+    const [privacy, setPrivacy] = useState("public");
     const [subMode, setSubMode] = useState<""|"posts"|"likes">("");
     const [stickyText, setStickyText] = useState("");
     const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"wizard-posts"|"edit"|"done">(feed? "edit" : "wizard");
@@ -184,14 +193,16 @@ export default function Home({feed, updateSession, VIP}) {
 
     useEffect(() => {
         if (!feed) {
-            reset({sticky:"", sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes", posts:[], allowLabels:SUPPORTED_CW_LABELS, mustLabels:[]});
+            reset({sticky:"", sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes", posts:[], allowLabels:SUPPORTED_CW_LABELS, mustLabels:[], viewers:[]});
             setMode("live");
             setLanguages([]);
+            setPrivacy("public");
             setPostLevels(POST_LEVELS.map(x => x.id));
             setKeywordSetting(["text"]);
             setPics(["text", "pics"]);
         } else {
-            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode, sticky, posts, allowLabels, mustLabels, keywordsQuote} = feed;
+            console.log("feed", feed);
+            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode, sticky, posts, allowLabels, mustLabels, keywordsQuote, viewers} = feed;
 
             let stickyUri;
             if (sticky) {
@@ -202,11 +213,24 @@ export default function Home({feed, updateSession, VIP}) {
                     setStickyText(text);
                 }
             }
+            if (Array.isArray(viewers) && viewers.length > 0) {
+                if (viewers.length === 1 && viewers[0].did === session.user.did) {
+                    setPrivacy("private")
+                } else {
+                    setPrivacy("shared");
+                }
+            } else {
+                viewers = [];
+            }
 
+
+            for (const signature of [...OLD_SIGNATURES, SIGNATURE]) {
+                description = description.replaceAll(signature, "");
+            }
 
             let o:any = {
                 sticky:stickyUri || "", allowLabels: allowLabels || SUPPORTED_CW_LABELS, mustLabels: mustLabels || [],
-                sort,displayName, description: description.replaceAll(SIGNATURE, ""), copy: copy || [], highlight: highlight || "yes",
+                sort,displayName, description, copy: copy || [], highlight: highlight || "yes", viewers,
                 shortName: uri.split("/").at(-1), blockList, allowList, everyList, mustUrl: mustUrl || [], blockUrl: blockUrl || [], posts: posts || [],
             };
 
@@ -259,8 +283,9 @@ export default function Home({feed, updateSession, VIP}) {
     }, [feed]);
 
 
-    const multiWordCallback = (fieldName:string) => {
+    const multiWordCallback = (fieldName:string, lists:string[] = ["everyList", "allowList", "blockList"]) => {
         return async(val, callback) => {
+            setBusy(true);
             let user = val;
             if (user.startsWith("@")) {
                 user = user.slice(1);
@@ -271,36 +296,32 @@ export default function Home({feed, updateSession, VIP}) {
             }
             console.log("user", user);
 
-            const everyList = getValues("everyList") || [];
-            const allowList = getValues("allowList") || [];
-            const blockList = getValues("blockList") || [];
-            if (everyList.find(x => x.did === user || x.handle === user)) {
-                setError(fieldName, {type:'custom', message:`${user} is already in Every List`});
-            } else if (blockList.find(x => x.did === user || x.handle === user)) {
-                setError(fieldName, {type:'custom', message:`${user} is already in Block List`});
-            } else if (allowList.find(x => x.did === user || x.handle === user)) {
-                setError(fieldName, {type:'custom', message:`${user} is already in Only List`});
-            } else {
-                if (typeof recaptcha !== 'undefined') {
-                    recaptcha.ready(async () => {
-                        //@ts-ignore
-                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                        //@ts-ignore
-                        const result = await localGet("/check/user", {captcha, actors:[user]});
-                        if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
-                            clearErrors(fieldName);
-                            console.log(result.data[0]);
-                            callback(result.data[0]);
-                        } else if (result.status === 400) {
-                            setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
-                        } else if (result.status === 401) {
-                            await router.reload();
-                        } else {
-                            setError(fieldName, {type:'custom', message:"Error"});
-                        }
-                    });
+            for (const l of lists) {
+                const ll = getValues(l) || [];
+                if (ll.find(x => x.did === user || x.handle === user)) {
+                    setError(fieldName, {type:'custom', message:`${user} is already in ${l}`});
+                    setBusy(false);
+                    return;
                 }
             }
+
+            if (typeof recaptcha !== 'undefined') {
+                const captcha = await getCaptcha(recaptcha);
+                const result = await localGet("/check/user", {captcha, actors:[user]});
+                if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
+                    clearErrors(fieldName);
+                    console.log(result.data[0]);
+                    callback(result.data[0]);
+                } else if (result.status === 400) {
+                    setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
+                } else if (result.status === 401) {
+                    await router.reload();
+                } else {
+                    setError(fieldName, {type:'custom', message:"Error"});
+                }
+            }
+            setBusy(false);
+
         }
     }
 
@@ -318,23 +339,20 @@ export default function Home({feed, updateSession, VIP}) {
             validateCallback={(v) => {
                 return (v.startsWith("did:plc:") || v.startsWith("@") || isValidDomain(v)) ? "" : "Invalid User";
             }}
-            yesCallback={(v:string, callback) => {
+            yesCallback={async (v:string, callback) => {
                 if (typeof recaptcha !== 'undefined') {
-                    recaptcha.ready(async () => {
-                        //@ts-ignore
-                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                        //@ts-ignore
-                        const result = await localGet("/check/user", {captcha, actors:[v]});
-                        if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
-                            console.log(result.data[0]);
-                            setValue("allowList", result.data);
-                            callback();
-                        } else if (result.status === 400) {
-                            callback("Invalid user or user not found");
-                        } else {
-                            callback("Unknown error");
-                        }
-                    });
+                    const captcha = await getCaptcha(recaptcha);
+                    //@ts-ignore
+                    const result = await localGet("/check/user", {captcha, actors:[v]});
+                    if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
+                        console.log(result.data[0]);
+                        setValue("allowList", result.data);
+                        callback();
+                    } else if (result.status === 400) {
+                        callback("Invalid user or user not found");
+                    } else {
+                        callback("Unknown error");
+                    }
                 }
             }}/>
         <PopupWithAddPost
@@ -365,18 +383,15 @@ export default function Home({feed, updateSession, VIP}) {
             message="This cannot be reversed"
             yesCallback={async() => {
                 if (typeof recaptcha !== 'undefined' && !busy) {
-                    recaptcha.ready(async () => {
-                        setBusy(true);
-                        //@ts-ignore
-                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                        const result = await localDelete("/feed/delete", {captcha, rkey: feed.uri.split("/").slice(-1)[0]});
-                        if (result.status === 200) {
-                            await router.push("/my-feeds");
-                        } else {
-                            console.log(result);
-                        }
-                        setBusy(false);
-                    });
+                    setBusy(true);
+                    const captcha = await getCaptcha(recaptcha);
+                    const result = await localDelete("/feed/delete", {captcha, rkey: feed.uri.split("/").slice(-1)[0]});
+                    if (result.status === 200) {
+                        await router.push("/my-feeds");
+                    } else {
+                        console.log(result);
+                    }
+                    setBusy(false);
                 }
             }
             }/>
@@ -405,26 +420,15 @@ export default function Home({feed, updateSession, VIP}) {
                                     <button type="button" className="w-full bg-lime-100 p-8 hover:bg-lime-400 p-8 hover:font-bold border border-black"
                                             onClick={async () => {
                                                 setBusy(true);
-                                                const {handle} = session.user;
-                                                if (typeof recaptcha !== 'undefined') {
-                                                    recaptcha.ready(async () => {
-                                                        //@ts-ignore
-                                                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                                                        //@ts-ignore
-                                                        const result = await localGet("/check/user", {captcha, actors:[handle]});
-                                                        if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
-                                                            setMode("user");
-                                                            setSubMode("posts");
-                                                            setPostLevels(["top"]);
-                                                            setValue("allowList", result.data);
-                                                            setModal("wizard-keywords");
-                                                        } else if (result.status === 400) {
-                                                            alert("Error setting to self");
-                                                        }
-                                                        setBusy(false);
-                                                    });
-                                                }
-
+                                                setMode("user");
+                                                setSubMode("posts");
+                                                setPostLevels(["top"]);
+                                                setValue("allowList", [{
+                                                    did: session.user.did,
+                                                    handle: session.user.handle,
+                                                    displayName: session.user.name
+                                                }]);
+                                                setModal("wizard-keywords");
                                             }}>
                                         <span className="font-bold">My Posts:</span> I want to create feed to show MY posts, with some filtering
                                     </button>
@@ -664,10 +668,11 @@ export default function Home({feed, updateSession, VIP}) {
                             }
 
                             setBusy(true);
-                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts, allowLabels, mustLabels} = data;
+                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts, allowLabels, mustLabels, viewers:_viewers} = data;
                             const allowList = (_allowList || []).map(x => x.did);
                             const blockList = (_blockList || []).map(x => x.did);
                             const everyList = (_everyList || []).map(x => x.did);
+                            const viewers = (_viewers || []).map(x => x.did);
                             let imageObj:any = {};
                             if (file) {
                                 const {type:encoding, changed, url} = file;
@@ -680,7 +685,7 @@ export default function Home({feed, updateSession, VIP}) {
                             }
                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
                             const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, posts:posts? posts.map(x => x.uri) : [],
-                                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels};
+                                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels, viewers};
                             console.log(result);
 
                             return result;
@@ -697,9 +702,71 @@ export default function Home({feed, updateSession, VIP}) {
 
                         <div className="bg-white p-2">
                             <div className="font-bold text-lg">Feed Settings</div>
+                            <div className="bg-sky-100 p-2 space-y-2">
+                                <div className="font-bold">Feed Privacy</div>
+                                <div className="grid md:grid-cols-2 w-full items-center gap-2">
+                                    {
+                                        PRIVACY_MODES.map(({id, txt}) => {
+                                            const updatePrivacy = (id) => {
+                                                setPrivacy(id);
+                                                switch (id) {
+                                                    case "public": {
+                                                        setValue("viewers", []);
+                                                        break;
+                                                    }
+                                                    case "shared":
+                                                    case "private": {
+                                                        setValue("viewers", [{
+                                                            did: session.user.did,
+                                                            handle: session.user.handle,
+                                                            displayName: session.user.name
+                                                        }]);
+                                                        break;
+                                                    }
+                                                }
+
+                                            }
+                                            return <div key={id}
+                                                        className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1 h-full"
+                                                        onClick={() => updatePrivacy(id)}>
+                                                <input type="radio"
+                                                       onChange={() => {}}
+                                                       onClick={(e) => {
+                                                           e.stopPropagation();
+                                                           updatePrivacy(id);
+                                                       }}
+                                                       checked={privacy === id}
+                                                       className={clsx("focus:ring-indigo-500")}
+                                                />
+                                                <div><span className="font-semibold">{`${id.slice(0,1).toUpperCase()}${id.slice(1)}`}</span>{`: ${txt}`}</div>
+                                            </div>
+                                        })
+                                    }
+                                </div>
+                                {
+                                    privacy === "shared" &&
+                                    <InputMultiWord
+                                        className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
+                                        labelText="Viewers: Show feed ONLY to these users"
+                                        placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
+                                        fieldName="viewers"
+                                        handleItem={(item, value, onChange) => {
+                                            value.push(item);
+                                            value.sort((a, b) => {
+                                                return a.handle.localeCompare(b.handle);
+                                            })
+                                            onChange(value);
+                                        }}
+                                        valueModifier={item => {
+                                            return `${item.displayName} @${item.handle}`
+                                        }}
+                                        useFormReturn={useFormReturn}
+                                        check={multiWordCallback("viewers", ["viewers"])}/>
+                                }
+                            </div>
                             <div className="bg-lime-100 p-2">
                                 <div className="font-bold">Mode</div>
-                                <div className="grid grid-cols-2 w-full items-center gap-2">
+                                <div className="grid md:grid-cols-2 w-full items-center gap-2">
                                     {
                                         FEED_MODES.map(({id, txt}) => {
                                             const updateMode = (id) => {
@@ -814,7 +881,7 @@ export default function Home({feed, updateSession, VIP}) {
 
 
                                     <div className="bg-sky-100 p-2 space-y-2">
-                                        <InputRadio entriesPerRow={2}
+                                        <InputRadio
                                                     modifyText={_ => {return "text-base font-semibold";}}
                                                     fieldName="sort"
                                                     fieldReadableName="Sort Order"
@@ -835,7 +902,7 @@ export default function Home({feed, updateSession, VIP}) {
                                         !(mode === "user" && subMode === "likes") && <>
                                             <div className="bg-lime-100 p-2 space-y-2">
                                                 <div className="font-semibold">Post Type Filter</div>
-                                                <div className="grid grid-cols-2 gap-2">
+                                                <div className="grid md:grid-cols-2 gap-2">
                                                     {
                                                         POST_LEVELS.map(x =>
                                                             <div key={x.id}
@@ -873,7 +940,7 @@ export default function Home({feed, updateSession, VIP}) {
 
                                             <div className="bg-sky-100 p-2 space-y-2">
                                                 <div className="font-semibold">Picture Posts Filter</div>
-                                                <div className="grid grid-cols-2 gap-2">
+                                                <div className="grid md:grid-cols-2 gap-2">
                                                     {
                                                         PICS_SETTING.map(x =>
                                                             <div key={x.id}
@@ -1129,26 +1196,11 @@ export default function Home({feed, updateSession, VIP}) {
                                                 type="button"
                                                 className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
                                                 onClick={async () => {
-                                                    setBusy(true);
-                                                    const {handle} = session.user;
-                                                    if (typeof recaptcha !== 'undefined') {
-                                                        recaptcha.ready(async () => {
-                                                            //@ts-ignore
-                                                            const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                                                            //@ts-ignore
-                                                            const result = await localGet("/check/user", {
-                                                                captcha,
-                                                                actors: [handle]
-                                                            });
-                                                            if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
-                                                                console.log(result.data[0]);
-                                                                setValue("allowList", result.data);
-                                                            } else if (result.status === 400) {
-                                                                alert("Error setting to self");
-                                                            }
-                                                            setBusy(false);
-                                                        });
-                                                    }
+                                                    setValue("allowList",[{
+                                                        did: session.user.did,
+                                                        handle: session.user.handle,
+                                                        displayName: session.user.name
+                                                    }]);
                                                 }}
                                             >
                                                 <span>Set to Self</span>
@@ -1322,15 +1374,16 @@ export default function Home({feed, updateSession, VIP}) {
                             <div className="w-full lg:flex justify-between gap-4">
                                 <button type="button"
                                         onClick={() => {
-                                            const {sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts} = getValues();
+                                            const {sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts, viewers:_viewers} = getValues();
                                             const allowList = (_allowList || []).map(x => x.did);
                                             const blockList = (_blockList || []).map(x => x.did);
                                             const everyList = (_everyList || []).map(x => x.did);
+                                            const viewers = (_viewers || []).map(x => x.did);
 
                                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
 
                                             const result = {languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), keywordsQuote: keywordsQuote.map(x => compressKeyword(x)), copy, highlight, sticky, posts: posts? posts.map(x => x.uri) : [],
-                                                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode: modeText};
+                                                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode: modeText, viewers};
                                             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
                                             const dlAnchorElem = document.createElement('a');
                                             dlAnchorElem.setAttribute("href",     dataStr     );
@@ -1348,6 +1401,10 @@ export default function Home({feed, updateSession, VIP}) {
                                         input.type = 'file';
                                         input.accept = "application/json"
                                         input.onchange = () => {
+                                            if (typeof recaptcha === 'undefined') {
+                                                return;
+                                            }
+
                                             // getting a hold of the file reference
                                             let file = input.files[0];
 
@@ -1356,15 +1413,19 @@ export default function Home({feed, updateSession, VIP}) {
                                             reader.readAsText(file,'UTF-8');
 
                                             // here we tell the reader what to do when it's done reading...
-                                            reader.onload = (readerEvent) => {
+                                            reader.onload = async (readerEvent) => {
                                                 setBusy(true);
                                                 try {
                                                     let content = readerEvent.target.result as string; // this is the content!
                                                     console.log( content );
 
-                                                    let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, mode:_mode, posts:_posts, mustLabels, allowLabels} = JSON.parse(content);
+                                                    let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, mode:_mode, posts:_posts, mustLabels, allowLabels, viewers} = JSON.parse(content);
                                                     allowLabels = allowLabels || SUPPORTED_CW_LABELS;
                                                     mustLabels = mustLabels || [];
+                                                    blockList = blockList || [];
+                                                    everyList = everyList || [];
+                                                    allowList = allowList || [];
+                                                    viewers = viewers || [];
 
                                                     let mode = _mode;
                                                     let subMode = "";
@@ -1390,146 +1451,137 @@ export default function Home({feed, updateSession, VIP}) {
                                                         return;
                                                     }
 
-                                                    if (typeof recaptcha !== 'undefined') {
-                                                        recaptcha.ready(async () => {
-                                                            let result, skip = true;
 
-                                                            if (mode === "posts") {
-                                                                recaptcha.ready(async () => {
-                                                                    let posts = [];
-                                                                    if (_posts.length > 0) {
-                                                                        //@ts-ignore
-                                                                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                                                    let result, skip = true;
+                                                    const actors = [... new Set([...blockList, ...allowList, ...everyList, ...viewers])];
+                                                    if (actors.length > 0) {
+                                                        skip = false;
+                                                        const captcha = await getCaptcha(recaptcha);
+                                                        result = await localGet("/check/user", {captcha, actors});
+                                                        console.log("RESULT GET ", result);
+                                                    }
+                                                    if (!skip && result && (result.status !== 200 || !Array.isArray(result.data))) {
+                                                        // fail
+                                                        console.log(result);
+                                                        alert("error recovering data");
+                                                        setBusy(false);
+                                                        return;
+                                                    } else {
+                                                        if (result) {
+                                                            allowList = result.data.filter(x => allowList.find(y => y === x.did));
+                                                            blockList = result.data.filter(x => blockList.find(y => y === x.did));
+                                                            everyList = result.data.filter(x => everyList.find(y => y === x.did));
+                                                            viewers = result.data.filter(x => viewers.find(y => y === x.did));
+                                                        }
+                                                    }
 
-                                                                        const result = await localGet("/check/posts", {captcha, posts:_posts});
-                                                                        if (result.status === 200 && result.data.posts.length > 0) {
-                                                                            posts = result.data.posts;
-                                                                        }
-                                                                    }
+                                                    if (mode === "posts") {
+                                                        let posts = [];
+                                                        if (_posts.length > 0) {
+                                                            const captcha = await getCaptcha(recaptcha);
+                                                            const result = await localGet("/check/posts", {captcha, posts:_posts});
+                                                            if (result.status === 200 && result.data.posts.length > 0) {
+                                                                posts = result.data.posts;
+                                                            }
+                                                        }
 
-                                                                    let o:any = {
-                                                                        sort, displayName, description, copy: copy || [], highlight: highlight || "yes", posts, mustLabels, allowLabels,
-                                                                        shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || []
-                                                                    };
-                                                                    setMode(mode);
+                                                        let o:any = {
+                                                            sort, displayName, description, copy: copy || [], highlight: highlight || "yes", posts, mustLabels, allowLabels,
+                                                            shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || []
+                                                        };
+                                                        setMode(mode);
 
-                                                                    setLanguages([]);
-                                                                    setPostLevels(POST_LEVELS.map(x => x.id));
-                                                                    setKeywordSetting(["text"]);
-                                                                    setPics(["text", "pics"]);
-                                                                    setKeywords([]);
-                                                                    setKeywordsQuote([]);
-                                                                    setSpecialQuote(false);
+                                                        setLanguages([]);
+                                                        setPostLevels(POST_LEVELS.map(x => x.id));
+                                                        setKeywordSetting(["text"]);
+                                                        setPics(["text", "pics"]);
+                                                        setKeywords([]);
+                                                        setKeywordsQuote([]);
+                                                        setSpecialQuote(false);
 
-                                                                    reset(o);
-                                                                    setBusy(false);
-                                                                });
-                                                            } else {
-                                                                console.log("others")
-                                                                const actors = [...blockList, ...allowList, ...everyList];
-                                                                if (actors.length > 0) {
-                                                                    skip = false;
-                                                                    //@ts-ignore
-                                                                    const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                                                                    //@ts-ignore
-                                                                    result = await localGet("/check/user", {captcha, actors});
-                                                                    console.log("RESULT GET ", result);
-                                                                }
-                                                                if (!skip && result && (result.status !== 200 || !Array.isArray(result.data))) {
-                                                                    // fail
-                                                                    console.log(result);
-                                                                    alert("error recovering data");
-                                                                } else {
-                                                                    if (result) {
-                                                                        allowList = result.data.filter(x => allowList.find(y => y === x.did));
-                                                                        blockList = result.data.filter(x => blockList.find(y => y === x.did));
-                                                                        everyList = result.data.filter(x => everyList.find(y => y === x.did));
-                                                                    }
-                                                                    keywords = keywords?.map(x => {
-                                                                        const {t, a} = x;
-                                                                        let o:any;
-                                                                        try {
-                                                                            o = JSON.parse(toJson(t));
-                                                                        } catch (e) {
-                                                                            o = JSON.parse(compressedToJsonString(t));
-                                                                        }
+                                                        reset(o);
+                                                        setBusy(false);
+                                                    } else {
+                                                        console.log("others")
 
-                                                                        o.a = a;
-                                                                        if ((o.t === "t" || o.t === "s") && !o.r) {
-                                                                            o.r = [];
-                                                                        }
-                                                                        return o;
-                                                                    }) || [];
-
-                                                                    keywordsQuote = keywordsQuote?.map(x => {
-                                                                        const {t, a} = x;
-                                                                        let o:any;
-                                                                        try {
-                                                                            o = JSON.parse(toJson(t));
-                                                                        } catch (e) {
-                                                                            o = JSON.parse(compressedToJsonString(t));
-                                                                        }
-
-                                                                        o.a = a;
-                                                                        if ((o.t === "t" || o.t === "s") && !o.r) {
-                                                                            o.r = [];
-                                                                        }
-                                                                        return o;
-                                                                    }) || [];
-
-
-                                                                    recaptcha.ready(async () => {
-                                                                        if (sticky) {
-                                                                            //@ts-ignore
-                                                                            const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                                                                            //@ts-ignore
-                                                                            const result = await localGet("/check/posts", {captcha, posts:[sticky]});
-                                                                            if (result.status === 200 && result.data.posts.length > 0) {
-                                                                                const [post] = result.data.posts;
-                                                                                if (post) {
-                                                                                    const {uri, text} = post;
-                                                                                    sticky = uri;
-                                                                                    setStickyText(text);
-                                                                                }
-                                                                            }
-                                                                        }
-
-                                                                        let o:any = {
-                                                                            sort,displayName, description, copy: copy || [], highlight: highlight || "yes", mustLabels, allowLabels,
-                                                                            allowList:allowList|| [], blockList:blockList||[], everyList:everyList||[],
-                                                                            shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [], sticky, posts:[]
-                                                                        };
-                                                                        setMode(mode);
-                                                                        if (subMode) {
-                                                                            // @ts-ignore
-                                                                            setSubMode(subMode);
-                                                                        }
-
-                                                                        setLanguages(languages || []);
-                                                                        setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
-                                                                        setKeywordSetting(keywordSetting || ["text"]);
-                                                                        setPics(pics || ["text", "pics"]);
-                                                                        setKeywords(keywords);
-                                                                        if (keywordsQuote.length > 0) {
-                                                                            setSpecialQuote(true);
-                                                                            setKeywordsQuote(keywordsQuote);
-                                                                        } else {
-                                                                            setSpecialQuote(false);
-                                                                            setKeywordsQuote([]);
-                                                                        }
-
-                                                                        reset(o);
-                                                                        console.log(o);
-                                                                        setBusy(false);
-                                                                    });
-                                                                }
+                                                        keywords = keywords?.map(x => {
+                                                            const {t, a} = x;
+                                                            let o:any;
+                                                            try {
+                                                                o = JSON.parse(toJson(t));
+                                                            } catch (e) {
+                                                                o = JSON.parse(compressedToJsonString(t));
                                                             }
 
-                                                            setTimeout(() => {
-                                                                input.remove();
-                                                            }, 100);
-                                                        });
+                                                            o.a = a;
+                                                            if ((o.t === "t" || o.t === "s") && !o.r) {
+                                                                o.r = [];
+                                                            }
+                                                            return o;
+                                                        }) || [];
+
+                                                        keywordsQuote = keywordsQuote?.map(x => {
+                                                            const {t, a} = x;
+                                                            let o:any;
+                                                            try {
+                                                                o = JSON.parse(toJson(t));
+                                                            } catch (e) {
+                                                                o = JSON.parse(compressedToJsonString(t));
+                                                            }
+
+                                                            o.a = a;
+                                                            if ((o.t === "t" || o.t === "s") && !o.r) {
+                                                                o.r = [];
+                                                            }
+                                                            return o;
+                                                        }) || [];
+
+
+
+                                                        if (sticky) {
+                                                            const captcha = await getCaptcha(recaptcha);
+                                                            const result = await localGet("/check/posts", {captcha, posts:[sticky]});
+                                                            if (result.status === 200 && result.data.posts.length > 0) {
+                                                                const [post] = result.data.posts;
+                                                                if (post) {
+                                                                    const {uri, text} = post;
+                                                                    sticky = uri;
+                                                                    setStickyText(text);
+                                                                }
+                                                            }
+                                                        }
+
+                                                        let o:any = {
+                                                            sort,displayName, description, copy: copy || [], highlight: highlight || "yes", mustLabels, allowLabels,
+                                                            allowList:allowList|| [], blockList:blockList||[], everyList:everyList||[],
+                                                            shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [], sticky, posts:[]
+                                                        };
+                                                        setMode(mode);
+                                                        if (subMode) {
+                                                            // @ts-ignore
+                                                            setSubMode(subMode);
+                                                        }
+
+                                                        setLanguages(languages || []);
+                                                        setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
+                                                        setKeywordSetting(keywordSetting || ["text"]);
+                                                        setPics(pics || ["text", "pics"]);
+                                                        setKeywords(keywords);
+                                                        if (keywordsQuote.length > 0) {
+                                                            setSpecialQuote(true);
+                                                            setKeywordsQuote(keywordsQuote);
+                                                        } else {
+                                                            setSpecialQuote(false);
+                                                            setKeywordsQuote([]);
+                                                        }
+
+                                                        reset(o);
+                                                        console.log(o);
+                                                        setBusy(false);
                                                     }
+                                                    setTimeout(() => {
+                                                        input.remove();
+                                                    }, 100);
                                                 } catch (e) {
                                                     console.log(e);
                                                     alert("error recovering data");
