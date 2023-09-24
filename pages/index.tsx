@@ -119,36 +119,37 @@ export async function getServerSideProps({req, res, query}) {
     }
     if (agent) {
         const feedIds = [...feeds, ...popularMadeHere].map(x => x.uri);
-        let {data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feedIds});
-        const ts = Math.floor(new Date().getTime()/1000);
+        if (feedIds.length > 0) {
+            let {data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feedIds});
+            const ts = Math.floor(new Date().getTime()/1000);
 
-        db.allFeeds.bulkWrite(data.feeds.map(x => {
-            const {uri: _id, ...o} = x;
-            return {
-                replaceOne: {
-                    filter: {_id},
-                    replacement: {...o, ts},
-                    upsert: true
+            db.allFeeds.bulkWrite(data.feeds.map(x => {
+                const {uri: _id, ...o} = x;
+                return {
+                    replaceOne: {
+                        filter: {_id},
+                        replacement: {...o, ts},
+                        upsert: true
+                    }
                 }
-            }
-        }));
+            }));
 
-        // Project
-        const updatedFeeds = data.feeds.map(x => {
-            const {uri, did, creator, avatar,
-                displayName, description, likeCount, indexedAt} = x;
-            return {uri, did, creator, avatar: avatar || null,
-                displayName, description, likeCount, indexedAt};
-        });
-        feeds = feeds.map(x => {
-            const temp = updatedFeeds.find(y => y.uri === x.uri);
-            return temp || x;
-        });
-
-        popularMadeHere = popularMadeHere.map(x => {
-            const temp = updatedFeeds.find(y => y.uri === x.uri);
-            return temp || x;
-        });
+            // Project
+            const updatedFeeds = data.feeds.map(x => {
+                const {uri, did, creator, avatar,
+                    displayName, description, likeCount, indexedAt} = x;
+                return {uri, did, creator, avatar: avatar || null,
+                    displayName, description, likeCount, indexedAt};
+            });
+            feeds = feeds.map(x => {
+                const temp = updatedFeeds.find(y => y.uri === x.uri);
+                return temp || x;
+            });
+            popularMadeHere = popularMadeHere.map(x => {
+                const temp = updatedFeeds.find(y => y.uri === x.uri);
+                return temp || x;
+            });
+        }
     }
 
     return {props: {updateSession, session, feeds, popularMadeHere}};
