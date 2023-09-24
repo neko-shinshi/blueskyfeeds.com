@@ -25,4 +25,14 @@ function useRecaptcha() {
     return context;
 }
 
-export {RecaptchaProvider, useRecaptcha}
+async function getCaptcha(recaptcha) {
+    return new Promise((res, rej) => {
+        recaptcha.ready(() => {
+            recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'}).then((token) => {
+                return res(token);
+            })
+        })
+    })
+}
+
+export {RecaptchaProvider, useRecaptcha, getCaptcha}
