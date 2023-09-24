@@ -135,16 +135,16 @@ export const authOptions: NextAuthOptions = {
                 } = account;
                 if (p == APP_PASSWORD || p === APP_SESSION) {
                     // Use from login to skip database access
-                    const {service, handle, refreshJwt, accessJwt, email, sk} = user;
-                    token = {...token, id:sk, service, handle, refreshJwt, accessJwt, email};
+                    const {service, handle, refreshJwt, accessJwt, email, sk, id:did} = user;
+                    token = {...token, id:sk, service, handle, refreshJwt, accessJwt, email, did};
                 }
             }
             return token;
         },
         async session({session, token, user}) {
             // Transfer data from token to session
-            const {id:sk, handle} = token;
-            const ss = {...session, user: {...session.user, sk, handle}} as Session;
+            const {id:sk, handle, did} = token;
+            const ss = {...session, user: {...session.user, sk, handle, did}} as Session;
             return ss;
         },
 
