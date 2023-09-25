@@ -27,7 +27,7 @@ const makeExpiryDate = (nowTs) => {
     return new Date(nowTs + MS_ONE_WEEK);
 }
 
-const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) => {
+const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, now) => {
     let feed=[], cursor="";
     let {allowList, blockList, everyList, keywordSetting,
         keywords, keywordsQuote, languages, pics, postLevels, sort, sticky, hideLikeSticky, allowLabels, mustLabels} = feedObj;
@@ -160,6 +160,8 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
                 result = await db.posts.find(dbQuery).sort(sortMethod).limit(limit+100).project(projection).toArray(); // don't bother querying beyond 500
                 if (result.length === 0) {
                     return {cursor, feed};
+                } else {
+                    db.posts.updateMany({_id: {$in: result.map(x => x._id)}}, {$set: {last: now }});
                 }
                 if (searchQuoteKeywords) {
                     result = result.map(x => x.quote? {_id: x.quote, createdAt: x.createdAt} : x);
@@ -192,6 +194,8 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
             result =  await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project(projection).toArray();
             if (result.length === 0) {
                 return {cursor, feed};
+            } else {
+                db.posts.updateMany({_id: {$in: result.map(x => x._id)}}, {$set: {last: now }});
             }
             if (searchQuoteKeywords) {
                 result = result.map(x => x.quote? {_id: x.quote, createdAt: x.createdAt} : x);
@@ -207,7 +211,6 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
             const key = `${user} ${feedId}`;
             const check = global.likeChecks.get(key);
             let hasLike;
-            const now = new Date().getTime();
             if (!check || now - check.then > MS_CHECK_DELAY) { // don't check for at least 30 min
                 console.log("feed", feedId, user, limit);
                 const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
@@ -233,6 +236,8 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
             if (result.length === 0) {
                 feed = sticky? [{post:sticky}] : [];
                 return {cursor, feed};
+            } else {
+                db.posts.updateMany({_id: {$in: result.map(x => x._id)}}, {$set: {last: now }});
             }
             if (searchQuoteKeywords) {
                 result = result.map(x => x.quote? {_id: x.quote, createdAt: x.createdAt} : x);
@@ -258,6 +263,8 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
             if (result.length === 0) {
                 feed = sticky? [{post:sticky}] : [];
                 return {cursor, feed};
+            } else {
+                db.posts.updateMany({_id: {$in: result.map(x => x._id)}}, {$set: {last: now }});
             }
 
             if (searchQuoteKeywords) {
@@ -275,7 +282,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit) =>
     return {feed, cursor};
 }
 
-const getAndLogUser = async (req, db, feedId) => {
+const getAndLogUser = async (req, db, feedId, now) => {
     let {authorization} = req.headers;
     let user;
     if (authorization && authorization.startsWith("Bearer ")) {
@@ -283,7 +290,6 @@ const getAndLogUser = async (req, db, feedId) => {
         const {iss} = parseJwt(authorization);
         if (iss) {
             user = iss;
-            const now = new Date().getTime();
             if (!global.views) {
                 global.views = new Map();
             }
@@ -317,10 +323,11 @@ export async function getServerSideProps({req, res, query}) {
     const {viewers} = feedObj;
 
     let user;
+    const now = new Date().getTime();
     if (process.env.NEXT_PUBLIC_DEV === "1" && did) {
         user = did;
     } else {
-        user = await getAndLogUser(req, db, feedId);
+        user = await getAndLogUser(req, db, feedId, now);
     }
 
     if (Array.isArray(viewers) && viewers.length > 0 && viewers.indexOf(user) < 0) {
@@ -362,6 +369,10 @@ export async function getServerSideProps({req, res, query}) {
             }
 
             feed = await db.posts.find(dbQuery).sort(getSortMethod(sort)).skip(skip).limit(limit).project({_id: 1}).toArray();
+            if (feed.length > 0) {
+                db.posts.updateMany({_id: {$in: feed.map(x => x._id)}}, {$set: {last: now }});
+            }
+
             feed = feed.map(x => {return {post: x._id}})
             cursor = `${feed.length+skip}`;
         } else if (mode === "user-likes" || mode === "user-posts") {
@@ -374,7 +385,7 @@ export async function getServerSideProps({req, res, query}) {
             feed = posts.slice(skip, limit).map(x => {return {post: x};});
             cursor = `${feed.length+skip}`;
         } else {
-            const {feed: feedV, cursor: cursorV} = await liveFeedHandler (db, feedObj, queryCursor, feedId, user, limit);
+            const {feed: feedV, cursor: cursorV} = await liveFeedHandler (db, feedObj, queryCursor, feedId, user, limit, now);
             feed = feedV;
             cursor = cursorV;
         }
