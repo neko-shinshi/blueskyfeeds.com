@@ -332,6 +332,7 @@ export async function getServerSideProps({req, res, query}) {
 
     if (Array.isArray(viewers) && viewers.length > 0 && viewers.indexOf(user) < 0) {
         res.write(JSON.stringify({feed:[], cursor:""}));
+        res.end();
         return {props: {}};
     }
 
