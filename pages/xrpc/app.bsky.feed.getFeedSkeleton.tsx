@@ -135,7 +135,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
 
     if (searchQuoteKeywords) {
         const blockKeywordsQuote = keywordsQuote.filter(x => !x.a).map(x => x.t);
-        queryOrs.push({kwText:{$in: findKeywordsQuote, $nin: blockKeywordsQuote}, quote:{$ne:null}});
+        queryOrs.push({kwText:{$in: findKeywordsQuote, $nin: blockKeywordsQuote}, quoteUri:{$ne:null}});
     }
 
     if (queryOrs.length === 1) {
@@ -155,7 +155,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
                 tss = new Date(tss).toISOString();
                 dbQuery.createdAt = {$lte: tss}
                 let projection:any = {createdAt: 1};
-                if (searchQuoteKeywords) {projection = {...projection, quote:1}}
+                if (searchQuoteKeywords) {projection = {...projection, quoteUri:1}}
                 result = await db.posts.find(dbQuery).sort(sortMethod).limit(limit+100).project(projection).toArray(); // don't bother querying beyond 500
                 if (result.length === 0) {
                     return {cursor, feed};
@@ -163,7 +163,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
                     db.posts.updateMany({_id: {$in: result.map(x => x._id)}}, {$set: {last: now }});
                 }
                 if (searchQuoteKeywords) {
-                    result = result.map(x => x.quote? {_id: x.quote, createdAt: x.createdAt} : x);
+                    result = result.map(x => x.quoteUri? {_id: x.quoteUri, createdAt: x.createdAt} : x);
                 }
 
                 let index = result.findIndex(x => x._id === postId);
@@ -189,7 +189,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
         } else {
             const skip = parseInt(queryCursor) || 0;
             let projection:any = {_id: 1};
-            if (searchQuoteKeywords) {projection = {...projection, quote:1}}
+            if (searchQuoteKeywords) {projection = {...projection, quoteUri:1}}
             result =  await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project(projection).toArray();
             if (result.length === 0) {
                 return {cursor, feed};
@@ -197,7 +197,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
                 db.posts.updateMany({_id: {$in: result.map(x => x._id)}}, {$set: {last: now }});
             }
             if (searchQuoteKeywords) {
-                result = result.map(x => x.quote? {_id: x.quote, createdAt: x.createdAt} : x);
+                result = result.map(x => x.quoteUri? {_id: x.quoteUri, createdAt: x.createdAt} : x);
             }
             cursor = `${result.length+skip}`;
         }
@@ -230,7 +230,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
             if (sticky) {limit = limit -1;}
 
             let projection:any = {createdAt: 1};
-            if (searchQuoteKeywords) {projection = {...projection, quote:1}}
+            if (searchQuoteKeywords) {projection = {...projection, quoteUri:1}}
             result = await db.posts.find(dbQuery).sort(sortMethod).project(projection).limit(limit).toArray();
             if (result.length === 0) {
                 feed = sticky? [{post:sticky}] : [];
@@ -239,7 +239,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
                 db.posts.updateMany({_id: {$in: result.map(x => x._id)}}, {$set: {last: now }});
             }
             if (searchQuoteKeywords) {
-                result = result.map(x => x.quote? {_id: x.quote, createdAt: x.createdAt} : x);
+                result = result.map(x => x.quoteUri? {_id: x.quoteUri, createdAt: x.createdAt} : x);
             }
 
             if (sticky) {
@@ -257,7 +257,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
         } else {
             if (sticky) {limit = limit -1;}
             let projection:any = {_id: 1};
-            if (searchQuoteKeywords) {projection = {...projection, quote:1}}
+            if (searchQuoteKeywords) {projection = {...projection, quoteUri:1}}
             result = await db.posts.find(dbQuery).sort(sortMethod).project(projection).limit(limit).toArray();
             if (result.length === 0) {
                 feed = sticky? [{post:sticky}] : [];
@@ -267,7 +267,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
             }
 
             if (searchQuoteKeywords) {
-                result = result.map(x => x.quote? {_id: x.quote, createdAt: x.createdAt} : x);
+                result = result.map(x => x.quoteUri? {_id: x.quoteUri, createdAt: x.createdAt} : x);
             }
 
             if (sticky) {
