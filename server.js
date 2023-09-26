@@ -10,6 +10,7 @@ const handle = app.getRequestHandler();
 const {updateScores} = require("./not-nextjs/scoring");
 const {connectToDatabase} = require("./features/utils/dbUtils");
 const { Cron } = require("croner");
+const {updateOnlyFollowing} = require("features/algos/only-following");
 
 const handleData = async (req, res) => {
     try {
@@ -45,6 +46,7 @@ const getServer = (secure) => {
 app.prepare().then(async () => {
     const secure = dev; // https is provided by load balancer and cloudflare
     const server = getServer(secure);
+
     server.listen(port, async (err) => {
         if (err) throw err;
         const db = await connectToDatabase();
@@ -52,8 +54,13 @@ app.prepare().then(async () => {
 
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             await updateScores(db);
-            const job = Cron('*/12 * * * *', async () => {
+            Cron('*/12 * * * *', async () => {
                 await updateScores(db);
+            });
+
+            await updateOnlyFollowing(db);
+            Cron('*/5 * * * *', async () => {
+                await updateOnlyFollowing(db);
             });
         }
     });

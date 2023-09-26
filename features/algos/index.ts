@@ -1,7 +1,7 @@
-import * as rarePosters from './rare-posters';
-import * as gordonRamses from './gordon-ramses';
+import * as onlyFollows from 'features/algos/only-following';
 
 export const algos = {
    // [rarePosters.id]:  rarePosters.handler,
   //  [gordonRamses.id]: gordonRamses.handler,
+    [onlyFollows.id] : onlyFollows.handler
 }

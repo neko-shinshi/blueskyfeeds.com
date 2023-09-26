@@ -5,7 +5,6 @@ import {algos} from 'features/algos'
 import {handler as userFeedHandler} from 'features/algos/user-feed'
 import {feedHasUserLike, getAgent} from "features/utils/bsky";
 import {SUPPORTED_CW_LABELS} from "features/utils/constants";
-import {secondsAfter} from "features/utils/timeUtils";
 
 const getSortMethod = (sort) => {
     switch (sort) {

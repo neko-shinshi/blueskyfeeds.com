@@ -258,7 +258,7 @@ export const getFollowing = async (agent, actor) => {
         const {data} = await agent.getFollows(params);
         const {cursor:newCursor, follows} = data;
         if (newCursor === cursor?.cursor) {
-            return uris;
+            return [...uris];
         }
         const oldSize = uris.size;
         follows.forEach(x => uris.add(x.did));
@@ -271,7 +271,7 @@ export const getFollowing = async (agent, actor) => {
         }
     } while (cursor);
 
-    return uris;
+    return [...uris];
 }
 
 export const getRecentPostsFrom = async (agent, target, fromDateString, limit=30) => {
