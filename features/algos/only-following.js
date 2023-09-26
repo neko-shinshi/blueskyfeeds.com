@@ -78,9 +78,12 @@ const handler = async (user, inCursor, limit) => {
         const now = new Date().getTime();
         const {follows} = feedConfig;
 
-        let query = {author:{$in: follows}, $or: [{replyParent:{$in: [...follows, user]}}, {replyParent: null}]};
+        const $regex = RegExp(follows.map(x => `^at://${x}`).join("|"));
+        let query = {author:{$in: follows}, $or: [{replyParent:{$regex}}, {replyParent: null}]};
         const sort = {createdAt:-1};
         const projection = {_id:1, createdAt:1};
+
+        console.log(JSON.stringify(query, null, 2));
 
         if (inCursor) {
             let [_postId, tss] = inCursor.split("::");
