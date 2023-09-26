@@ -83,8 +83,6 @@ const handler = async (user, inCursor, limit) => {
         const sort = {createdAt:-1};
         const projection = {_id:1, createdAt:1};
 
-        console.log(JSON.stringify(query, null, 2));
-
         if (inCursor) {
             let [_postId, tss] = inCursor.split("::");
             const [userId, __postId] = _postId.split("/");
