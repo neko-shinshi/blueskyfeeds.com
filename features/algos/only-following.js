@@ -46,7 +46,9 @@ const getFollowing = async (agent, actor) => {
     return [...uris];
 }
 
+const sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3kabxgbzcxs2c";
 const id = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/only-following";
+
 const handler = async (user, inCursor, limit) => {
     console.log("algo feed");
     if (!user) {return {feed: [], cursor:""};}
@@ -102,10 +104,13 @@ const handler = async (user, inCursor, limit) => {
             }
             feed = feed.slice(index+1, index+1+limit);
         } else {
+            limit = limit -1;
             feed = await db.posts.find(query).sort(sort).limit(limit).project(projection).toArray();
             if (feed.length > 0) {
                 db.posts.updateMany({_id: {$in: feed.map(x => x._id)}}, {$set: {last: now }});
             }
+            feed = feed.filter(x => x._id !== sticky);
+            feed.splice(1,0, {_id: sticky});
         }
 
         const last = feed.at(-1);
@@ -120,10 +125,6 @@ const handler = async (user, inCursor, limit) => {
                 cursor = "";
             }
         }
-    }
-
-    if (feed.length === 0) {
-       feed =[{_id: "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3ka7b3s2o3y26"}];
     }
 
     return {feed: feed.map(x => {return {post:x._id}}), cursor};
