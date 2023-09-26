@@ -348,8 +348,7 @@ export async function getServerSideProps({req, res, query}) {
         if (mode === "responses") {
             let {everyList, blockList, sort, postLevels, pics} = feedObj;
             blockList = blockList || [];
-            const $regex = RegExp(everyList.map(x => `^at://${x}`).join("|"));
-            const dbQuery:any = {author: {$nin: [...everyList, ...blockList]}, $or:[{quote: {$regex}}, {replyParent:{$regex}}, {replyRoot:{$regex}}]}
+            const dbQuery:any = {author: {$nin: [...everyList, ...blockList]}, $or:[{quote: {$in:everyList}}, {replyParent:{$in:everyList}}, {replyRoot:{$in:everyList}}]}
             const skip = parseInt(queryCursor) || 0;
 
             const wantTop = postLevels.indexOf("top") >= 0;
