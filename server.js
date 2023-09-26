@@ -10,7 +10,7 @@ const handle = app.getRequestHandler();
 const {updateScores} = require("./not-nextjs/scoring");
 const {connectToDatabase} = require("./features/utils/dbUtils");
 const { Cron } = require("croner");
-const {updateOnlyFollowing} = require("features/algos/only-following");
+const {updateOnlyFollowing} = require("./features/algos/only-following");
 
 const handleData = async (req, res) => {
     try {
