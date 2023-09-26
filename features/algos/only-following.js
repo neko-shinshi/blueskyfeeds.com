@@ -53,14 +53,14 @@ const handler = async (user, inCursor, limit) => {
     const db = await connectToDatabase();
     if (!db) {return {feed: [], cursor:""};} // DB fail
     const key = `follows_${user}`;
-    const feedConfig = await db.dataAlgoFeed.findOne({_id:key, type:"only_follows"});
+    const feedConfig = await db.dataAlgoFeed.findOne({_id:key, type:"only_following"});
     let feed=[], cursor="";
     const now = new Date().getTime();
     // first time, or have not fetched followers before, or last fetched was > MS_UPDATE_FOLLOWS ago
     if (!feedConfig || !feedConfig.last || now - feedConfig.last > MS_UPDATE_FOLLOWS) {
         // Flag user for update
         db.dataAlgoFeed.updateOne(
-            {_id: key, type: "only_follows"},
+            {_id: key, type: "only_following"},
             {$set: {update:true}}, // set an update flag
             {upsert:true}
         ).then((resp, error) => {
@@ -133,7 +133,7 @@ const handler = async (user, inCursor, limit) => {
 const updateOnlyFollowing = async(db) => {
     console.log("check only follows");
     const now = new Date().getTime();
-    const toQuery = await db.dataAlgoFeed.find({type:"only_follows", update:true}).toArray();
+    const toQuery = await db.dataAlgoFeed.find({type:"only_following", update:true}).toArray();
     if (toQuery.length === 0) {
         console.log("nothing to check");
         return;
