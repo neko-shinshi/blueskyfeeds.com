@@ -37,6 +37,7 @@ export const PICS_SETTING = [
 export const KEYWORD_SETTING = [
     {id:"text", txt: "Post text"},
     {id:"alt", txt: "Picture Alt-text"},
+    {id:"link", txt: "Link Urls"},
 ];
 
 
