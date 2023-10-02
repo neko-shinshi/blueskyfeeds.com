@@ -132,11 +132,9 @@ const handler = async (user, inCursor, limit) => {
 
 
 const updateOnlyFollowing = async(db) => {
-    console.log("check only follows");
     const now = new Date().getTime();
     const toQuery = await db.dataAlgoFeed.find({type:"only_following", update:true}).toArray();
     if (toQuery.length === 0) {
-        console.log("nothing to check");
         return;
     }
 
@@ -145,7 +143,6 @@ const updateOnlyFollowing = async(db) => {
         if (agent) {
             let commands = [];
             for (const obj of toQuery) {
-                console.log(JSON.stringify(obj, null, 2));
                 const {_id} = obj;
                 const [_, user] = _id.split("_");
                 const follows = await getFollowing(agent, user);
@@ -156,10 +153,8 @@ const updateOnlyFollowing = async(db) => {
                     }
                 });
             }
-            console.log(commands);
 
             const result = await db.dataAlgoFeed.bulkWrite(commands, {ordered:false});
-            console.log(result);
         }
     } catch (e) {
         console.error("Following fetch failed");

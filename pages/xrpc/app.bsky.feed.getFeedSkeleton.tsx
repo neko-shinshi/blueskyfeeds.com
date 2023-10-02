@@ -366,8 +366,9 @@ export async function getServerSideProps({req, res, query}) {
             if (!(wantPics && wantText)) {
                 dbQuery.hasImage = wantPics;
             }
+            const sortMethod = getSortMethod(sort);
 
-            feed = await db.posts.find(dbQuery).sort(getSortMethod(sort)).skip(skip).limit(limit).project({_id: 1}).toArray();
+            feed = await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project({_id: 1}).toArray();
             if (feed.length > 0) {
                 db.posts.updateMany({_id: {$in: feed.map(x => x._id)}}, {$set: {last: now }});
             }
