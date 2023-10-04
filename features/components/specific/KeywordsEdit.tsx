@@ -133,7 +133,7 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                         }
                         return null;
                     }} submitKeyword={(w, rejectWords, a) => {
-                    setKeywords([...keywords, {t:"#", w:w.toLowerCase(), a}]);
+                    setKeywords([...keywords, {t:"#", w:w.toLowerCase().trim(), a}]);
                     setEditTag(null);
                 }}
                 >
