@@ -419,7 +419,6 @@ export default function Home({feed, updateSession, VIP}) {
                                     </button>
                                     <button type="button" className="w-full bg-lime-100 p-8 hover:bg-lime-400 p-8 hover:font-bold border border-black"
                                             onClick={async () => {
-                                                setBusy(true);
                                                 setMode("user");
                                                 setSubMode("posts");
                                                 setPostLevels(["top"]);
