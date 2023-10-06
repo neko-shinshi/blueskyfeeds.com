@@ -10,6 +10,7 @@ import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
 import {getLoggedInData} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
+import {removeUndefined} from "features/utils/validationUtils";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -57,8 +58,8 @@ export async function getServerSideProps({req, res, query}) {
         feeds = feeds.map(x => {
             const {_id:uri, did, creator, avatar,
                 displayName, description, likeCount, indexedAt} = x;
-            return {uri, did, creator, avatar: avatar || null,
-                displayName, description, likeCount, indexedAt};
+            return removeUndefined({uri, did, creator, avatar: avatar || null,
+                displayName, description, likeCount, indexedAt}, true);
         });
     }
 

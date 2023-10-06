@@ -13,6 +13,7 @@ import {getLoggedInData} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
 import PopupLoading from "features/components/PopupLoading";
 import BackAndForwardButtons from "features/components/BackAndForwardButtons";
+import {removeUndefined} from "features/utils/validationUtils";
 
 export async function getServerSideProps({req, res, query}) {
     // TODO if no query, show most popular feeds made here
@@ -138,16 +139,16 @@ export async function getServerSideProps({req, res, query}) {
             const updatedFeeds = data.feeds.map(x => {
                 const {uri, did, creator, avatar,
                     displayName, description, likeCount, indexedAt} = x;
-                return {uri, did, creator, avatar: avatar || null,
-                    displayName, description, likeCount, indexedAt};
+                return removeUndefined({uri, did, creator, avatar: avatar || null,
+                    displayName, description, likeCount, indexedAt}, true);
             });
             feeds = feeds.map(x => {
                 const temp = updatedFeeds.find(y => y.uri === x.uri);
-                return temp || x;
+                return temp || removeUndefined(x, true);
             });
             popularMadeHere = popularMadeHere.map(x => {
                 const temp = updatedFeeds.find(y => y.uri === x.uri);
-                return temp || x;
+                return temp || removeUndefined(x, true);
             });
         }
     }
