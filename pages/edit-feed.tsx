@@ -505,11 +505,7 @@ export default function Home({feed, updateSession, VIP}) {
                                         type="button"
                                         className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
                                         onClick={() => {
-                                            if (keywords.length === 0) {
-                                                alert("Add at least 1 keyword to continue");
-                                            } else {
-                                                setModal("wizard-bsky");
-                                            }
+                                            setModal("wizard-bsky");
                                         }}
                                     >
                                         Next
