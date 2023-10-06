@@ -7,6 +7,12 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
+        hostname: 'cdn.bsky.app',
+        port: '',
+        pathname: '/img/**'
+      },
+      {
+        protocol: 'https',
         hostname: 'cdn.bsky.social',
         port: '',
         pathname: '/imgproxy/**'
