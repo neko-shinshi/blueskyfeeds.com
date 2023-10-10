@@ -51,7 +51,7 @@ export const generate = async(db, agent, feedId, feedConfig) => {
         keywords.forEach(x => {
             keywordMapping.set(x.t, x.a);
         });
-        keywords = await preprocessKeywords(keywords);
+        keywords = preprocessKeywords(keywords);
         const filter = post => {
             const{record:{reply, text, embed}, likeCount} = post;
             if ((topLevel && !replyLevel && reply) || // top level only

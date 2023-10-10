@@ -15,7 +15,6 @@ import {HiDownload, HiTrash} from "react-icons/hi";
 import SortableWordBubbles from "features/components/SortableWordBubbles";
 import {toJson} from "really-relaxed-json";
 import {compressedToJsonString} from "features/utils/textAndKeywords";
-import {compressKeyword} from "features/utils/objectUtils";
 import {removeUndefined} from "features/utils/validationUtils";
 
 export async function getServerSideProps({req, res, query}) {

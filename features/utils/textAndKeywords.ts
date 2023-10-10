@@ -33,8 +33,39 @@ const multipleIndexOf = (text, term) => {
     return indices;
 }
 
+export const unEscapeRelaxed = (s) => {
+    return s.replaceAll("\\*", "*").replaceAll("\\/", "/");
+}
 
-export const preprocessKeywords = async (keywords) => {
+
+export const uncompressAndUnescapeKeywords = (keywords) => {
+    return keywords.map(x => {
+        let o = JSON.parse(toJson(x.t));
+        o.o = x.t;
+        return o;
+    }).map(x => {
+        let {o, w, r} = x;
+        w = unEscapeRelaxed(w);
+        if (r) {
+            r = r.map(xx => {
+                let o:any = {};
+                let {s, p} = xx;
+                if (s) {
+                    o.s = unEscapeRelaxed(s);
+                }
+                if (p) {
+                    o.p = unEscapeRelaxed(p);
+                }
+
+                return o;
+            });
+        }
+        return {o, w, r};
+    });
+}
+
+
+export const preprocessKeywords = (keywords) => {
     return keywords.map(x => {
         let o = JSON.parse(toJson(x.t));
         o.o = x.t;
@@ -45,6 +76,22 @@ export const preprocessKeywords = async (keywords) => {
             arr = [];
         }
         const {t, ...y} = x;
+        y.w = unEscapeRelaxed(y.w);
+        if (y.r) {
+            y.r = y.r.map(xx => {
+                let o:any = {};
+                let {s, p} = xx;
+                if (s) {
+                    o.s = unEscapeRelaxed(s);
+                }
+                if (p) {
+                    o.p = unEscapeRelaxed(p);
+                }
+
+                return o;
+            });
+        }
+
         if (t === "s" && y.r) { // Pre-processing for segment
             y.r = y.r.map(xx => {
                 const {s, p} = xx;

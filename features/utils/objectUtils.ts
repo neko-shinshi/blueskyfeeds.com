@@ -27,9 +27,14 @@ export const objectToDotNotation = (o, header=null) => {
     return l;
 }
 
+const escapeRelaxed = (s) => {
+    return s.replaceAll("*", "\\*").replaceAll("/", "\\/");
+}
+
+
 export const compressKeyword = (x) => {
     const {a, ...y} = x;
-    y.w = y.w.toLowerCase();
+    y.w = escapeRelaxed(y.w.toLowerCase());
     if (Array.isArray(y.r)) {
         if (y.r.length === 0) {
             delete y.r;
@@ -38,12 +43,12 @@ export const compressKeyword = (x) => {
                 if (z.p === "") {
                     delete z.p;
                 } else if (z.p) {
-                    z.p = z.p.toLowerCase();
+                    z.p = escapeRelaxed(z.p.toLowerCase());
                 }
                 if (z.s === "") {
                     delete z.s;
                 } else if (z.s) {
-                    z.s = z.s.toLowerCase();
+                    z.s = escapeRelaxed(z.s.toLowerCase());
                 }
             });
             y.r.sort((a,b) => {
@@ -54,7 +59,7 @@ export const compressKeyword = (x) => {
         }
     }
     return {
-        t: toRJson(JSON.stringify(y).replaceAll(/(\/){2,}/g, "/")), // more than one backslash don't work
+        t: toRJson(JSON.stringify(y)), // more than one backslash fails
         a: x.a // This is not used by the firehose
     };
 }
