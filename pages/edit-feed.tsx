@@ -568,7 +568,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 <div className="font-bold text-xl">Which users` posts do you want to show?</div>
                                 <InputMultiWord
                                     className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
-                                    labelText="Every List: Show all posts from these users"
+                                    labelText={`Every List: Show all posts from these users (${getValues("everyList")?.length || 0})`}
                                     placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                                     fieldName="everyList"
                                     handleItem={(item, value, onChange) => {
@@ -1210,18 +1210,18 @@ export default function Home({feed, updateSession, VIP}) {
                                             id: "everyList",
                                             c: "bg-lime-100",
                                             t: mode === "live"?
-                                                "Every List: Show all posts from these users" :
-                                                "Get responses to posts from these users"
+                                                `Every List: Show all posts from these users (${getValues("everyList")?.length || 0})` :
+                                                `Get responses to posts from these users (${getValues("everyList")?.length || 0})`
                                         },
                                         mode === "live"? {
                                             id: "allowList",
                                             c: "bg-yellow-100",
-                                            t: "Only List: Only search posts from these Users, if empty, will search all users for keywords"
+                                            t: `Only List: Only search posts from these Users, if empty, will search all users for keywords (${getValues("allowList")?.length || 0})`
                                         } : false,
                                         {
                                             id: "blockList",
                                             c: "bg-pink-100",
-                                            t: "Block List: Block all posts from these Users"
+                                            t: `Block List: Block all posts from these Users (${getValues("blockList")?.length || 0})`
                                         }]
                                         .filter(x => x)
                                         //@ts-ignore
@@ -1549,10 +1549,12 @@ export default function Home({feed, updateSession, VIP}) {
                                                         return;
                                                     } else {
                                                         if (result) {
-                                                            allowList = result.data.filter(x => allowList.find(y => y === x.did));
-                                                            blockList = result.data.filter(x => blockList.find(y => y === x.did));
-                                                            everyList = result.data.filter(x => everyList.find(y => y === x.did));
-                                                            viewers = result.data.filter(x => viewers.find(y => y === x.did));
+                                                            console.log("loading", everyList);
+                                                            allowList = result.data.filter(x => allowList.find(y => y === x.did || y === x.handle));
+                                                            blockList = result.data.filter(x => blockList.find(y => y === x.did || y === x.handle));
+                                                            everyList = result.data.filter(x => everyList.find(y => y === x.did || y === x.handle));
+                                                            viewers = result.data.filter(x => viewers.find(y => y === x.did || y === x.handle));
+                                                            console.log("loaded", everyList);
                                                         }
                                                     }
 
