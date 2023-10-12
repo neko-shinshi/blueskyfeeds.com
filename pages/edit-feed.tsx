@@ -283,43 +283,78 @@ export default function Home({feed, updateSession, VIP}) {
     }, [feed]);
 
 
-    const multiWordCallback = (fieldName:string, lists:string[] = ["everyList", "allowList", "blockList"]) => {
+    const multiWordCallback = (fieldName:string, lists:string[], allowList:boolean=false) => {
         return async(val, callback) => {
             setBusy(true);
             let user = val;
+            let isList = false;
             if (user.startsWith("@")) {
                 user = user.slice(1);
             } else if (user.startsWith("bsky.app/profile/")) {
-                user = user.slice(17).split("/")[0];
-            } else if (user.startsWith("https://bsky.app/profile/")) {
-                user = user.slice(25).split("/")[0];
-            }
-            console.log("user", user);
-
-            for (const l of lists) {
-                const ll = getValues(l) || [];
-                if (ll.find(x => x.did === user || x.handle === user)) {
-                    setError(fieldName, {type:'custom', message:`${user} is already in ${l}`});
-                    setBusy(false);
-                    return;
-                }
-            }
-
-            if (typeof recaptcha !== 'undefined') {
-                const captcha = await getCaptcha(recaptcha);
-                const result = await localGet("/check/user", {captcha, actors:[user]});
-                if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
-                    clearErrors(fieldName);
-                    console.log(result.data[0]);
-                    callback(result.data[0]);
-                } else if (result.status === 400) {
-                    setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
-                } else if (result.status === 401) {
-                    await router.reload();
+                user = user.slice(17);
+                const userParts = user.split("/");
+                console.log(allowList, userParts);
+                if (allowList && userParts[1] === "lists") {
+                    isList = true;
                 } else {
-                    setError(fieldName, {type:'custom', message:"Error"});
+                    user = userParts[0];
+                }
+            } else if (user.startsWith("https://bsky.app/profile/")) {
+                user = user.slice(25);
+                const userParts = user.split("/");
+                console.log(allowList, userParts);
+                if (allowList && userParts[1] === "lists") {
+                    isList = true;
+                } else {
+                    user = userParts[0];
                 }
             }
+
+            if (isList) {
+                if (typeof recaptcha !== 'undefined') {
+                    const captcha = await getCaptcha(recaptcha);
+                    const result = await localGet("/check/list", {captcha, list:user});
+                    console.log(result);
+                    if (result.status === 200 && Array.isArray(result.data)) {
+                        clearErrors(fieldName);
+                        console.log(result.data);
+                        callback(result.data);
+                    } else if (result.status === 400) {
+                        setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
+                    } else if (result.status === 401) {
+                        await router.reload();
+                    } else {
+                        setError(fieldName, {type:'custom', message:"Error"});
+                    }
+                }
+            } else {
+                console.log("user", user);
+                for (const l of lists) {
+                    const ll = getValues(l) || [];
+                    if (ll.find(x => x.did === user || x.handle === user)) {
+                        setError(fieldName, {type:'custom', message:`${user} is already in ${l}`});
+                        setBusy(false);
+                        return;
+                    }
+                }
+
+                if (typeof recaptcha !== 'undefined') {
+                    const captcha = await getCaptcha(recaptcha);
+                    const result = await localGet("/check/user", {captcha, actors:[user]});
+                    if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
+                        clearErrors(fieldName);
+                        console.log(result.data[0]);
+                        callback(result.data[0]);
+                    } else if (result.status === 400) {
+                        setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
+                    } else if (result.status === 401) {
+                        await router.reload();
+                    } else {
+                        setError(fieldName, {type:'custom', message:"Error"});
+                    }
+                }
+            }
+
             setBusy(false);
 
         }
@@ -534,20 +569,36 @@ export default function Home({feed, updateSession, VIP}) {
                                 <InputMultiWord
                                     className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
                                     labelText="Every List: Show all posts from these users"
-                                    placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
+                                    placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                                     fieldName="everyList"
                                     handleItem={(item, value, onChange) => {
-                                        value.push(item);
-                                        value.sort((a, b) => {
-                                            return a.handle.localeCompare(b.handle);
-                                        })
+                                        if (Array.isArray(item)) {
+                                            for (const itm of item) {
+                                                let add = true;
+                                                for (const l of ["everyList", "allowList", "blockList"]) {
+                                                    const ll = getValues(l) || [];
+                                                    if (ll.find(x => x.did === itm.did)) {
+                                                        add = false;
+                                                        break;
+                                                    }
+                                                }
+                                                if (add) {
+                                                    value.push(itm);
+                                                }
+                                            }
+                                        } else {
+                                            value.push(item);
+                                            value.sort((a, b) => {
+                                                return a.handle.localeCompare(b.handle);
+                                            });
+                                        }
                                         onChange(value);
                                     }}
                                     valueModifier={item => {
                                         return `${item.displayName} @${item.handle}`
                                     }}
                                     useFormReturn={useFormReturn}
-                                    check={multiWordCallback("everyList")}/>
+                                    check={multiWordCallback("everyList", ["everyList", "allowList", "blockList"], true)}/>
                                 <div className="flex justify-end">
                                     <button
                                         type="button"
@@ -743,20 +794,38 @@ export default function Home({feed, updateSession, VIP}) {
                                     <InputMultiWord
                                         className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
                                         labelText="Viewers: Show feed ONLY to these users"
-                                        placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
+                                        placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                                         fieldName="viewers"
                                         handleItem={(item, value, onChange) => {
-                                            value.push(item);
+                                            if (Array.isArray(item)) {
+                                                for (const itm of item) {
+                                                    let add = true;
+                                                    for (const l of ["viewers"]) {
+                                                        const ll = getValues(l) || [];
+                                                        if (ll.find(x => x.did === itm.did)) {
+                                                            add = false;
+                                                            break;
+                                                        }
+                                                    }
+                                                    if (add) {
+                                                        value.push(itm);
+                                                    }
+                                                }
+                                            } else {
+                                                value.push(item);
+                                            }
                                             value.sort((a, b) => {
                                                 return a.handle.localeCompare(b.handle);
-                                            })
+                                            });
+
                                             onChange(value);
                                         }}
                                         valueModifier={item => {
                                             return `${item.displayName} @${item.handle}`
                                         }}
                                         useFormReturn={useFormReturn}
-                                        check={multiWordCallback("viewers", ["viewers"])}/>
+
+                                        check={multiWordCallback("viewers", ["viewers"], true)}/>
                                 }
                             </div>
                             <div className="bg-lime-100 p-2">
@@ -1161,20 +1230,37 @@ export default function Home({feed, updateSession, VIP}) {
                                                 key={id}
                                                 className={clsx("border border-2 border-black p-2 rounded-xl", c)}
                                                 labelText={t}
-                                                placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx"
+                                                placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                                                 fieldName={id}
                                                 handleItem={(item, value, onChange) => {
-                                                    value.push(item);
+                                                    if (Array.isArray(item)) {
+                                                        for (const itm of item) {
+                                                            let add = true;
+                                                            for (const l of ["everyList", "allowList", "blockList"]) {
+                                                                const ll = getValues(l) || [];
+                                                                if (ll.find(x => x.did === itm.did)) {
+                                                                    add = false;
+                                                                    break;
+                                                                }
+                                                            }
+                                                            if (add) {
+                                                                value.push(itm);
+                                                            }
+                                                        }
+                                                    } else {
+                                                        value.push(item);
+                                                    }
+
                                                     value.sort((a, b) => {
                                                         return a.handle.localeCompare(b.handle);
-                                                    })
+                                                    });
                                                     onChange(value);
                                                 }}
                                                 valueModifier={item => {
                                                     return `${item.displayName} @${item.handle}`
                                                 }}
                                                 useFormReturn={useFormReturn}
-                                                check={multiWordCallback(id)}/>
+                                                check={multiWordCallback(id, ["everyList", "allowList", "blockList"], true)}/>
                                         )
                                 }
                                 {
