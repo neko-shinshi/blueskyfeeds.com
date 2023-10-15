@@ -65,7 +65,13 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
         }
     }
     if (languages.length > 0) {
+        languages = languages.reduce((acc, x) => {
+            acc.push(x);
+            acc.push(new RegExp(`^${x}-`));
+            return acc;
+        }, []);
         dbQuery.lang = {$in: languages};
+        console.log(languages);
     }
 
     let keywordSearch = [], fail=false;
