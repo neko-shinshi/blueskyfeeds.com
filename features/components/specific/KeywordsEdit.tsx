@@ -151,10 +151,15 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                     switch (val.t) {
                         case "#":
                             return `#${val.w}`;
-                        case "s":
-                            return `[${val.w}] -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
-                        case "t":
-                            return `${val.w} -[${val.r.map(x => [x.p, val.w, x.s].filter(x => x).join(" ")).join(",")}]`;
+                        case "s": {
+                            const v = val.r.length === 0? "": ` -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
+                            return `[${val.w}]${v}`;
+
+                        }
+                        case "t": {
+                            const v = val.r.length === 0? "": ` -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
+                            return `${val.w}${v}`;
+                        }
                     }
                     return `#${JSON.stringify(val)}`;
                 }}
