@@ -152,9 +152,9 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
                                                 case "#":
                                                     return `#${val.w}`;
                                                 case "s":
-                                                    return `[${val.w}] [${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
+                                                    return `[${val.w}] -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
                                                 case "t":
-                                                    return `${val.w} [${val.r.map(x => [x.p, val.w, x.s].filter(x => x).join(" ")).join(",")}]`;
+                                                    return `${val.w} -[${val.r.map(x => [x.p, val.w, x.s].filter(x => x).join(" ")).join(",")}]`;
                                             }
                                             return `#${JSON.stringify(val)}`;
                                         }}

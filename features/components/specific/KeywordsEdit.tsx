@@ -152,9 +152,9 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                         case "#":
                             return `#${val.w}`;
                         case "s":
-                            return `[${val.w}] [${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
+                            return `[${val.w}] -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
                         case "t":
-                            return `${val.w} [${val.r.map(x => [x.p, val.w, x.s].filter(x => x).join(" ")).join(",")}]`;
+                            return `${val.w} -[${val.r.map(x => [x.p, val.w, x.s].filter(x => x).join(" ")).join(",")}]`;
                     }
                     return `#${JSON.stringify(val)}`;
                 }}
