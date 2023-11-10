@@ -12,7 +12,7 @@ import {getFeedDetails, getMyCustomFeedIds} from "features/utils/feedUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
 import {getCaptcha, useRecaptcha} from "features/auth/RecaptchaProvider";
-import {localDelete, localGet} from "features/network/network";
+import {localDelete, localGet, localPost} from "features/network/network";
 import {toJson} from 'really-relaxed-json'
 import Image from "next/image";
 import InputMultiWord from "features/input/InputMultiWord";
@@ -31,7 +31,7 @@ import {getLoggedInData} from "features/network/session";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {APP_SESSION} from "features/auth/authUtils";
 import {isValidDomain} from "features/utils/validationUtils";
-import {getActorsInfo, getPostInfo, isVIP} from "features/utils/bsky";
+import {expandUserLists, getPostInfo, isVIP} from "features/utils/bsky";
 import PopupLoading from "features/components/PopupLoading";
 import Link from "next/link";
 import {IoArrowBackSharp} from "react-icons/io5";
@@ -39,12 +39,12 @@ import {compressKeyword,} from "features/utils/objectUtils";
 import InputTextBasic from "features/input/InputTextBasic";
 import PopupWithInputText from "features/components/PopupWithInputText";
 import {BiCopy} from "react-icons/bi";
-import {HiArrowLongLeft, HiArrowLongRight} from "react-icons/hi2";
 import KeywordsEdit from "features/components/specific/KeywordsEdit";
 import BlueskyForm from "features/components/specific/BlueskyForm";
 import {compressedToJsonString} from "features/utils/textAndKeywords";
 import PostsEdit from "features/components/specific/PostsEdit";
 import PopupWithAddPost from "features/components/PopupWithAddPost";
+import EditFeedWizard from "features/components/specific/EditFeedWizard";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -55,9 +55,11 @@ export async function getServerSideProps({req, res, query}) {
     if (agent) {
         const {feed: _feed} = query;
         if (_feed) {
-            const feedData: any = await getFeedDetails(agent, db, _feed);
+            let feedData: any = await getFeedDetails(agent, db, _feed);
             if (feedData) {
-                let {allowList, blockList, everyList, viewers, sticky, posts:_posts, mode} = feedData;
+                feedData = await expandUserLists(feedData, agent);
+                let {sticky, posts:_posts, mode} = feedData;
+
                 if (mode === "posts") {
                     if (Array.isArray(_posts)) {
                         const posts = (await getPostInfo(agent, _posts)).map(post => {
@@ -65,38 +67,20 @@ export async function getServerSideProps({req, res, query}) {
                             return {text, uri};
                         });
                         feed = {...feedData, posts};
-
-                        if (Array.isArray(viewers) && viewers.length > 0) {
-                            const profiles = await getActorsInfo(agent, viewers);
-                            viewers = profiles.filter(x =>  viewers.find(y => y === x.did));
-                            feed = {...feed, viewers};
-                        }
-
                     } else {
                         console.log("posts not formatted correctly");
                         res.status(401).send("error");
                         return;
                     }
                 } else {
-                    allowList = allowList || [];
-                    blockList = blockList || [];
-                    everyList = everyList || [];
-                    viewers = viewers || [];
-                    const actors = [...new Set([...allowList, ...blockList, ...everyList, ...viewers])];
-                    if (actors.length > 0) {
-                        const profiles = await getActorsInfo(agent, actors);
-                        allowList = profiles.filter(x =>  allowList.find(y => y === x.did));
-                        blockList = profiles.filter(x =>  blockList.find(y => y === x.did));
-                        everyList = profiles.filter(x =>  everyList.find(y => y === x.did));
-                        viewers = profiles.filter(x =>  viewers.find(y => y === x.did));
-                    }
+
                     if (sticky) {
                         [sticky] = await getPostInfo(agent, [sticky]) || [""];
                     } else {
                         sticky = "";
                     }
 
-                    feed = {...feedData, allowList, blockList, everyList, viewers, sticky};
+                    feed = {...feedData, sticky};
                 }
             } else {
                 return {redirect: {destination: '/404', permanent: false}}
@@ -146,7 +130,7 @@ export default function Home({feed, updateSession, VIP}) {
     const [postLevels, setPostLevels] = useState<string[]>([]);
     const [keywordSetting, setKeywordSetting] = useState<string[]>([]);
     const [keywords, setKeywords] = useState<FeedKeyword[]>([]);
-    const [popupState, setPopupState] = useState<"delete"|"edit_sticky"|"edit_user"|false>(false);
+    const [popupState, setPopupState] = useState<"delete"|"edit_sticky"|"edit_user"|"sync_everyList"|"sync_blockList"|"sync_allowList"|"sync_viewers"|false>(false);
     const [pics, setPics] = useState<string[]>([]);
     const [busy, setBusy] = useState(false);
 
@@ -177,10 +161,10 @@ export default function Home({feed, updateSession, VIP}) {
     const watchAllow = watch("allowList");
     const watchAllowLabels = watch("allowLabels");
     const watchMustLabels = watch("mustLabels");
-
-    const showInstructionAlert = () => {
-        alert("Review the feed and tap submit at the bottom to complete your new feed.\nYou can further customize the feed by filtering it with keywords or setting sticky post.");
-    }
+    const watchEveryListSync = watch("everyListSync");
+    const watchAllowListSync = watch("allowListSync");
+    const watchBlockListSync = watch("blockListSync");
+    const watchViewersSync = watch("viewersSync");
 
     useEffect(() => {
         if (session && status === "authenticated" && updateSession) {
@@ -202,7 +186,14 @@ export default function Home({feed, updateSession, VIP}) {
             setPics(["text", "pics"]);
         } else {
             console.log("feed", feed);
-            let {avatar, sort, uri, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, copy, highlight, mode, sticky, posts, allowLabels, mustLabels, keywordsQuote, viewers} = feed;
+            let {avatar, sort, uri, displayName, description,
+                blockList, blockListSync,
+                allowList, allowListSync,
+                everyList, everyListSync,
+                languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords,
+                copy, highlight, mode, sticky, posts, allowLabels, mustLabels, keywordsQuote,
+                viewers, viewersSync,
+            } = feed;
 
             let stickyUri;
             if (sticky) {
@@ -230,8 +221,8 @@ export default function Home({feed, updateSession, VIP}) {
 
             let o:any = {
                 sticky:stickyUri || "", allowLabels: allowLabels || SUPPORTED_CW_LABELS, mustLabels: mustLabels || [],
-                sort,displayName, description, copy: copy || [], highlight: highlight || "yes", viewers,
-                shortName: uri.split("/").at(-1), blockList, allowList, everyList, mustUrl: mustUrl || [], blockUrl: blockUrl || [], posts: posts || [],
+                sort,displayName, description, copy: copy || [], highlight: highlight || "yes", viewers, viewersSync,
+                shortName: uri.split("/").at(-1), blockList, blockListSync, allowList, allowListSync, everyList, everyListSync, mustUrl: mustUrl || [], blockUrl: blockUrl || [], posts: posts || [],
             };
 
             if (avatar) {
@@ -315,10 +306,10 @@ export default function Home({feed, updateSession, VIP}) {
                     const captcha = await getCaptcha(recaptcha);
                     const result = await localGet("/check/list", {captcha, list:user});
                     console.log(result);
-                    if (result.status === 200 && Array.isArray(result.data)) {
+                    if (result.status === 200 && Array.isArray(result.data.v)) {
                         clearErrors(fieldName);
                         console.log(result.data);
-                        callback(result.data);
+                        callback(result.data.v);
                     } else if (result.status === 400) {
                         setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
                     } else if (result.status === 401) {
@@ -354,9 +345,7 @@ export default function Home({feed, updateSession, VIP}) {
                     }
                 }
             }
-
             setBusy(false);
-
         }
     }
 
@@ -387,6 +376,42 @@ export default function Home({feed, updateSession, VIP}) {
                         callback("Invalid user or user not found");
                     } else {
                         callback("Unknown error");
+                    }
+                }
+            }}/>
+
+        <PopupWithInputText
+            isOpen={popupState === "sync_allowList" || popupState === "sync_blockList" || popupState === "sync_everyList" || popupState === "sync_viewers"}
+            setOpen={setPopupState}
+            title="Set List"
+            message="Leave blank to remove"
+            inputClass="text-xs"
+            popupClass="min-w-[340px]"
+            placeholder="did:plc:xxxxxxxxxxxxxxxxxxxxxxxx/list/yyyyyy"
+            validateCallback={(v) => ""}
+            yesCallback={async (list:string, callback) => {
+                if (list === "") {
+                    const v = (popupState as string).split("_")[1];
+                    setValue(`${v}Sync`, "");
+                    callback();
+                } else if (typeof recaptcha !== 'undefined') {
+                    const fieldName = (popupState as string).split("_")[1];
+                    const captcha = await getCaptcha(recaptcha);
+                    //@ts-ignore
+                    const result = await localGet("/check/list", {captcha, list});
+                    if (result.status === 200 && Array.isArray(result.data.v)) {
+                        clearErrors(fieldName);
+                        console.log(result.data);
+                        const v = (popupState as string).split("_")[1];
+                        setValue(v, result.data.v);
+                        setValue(`${v}Sync`, result.data.id);
+                        callback();
+                    } else if (result.status === 400) {
+                        setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
+                    } else if (result.status === 401) {
+                        await router.reload();
+                    } else {
+                        setError(fieldName, {type:'custom', message:"Error"});
                     }
                 }
             }}/>
@@ -440,223 +465,23 @@ export default function Home({feed, updateSession, VIP}) {
                 <PageHeader title={title} description={description} />
                 {
                     modal.startsWith("wizard") &&
-                    <div className="bg-white p-4 space-y-4">
-                        {
-                            modal === "wizard" &&
-                            <>
-                                <div className="font-bold text-xl">What kind of feed do you want to make?</div>
-                                <div>
-                                    <button type="button" className="w-full bg-blue-100 hover:bg-blue-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-keywords")}}>
-                                        <span className="font-bold">Latest Posts with Keywords:</span> I want to create a feed to show the latest posts of a community or fandom
-                                    </button>
-                                    <button type="button" className="w-full bg-yellow-100 hover:bg-yellow-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-everyList")}}>
-                                        <span className="font-bold">Users` Latest Posts:</span> I want to create a feed showing the latest posts of specific users
-                                    </button>
-                                    <button type="button" className="w-full bg-lime-100 p-8 hover:bg-lime-400 p-8 hover:font-bold border border-black"
-                                            onClick={async () => {
-                                                setMode("user");
-                                                setSubMode("posts");
-                                                setPostLevels(["top"]);
-                                                setValue("allowList", [{
-                                                    did: session.user.did,
-                                                    handle: session.user.handle,
-                                                    displayName: session.user.name
-                                                }]);
-                                                setModal("wizard-keywords");
-                                            }}>
-                                        <span className="font-bold">My Posts:</span> I want to create feed to show MY posts, with some filtering
-                                    </button>
-                                    <button type="button" className="w-full bg-violet-100 p-8 hover:bg-violet-400 p-8 hover:font-bold border border-black"
-                                            onClick={() => {
-                                                setModal("wizard-posts");
-                                                setMode("posts");
-                                            }}>
-                                        <span className="font-bold">List of Posts:</span> I want to create feed to show a list of specific posts
-                                    </button>
-
-                                    <button type="button" className="w-full bg-red-100 p-8 hover:bg-red-400 p-8 hover:font-bold border border-black" onClick={() => {setModal("edit")}}>
-                                        <span className="font-bold">Other:</span> I want to create some other type of feed (sorry, more templates will be added in the future).
-                                    </button>
-                                </div>
-                            </>
-
-                        }
-                        {
-                            modal === "wizard-posts" &&
-                            <>
-                                <button
-                                    type="button"
-                                    className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                    onClick={() => {
-                                        setModal("wizard");
-                                        setValue("posts", []);
-                                    }}
-                                >
-                                    <HiArrowLongLeft className="mr-3 h-5 w-5 text-gray-400" />
-                                    Back
-                                </button>
-                                <div className="font-bold text-xl">Which posts do you want to show into the feed?</div>
-                                <PostsEdit useFormReturn={useFormReturn} recaptcha={recaptcha} setBusy={setBusy}/>
-
-                                <div className="flex justify-end">
-                                    <button
-                                        type="button"
-                                        className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                        onClick={() => {
-                                            if (getValues("posts").length === 0) {
-                                                alert("Add at least 1 post to continue");
-                                            } else {
-                                                setModal("wizard-bsky");
-                                            }
-                                        }}
-                                    >
-                                        Next
-                                        <HiArrowLongRight className="ml-3 h-5 w-5 text-gray-400" />
-                                    </button>
-                                </div>
-
-                            </>
-                        }
-
-                        {
-                            modal === "wizard-keywords" &&
-                            <>
-                                <button
-                                    type="button"
-                                    className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                    onClick={() => {
-                                        setModal("wizard");
-                                        setKeywords([]);
-                                    }}
-                                >
-                                    <HiArrowLongLeft className="mr-3 h-5 w-5 text-gray-400" />
-                                    Back
-                                </button>
-                                <div className="font-bold text-xl">Which keywords do you want to look for in posts to show into the feed?</div>
-                                <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP} />
-
-                                <div className="flex justify-end">
-                                    <button
-                                        type="button"
-                                        className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                        onClick={() => {
-                                            setModal("wizard-bsky");
-                                        }}
-                                    >
-                                        Next
-                                        <HiArrowLongRight className="ml-3 h-5 w-5 text-gray-400" />
-                                    </button>
-                                </div>
-
-                            </>
-                        }
-
-                        {
-                            modal === "wizard-everyList" &&
-                            <>
-                                <button
-                                    type="button"
-                                    className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                    onClick={() => {
-                                        setModal("wizard");
-                                        setValue("everyList", []);
-                                    }}
-                                >
-                                    <HiArrowLongLeft className="mr-3 h-5 w-5 text-gray-400" />
-                                    Back
-                                </button>
-                                <div className="font-bold text-xl">Which users` posts do you want to show?</div>
-                                <InputMultiWord
-                                    className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
-                                    labelText={`Every List: Show all posts from these users (${getValues("everyList")?.length || 0})`}
-                                    placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
-                                    fieldName="everyList"
-                                    handleItem={(item, value, onChange) => {
-                                        if (Array.isArray(item)) {
-                                            for (const itm of item) {
-                                                let add = true;
-                                                for (const l of ["everyList", "allowList", "blockList"]) {
-                                                    const ll = getValues(l) || [];
-                                                    if (ll.find(x => x.did === itm.did)) {
-                                                        add = false;
-                                                        break;
-                                                    }
-                                                }
-                                                if (add) {
-                                                    value.push(itm);
-                                                }
-                                            }
-                                        } else {
-                                            value.push(item);
-                                            value.sort((a, b) => {
-                                                return a.handle.localeCompare(b.handle);
-                                            });
-                                        }
-                                        onChange(value);
-                                    }}
-                                    valueModifier={item => {
-                                        return `${item.displayName} @${item.handle}`
-                                    }}
-                                    useFormReturn={useFormReturn}
-                                    check={multiWordCallback("everyList", ["everyList", "allowList", "blockList"], true)}/>
-                                <div className="flex justify-end">
-                                    <button
-                                        type="button"
-                                        className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                        onClick={() => {
-                                            if (getValues("everyList").length === 0) {
-                                                alert("Add at least 1 user to the Every List to continue");
-                                            } else {
-                                                setModal("wizard-bsky");
-                                                console.log("modal set");
-                                            }
-                                        }}
-                                    >
-                                        Next
-                                        <HiArrowLongRight className="ml-3 h-5 w-5 text-gray-400" />
-                                    </button>
-                                </div>
-                            </>
-                        }
-                        {
-                            modal === "wizard-bsky" && <>
-                                <button
-                                    type="button"
-                                    className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                    onClick={() => {
-                                        setMode("live");
-                                        setPics(PICS_SETTING.map(x => x.id));
-                                        setPostLevels(POST_LEVELS.map(x => x.id));
-                                        setValue("allowList", []);
-                                        setValue("posts", []);
-                                        setModal("wizard");
-                                    }}
-                                >
-                                    <HiArrowLongLeft className="mr-3 h-5 w-5 text-gray-400" />
-                                    Back
-                                </button>
-                                <div className="font-bold text-xl">Fill in your new feed`s description</div>
-                                <BlueskyForm useFormReturn={useFormReturn} setPopupState={setPopupState} shortNameLocked={shortNameLocked} />
-                                <div className="flex justify-end">
-                                    <button
-                                        type="button"
-                                        className="bg-sky-100 rounded-xl inline-flex items-center border-2 border-transparent p-3 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                        onClick={() => {
-                                            if (getValues("displayName").trim() !== "" && getValues("shortName").trim() !== "") {
-                                                setModal("edit");
-                                                showInstructionAlert();
-                                            } else {
-                                                alert("Fill in the form");
-                                            }
-                                        }}
-                                    >
-                                        Next
-                                        <HiArrowLongRight className="ml-3 h-5 w-5 text-gray-400" />
-                                    </button>
-                                </div>
-                            </>
-                        }
-                    </div>
+                   <EditFeedWizard
+                       modal={modal}
+                       setModal={setModal}
+                       setMode={setMode}
+                       setSubMode={setSubMode}
+                       setPostLevels={setPostLevels}
+                       useFormReturn={useFormReturn}
+                       recaptcha={recaptcha}
+                       setBusy={setBusy}
+                       setKeywords={setKeywords}
+                       keywords={keywords}
+                       VIP={VIP}
+                       setPopupState={setPopupState}
+                       multiWordCallback={multiWordCallback}
+                       shortNameLocked={shortNameLocked}
+                       setPics={setPics}
+                       watchEveryListSync={watchEveryListSync}/>
                 }
 
                 {
@@ -714,7 +539,12 @@ export default function Home({feed, updateSession, VIP}) {
                             }
 
                             setBusy(true);
-                            const {file, sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts, allowLabels, mustLabels, viewers:_viewers} = data;
+                            const {file, sort, displayName, shortName, description,
+                                allowList:_allowList, allowListSync,
+                                blockList:_blockList, blockListSync,
+                                everyList:_everyList, everyListSync,
+                                viewers:_viewers, viewersSync,
+                                mustUrl, blockUrl, copy, highlight, sticky, posts, allowLabels, mustLabels, } = data;
                             const allowList = (_allowList || []).map(x => x.did);
                             const blockList = (_blockList || []).map(x => x.did);
                             const everyList = (_everyList || []).map(x => x.did);
@@ -731,7 +561,12 @@ export default function Home({feed, updateSession, VIP}) {
                             }
                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
                             const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, posts:posts? posts.map(x => x.uri) : [],
-                                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels, viewers};
+                                sort, displayName, shortName, description,
+                                allowList, allowListSync,
+                                blockList, blockListSync,
+                                everyList, everyListSync,
+                                viewers, viewersSync,
+                                mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels};
                             console.log(result);
 
                             return result;
@@ -758,6 +593,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                 switch (id) {
                                                     case "public": {
                                                         setValue("viewers", []);
+                                                        setValue("viewersSync", "");
                                                         break;
                                                     }
                                                     case "shared":
@@ -767,6 +603,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                             handle: session.user.handle,
                                                             displayName: session.user.name
                                                         }]);
+                                                        setValue("viewersSync", "");
                                                         break;
                                                     }
                                                 }
@@ -796,6 +633,8 @@ export default function Home({feed, updateSession, VIP}) {
                                         labelText="Viewers: Show feed ONLY to these users"
                                         placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                                         fieldName="viewers"
+                                        inputHidden={watchViewersSync}
+                                        disabled={watchViewersSync}
                                         handleItem={(item, value, onChange) => {
                                             if (Array.isArray(item)) {
                                                 for (const itm of item) {
@@ -825,7 +664,19 @@ export default function Home({feed, updateSession, VIP}) {
                                         }}
                                         useFormReturn={useFormReturn}
 
-                                        check={multiWordCallback("viewers", ["viewers"], true)}/>
+                                        check={multiWordCallback("viewers", ["viewers"], true)}>
+                                        <button
+                                            type="button"
+                                            className="bg-gray-100 border border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
+                                            onClick={() => setPopupState("sync_viewers")}>
+                                            <div className="font-semibold">Sync with List { !watchViewersSync && "Instead" }</div>
+                                            {
+                                                watchViewersSync && <div>
+                                                    {`https://bsky.app/profile/${watchViewersSync}`}
+                                                </div>
+                                            }
+                                        </button>
+                                    </InputMultiWord>
                                 }
                             </div>
                             <div className="bg-lime-100 p-2">
@@ -839,6 +690,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                 setValue("allowList", []);
                                                 setValue("blockList", []);
                                                 setValue("everyList", []);
+                                                setValue("everyListSync", "");
                                                 setValue("mustLabels", []);
                                                 setValue("allowLabels", SUPPORTED_CW_LABELS);
                                                 setSubMode("posts")
@@ -1209,6 +1061,8 @@ export default function Home({feed, updateSession, VIP}) {
                                         {
                                             id: "everyList",
                                             c: "bg-lime-100",
+                                            sync: "sync_everyList",
+                                            watch: watchEveryListSync,
                                             t: mode === "live"?
                                                 `Every List: Show all posts from these users (${getValues("everyList")?.length || 0})` :
                                                 `Get responses to posts from these users (${getValues("everyList")?.length || 0})`
@@ -1216,22 +1070,28 @@ export default function Home({feed, updateSession, VIP}) {
                                         mode === "live"? {
                                             id: "allowList",
                                             c: "bg-yellow-100",
+                                            sync: "sync_allowList",
+                                            watch: watchAllowListSync,
                                             t: `Only List: Only search posts from these Users, if empty, will search all users for keywords (${getValues("allowList")?.length || 0})`
                                         } : false,
                                         {
                                             id: "blockList",
                                             c: "bg-pink-100",
+                                            sync: "sync_blockList",
+                                            watch: watchBlockListSync,
                                             t: `Block List: Block all posts from these Users (${getValues("blockList")?.length || 0})`
                                         }]
                                         .filter(x => x)
                                         //@ts-ignore
-                                        .map(({id, t, c}) =>
+                                        .map(({id, t, c, sync, watch:watchSync}) =>
                                             <InputMultiWord
                                                 key={id}
                                                 className={clsx("border border-2 border-black p-2 rounded-xl", c)}
                                                 labelText={t}
                                                 placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                                                 fieldName={id}
+                                                inputHidden={watchSync}
+                                                disabled={watchSync}
                                                 handleItem={(item, value, onChange) => {
                                                     if (Array.isArray(item)) {
                                                         for (const itm of item) {
@@ -1260,7 +1120,19 @@ export default function Home({feed, updateSession, VIP}) {
                                                     return `${item.displayName} @${item.handle}`
                                                 }}
                                                 useFormReturn={useFormReturn}
-                                                check={multiWordCallback(id, ["everyList", "allowList", "blockList"], true)}/>
+                                                check={multiWordCallback(id, ["everyList", "allowList", "blockList"], true)}>
+                                                    <button
+                                                        type="button"
+                                                        className="bg-gray-100 border border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
+                                                        onClick={() => setPopupState(sync)}>
+                                                        <div className="font-semibold">Sync with List { !watchSync && "Instead" }</div>
+                                                        {
+                                                            watchSync && <div className="ml-2">
+                                                                {`https://bsky.app/profile/${watchSync}`}
+                                                            </div>
+                                                        }
+                                                    </button>
+                                            </InputMultiWord>
                                         )
                                 }
                                 {
@@ -1390,10 +1262,8 @@ export default function Home({feed, updateSession, VIP}) {
                                         {
                                             specialQuote && <KeywordsEdit bg="bg-blue-100" keywords={keywordsQuote} setKeywords={setKeywordsQuote} VIP={VIP}/>
                                         }
-
                                     </div>
                                 }
-
                             </div>
                         }
 
@@ -1455,16 +1325,31 @@ export default function Home({feed, updateSession, VIP}) {
                             <div className="w-full lg:flex justify-between gap-4">
                                 <button type="button"
                                         onClick={() => {
-                                            const {sort, displayName, shortName, description, allowList:_allowList, blockList:_blockList, everyList:_everyList, mustUrl, blockUrl, copy, highlight, sticky, posts, viewers:_viewers} = getValues();
-                                            const allowList = (_allowList || []).map(x => x.did);
-                                            const blockList = (_blockList || []).map(x => x.did);
-                                            const everyList = (_everyList || []).map(x => x.did);
-                                            const viewers = (_viewers || []).map(x => x.did);
+                                            let {
+                                                sort, displayName, shortName, description,
+                                                allowList, allowListSync,
+                                                blockList, blockListSync,
+                                                everyList, everyListSync,
+                                                viewers, viewersSync,
+                                                mustUrl, blockUrl, copy, highlight, sticky, posts,
+                                            } = getValues();
+
+                                            allowList = (allowList || []).map(x => x.did);
+                                            blockList = (blockList || []).map(x => x.did);
+                                            everyList = (everyList || []).map(x => x.did);
+                                            viewers = (viewers || []).map(x => x.did);
 
                                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
 
-                                            const result = {languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), keywordsQuote: keywordsQuote.map(x => compressKeyword(x)), copy, highlight, sticky, posts: posts? posts.map(x => x.uri) : [],
-                                                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, mode: modeText, viewers};
+                                            const result = {
+                                                languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), keywordsQuote: keywordsQuote.map(x => compressKeyword(x)), copy, highlight, sticky, posts: posts? posts.map(x => x.uri) : [],
+                                                sort, displayName, shortName, description,
+                                                allowList, allowListSync: allowListSync || "",
+                                                blockList, blockListSync: blockListSync || "",
+                                                everyList, everyListSync: everyListSync || "",
+                                                viewers, viewersSync: viewersSync || "",
+                                                mustUrl, blockUrl, mode: modeText,
+                                            };
                                             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
                                             const dlAnchorElem = document.createElement('a');
                                             dlAnchorElem.setAttribute("href",     dataStr     );
@@ -1500,13 +1385,28 @@ export default function Home({feed, updateSession, VIP}) {
                                                     let content = readerEvent.target.result as string; // this is the content!
                                                     console.log( content );
 
-                                                    let {sort, shortName, displayName, description, blockList, allowList, everyList, languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, mode:_mode, posts:_posts, mustLabels, allowLabels, viewers} = JSON.parse(content);
+                                                    let parsed = JSON.parse(content);
+
+                                                    let {
+                                                        sort, shortName, displayName, description,
+                                                        languages, postLevels, pics, mustUrl, blockUrl, keywordSetting,
+                                                        keywords, keywordsQuote, copy, highlight, sticky,
+                                                        mode:_mode, posts:_posts, mustLabels, allowLabels,
+                                                    } = parsed
+
                                                     allowLabels = allowLabels || SUPPORTED_CW_LABELS;
                                                     mustLabels = mustLabels || [];
-                                                    blockList = blockList || [];
-                                                    everyList = everyList || [];
-                                                    allowList = allowList || [];
-                                                    viewers = viewers || [];
+
+                                                    const captcha = await getCaptcha(recaptcha);
+                                                    console.log("parsed", JSON.stringify(parsed, null, 2));
+                                                    let {
+                                                        data:{
+                                                            blockList, blockListSync,
+                                                            allowList, allowListSync,
+                                                            everyList, everyListSync,
+                                                            viewers, viewersSync
+                                                        }
+                                                    } = await localPost("/check/lists_users", {captcha, data:parsed});
 
                                                     let mode = _mode;
                                                     let subMode = "";
@@ -1532,32 +1432,6 @@ export default function Home({feed, updateSession, VIP}) {
                                                         return;
                                                     }
 
-
-                                                    let result, skip = true;
-                                                    const actors = [... new Set([...blockList, ...allowList, ...everyList, ...viewers])];
-                                                    if (actors.length > 0) {
-                                                        skip = false;
-                                                        const captcha = await getCaptcha(recaptcha);
-                                                        result = await localGet("/check/user", {captcha, actors});
-                                                        console.log("RESULT GET ", result);
-                                                    }
-                                                    if (!skip && result && (result.status !== 200 || !Array.isArray(result.data))) {
-                                                        // fail
-                                                        console.log(result);
-                                                        alert("error recovering data");
-                                                        setBusy(false);
-                                                        return;
-                                                    } else {
-                                                        if (result) {
-                                                            console.log("loading", everyList);
-                                                            allowList = result.data.filter(x => allowList.find(y => y === x.did || y === x.handle));
-                                                            blockList = result.data.filter(x => blockList.find(y => y === x.did || y === x.handle));
-                                                            everyList = result.data.filter(x => everyList.find(y => y === x.did || y === x.handle));
-                                                            viewers = result.data.filter(x => viewers.find(y => y === x.did || y === x.handle));
-                                                            console.log("loaded", everyList);
-                                                        }
-                                                    }
-
                                                     if (mode === "posts") {
                                                         let posts = [];
                                                         if (_posts.length > 0) {
@@ -1569,7 +1443,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                         }
 
                                                         let o:any = {
-                                                            sort, displayName, description, copy: copy || [], highlight: highlight || "yes", posts, mustLabels, allowLabels,
+                                                            sort, displayName, description, copy: copy || [], highlight: highlight || "yes", posts, mustLabels, allowLabels, viewers, viewersSync,
                                                             shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || []
                                                         };
                                                         setMode(mode);
@@ -1636,8 +1510,8 @@ export default function Home({feed, updateSession, VIP}) {
 
                                                         let o:any = {
                                                             sort,displayName, description, copy: copy || [], highlight: highlight || "yes", mustLabels, allowLabels,
-                                                            allowList:allowList|| [], blockList:blockList||[], everyList:everyList||[],
-                                                            shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [], sticky, posts:[]
+                                                            allowList, allowListSync, blockList, blockListSync, everyList, everyListSync,
+                                                            shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [], sticky, posts:[], viewers, viewersSync,
                                                         };
                                                         setMode(mode);
                                                         if (subMode) {

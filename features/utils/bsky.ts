@@ -387,3 +387,201 @@ export const feedHasUserLike = async (agent, feedId, userId) => {
     } while (cursor);
     return false;
 }
+
+export const expandUserLists = async (feedData, agent, compress=false) => {
+    let {
+        allowList, allowListSync,
+        blockList, blockListSync,
+        everyList, everyListSync,
+        viewers, viewersSync,
+    } = feedData;
+    let listMap = new Map();
+    if (everyListSync) {
+        listMap.set(everyListSync, []);
+    }
+    if (blockListSync) {
+        listMap.set(blockListSync, []);
+    }
+    if (allowListSync) {
+        listMap.set(allowListSync, []);
+    }
+    if (viewersSync) {
+        listMap.set(viewersSync, []);
+    }
+
+    let dids = new Set();
+    for (const lyst of listMap.keys()) {
+        const did = lyst.split("/")[0];
+        dids.add(did);
+    }
+
+    let uris = new Map();
+    for (const did of [...dids]) {
+        let cursor:any = {};
+        do {
+            const {data:{records, cursor:newCursor}} = await agent.api.com.atproto.repo.listRecords(
+                {repo:did, collection:"app.bsky.graph.listitem", limit:100, ...cursor});
+            if (newCursor === cursor?.cursor) {
+                break;
+            }
+
+            records.forEach(item => {
+                const {uri, value:{list, subject}} = item;
+                uris.set(`${list}_${subject}`, uri);
+            });
+
+            if (!newCursor) {
+                cursor = null;
+            } else {
+                cursor = {cursor: newCursor};
+            }
+        } while (cursor);
+    }
+
+    for (const lyst of listMap.keys()) {
+        let cursor:any = {};
+        let users = new Map();
+        try {
+            const list = `at://${lyst.replace("/lists/", "/app.bsky.graph.list/")}`
+            do {
+                const params = {list, ...cursor};
+                const {data:{items, cursor:newCursor}} = await agent.api.app.bsky.graph.getList(params);
+                if (newCursor === cursor?.cursor) {
+                    break;
+                }
+
+                items.forEach(x => {
+                    const {subject:{did, handle, displayName}} = x;
+                    const key = `${list}_${did}`;
+                    users.set(did, {did, handle, displayName: displayName || "", uri: uris.get(key) || ""});
+                });
+                if (!newCursor) {
+                    cursor = null;
+                } else {
+                    cursor = {cursor: newCursor};
+                }
+            } while (cursor);
+            listMap.set(lyst, [...users.values()]);
+        } catch (e) {
+            console.log(e);
+        }
+    }
+
+    let _actors = new Set();
+    let updateEveryList = false, updateBlockList = false, updateAllowList = false, updateViewers = false;
+    const processList = (list) => {
+        if (Array.isArray(list) && list.length > 0) {
+            if (typeof list[0] === 'string' || list[0] instanceof String) {
+                // old version is flattened, keep this feature for recovery of OLD json style
+                list.forEach(x => _actors.add(x));
+                return list;
+            } else {
+                list.forEach(x => _actors.add(x.did));
+                return list.map(x => x.did);
+            }
+        }
+        return false;
+    }
+
+    if (everyListSync) {
+        const o = listMap.get(everyListSync);
+        if (o) {
+            if (compress) {
+                everyList = o.map(x => {return {did: x.did, uri:x.uri}});
+            } else {
+                everyList = o;
+            }
+        } else {
+            everyList = [];
+        }
+    } else if (everyList) {
+        everyList = processList(everyList);
+        if (everyList) {
+            updateEveryList = true;
+        }
+    }
+    if (blockListSync) {
+        const o = listMap.get(blockListSync);
+        if (o) {
+            if (compress) {
+                blockList = o.map(x => {return {did: x.did, uri:x.uri}});
+            } else {
+                blockList = o;
+            }
+        } else {
+            blockList = [];
+        }
+    } else if (blockList) {
+        blockList = processList(blockList);
+        if (blockList) {
+            updateBlockList = true;
+        }
+    }
+    if (allowListSync) {
+        const o = listMap.get(allowListSync);
+        if (o) {
+            if (compress) {
+                allowList = o.map(x => {return {did: x.did, uri:x.uri}});
+            } else {
+                allowList = o;
+            }
+        } else {
+            allowList = [];
+        }
+    } else if (allowList) {
+        allowList = processList(allowList);
+        if (allowList) {
+            updateAllowList = true;
+        }
+    }
+    if (viewersSync) {
+        const o = listMap.get(viewersSync);
+        if (o) {
+            if (compress) {
+                viewers = o.map(x => {return {did: x.did, uri:x.uri}});
+            } else {
+                viewers = o;
+            }
+        } else {
+            viewers = [];
+        }
+    } else if (viewers) {
+        viewers = processList(viewers);
+        if (viewers) {
+            updateViewers = true;
+        }
+    }
+
+    let actors = [..._actors];
+    if (actors.length > 0) {
+        const profiles = await getActorsInfo(agent, actors);
+        const convert = (container) => {
+            if (compress) {
+                return container.filter(x => profiles.find(y => y.did === x));
+            } else {
+                return profiles.filter(x => container.find(y => y === x.did));
+            }
+        }
+        if (updateAllowList) {
+            allowList = convert(allowList);
+        }
+        if (updateBlockList) {
+            blockList = convert(blockList);
+        }
+        if (updateEveryList) {
+            everyList = convert(everyList);
+        }
+        if (updateViewers) {
+            viewers = convert(viewers);
+        }
+    }
+
+    return {
+        ...feedData,
+        allowList, blockList, everyList, viewers,
+        everyListSync: everyListSync||"",
+        blockListSync: blockListSync||"",
+        allowListSync: allowListSync||"",
+        viewersSync: viewersSync||""
+    };
+}

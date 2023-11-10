@@ -13,7 +13,9 @@ export default function PopupWithInputText(
         validateCallback,
         yesCallback,
         placeholder="",
-        buttonClass=""
+        buttonClass="",
+        inputClass="",
+        popupClass=""
     }: {
         isOpen:boolean
         setOpen:(boolean) => void,
@@ -23,7 +25,9 @@ export default function PopupWithInputText(
         validateCallback: (string) => string,
         yesCallback: (v:string, callback:any) => void,
         placeholder?:string,
-        buttonClass?:string
+        buttonClass?:string,
+        inputClass?:string,
+        popupClass?:string
     }) {
 
     const ref = useRef(null);
@@ -35,7 +39,7 @@ export default function PopupWithInputText(
                   }}
                   preventManualEscape={false}
                   onCloseCallback={undefined}>
-        <div className="bg-white rounded-xl p-4">
+        <div className={clsx("bg-white rounded-xl p-4", popupClass)}>
             <div className="text-center space-y-4">
                 <Dialog.Title as="h3" className="text-lg leading-6 font-medium text-gray-900">
                     {title}
@@ -48,7 +52,7 @@ export default function PopupWithInputText(
                     </div>
                 }
 
-                <input placeholder={placeholder} ref={ref} className="w-full" type="text"
+                <input placeholder={placeholder} ref={ref} className={clsx("w-full rounded-xl", inputClass)} type="text"
                        onKeyDown={async (e) => {
                            if (e.key === "Enter") {
                                yesCallback(ref.current.value, (error) => {

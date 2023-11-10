@@ -36,10 +36,11 @@ export const handler = async (feedId, feedConfig, user, cursor, limit) => {
 export const generate = async(db, agent, feedId, feedConfig) => {
     try {
         // if successfully inserted, actually regenerate
-        let {allowList, keywords, keywordSetting, postLevels, pics, v, mode} = feedConfig;
+        let {allowList, keywords, keywordSetting, postLevels, pics, mode} = feedConfig;
         if (!Array.isArray(allowList) || allowList.length !== 1) {
             console.log("allowList issue", feedId, allowList);return;
         }
+
 
         const topLevel = postLevels.indexOf("top") >= 0;
         const replyLevel = postLevels.indexOf("reply") >= 0;
@@ -100,7 +101,7 @@ export const generate = async(db, agent, feedId, feedConfig) => {
         let posts;
         const now = new Date().toISOString();
         if (mode === "user-likes") {
-            const likes = await getUserLikes(agent, allowList[0]);
+            const likes = await getUserLikes(agent, allowList[0].did);
             posts = await getPostsInfo(agent, likes.map(x => x.post));
             posts = posts.reduce((acc, x) => {
                 const {uri, likeCount} = x;
@@ -111,7 +112,7 @@ export const generate = async(db, agent, feedId, feedConfig) => {
                 return acc;
             }, []);
         } else {
-            posts = await getAllPosts(agent, allowList[0], filter);
+            posts = await getAllPosts(agent, allowList[0].did, filter);
         }
 
         let commands:any = posts.map(x => {

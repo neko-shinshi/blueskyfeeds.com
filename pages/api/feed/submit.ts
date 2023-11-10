@@ -1,5 +1,12 @@
 import {userPromise} from "features/utils/apiUtils";
-import {getActorsInfo, editFeed, getCustomFeeds, isVIP, rebuildAgentFromToken, getPostInfo} from "features/utils/bsky";
+import {
+    editFeed,
+    getCustomFeeds,
+    isVIP,
+    rebuildAgentFromToken,
+    getPostInfo,
+    expandUserLists
+} from "features/utils/bsky";
 import {serializeFile} from "features/utils/fileUtils";
 import {
     FEED_MODES,
@@ -25,8 +32,16 @@ export default async function handler(req, res) {
             const agent = await rebuildAgentFromToken(token);
             if (!agent) {res.status(401).send(); return;}
 
-            let {image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, keywordsQuote:_keywordsQuote, mode, posts:_posts,
-                sort, displayName, shortName, description, allowList, blockList, everyList, mustUrl, blockUrl, copy, highlight, sticky, mustLabels, allowLabels, viewers} = req.body;
+            let body = await expandUserLists(req.body, agent, true);
+            let {
+                image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, keywordsQuote:_keywordsQuote, mode, posts:_posts,
+                sort, displayName, shortName, description, mustUrl, blockUrl, copy, highlight, sticky, mustLabels, allowLabels,
+                allowList, allowListSync,
+                blockList, blockListSync,
+                everyList, everyListSync,
+                viewers, viewersSync
+            } = body;
+
 
             mustLabels = mustLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
             allowLabels = allowLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
@@ -188,21 +203,8 @@ export default async function handler(req, res) {
                 res.status(400).send("missing urls"); return;
             }
 
-            let actors = new Set([...allowList, ...blockList, ...everyList]); // dids
-            if (actors.size !== allowList.length + blockList.length + everyList.length) {
-                console.log("duplicate actor");
-                res.status(400).send("duplicate"); return;
-            }
 
-            viewers.forEach(x => actors.add(x));
 
-            if (actors.size > 0) {
-                const allProfiles = await getActorsInfo(agent, [...actors]);
-                blockList = blockList.filter(x => allProfiles.find(y => y.did === x));
-                allowList = allowList.filter(x => allProfiles.find(y => y.did === x));
-                everyList = everyList.filter(x => allProfiles.find(y => y.did === x));
-                viewers = viewers.filter(x => allProfiles.find(y => y.did === x));
-            }
 
             let img = {};
             if (encoding) {
@@ -217,8 +219,14 @@ export default async function handler(req, res) {
                 // Update feed at Bluesky's side
                 await editFeed(agent, {img, shortName, displayName, description});
 
-                const o = {languages,  postLevels, pics, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, posts, allowLabels, mustLabels, viewers,
-                    sort, allowList, blockList, everyList, mustUrl, blockUrl, mode, updated: new Date().toISOString()};
+                const o = {
+                    languages,  postLevels, pics, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, posts, allowLabels, mustLabels,
+                    sort,
+                    viewers, viewersSync,
+                    allowList, allowListSync,
+                    blockList, blockListSync,
+                    everyList, everyListSync,
+                    mustUrl, blockUrl, mode, updated: new Date().toISOString()};
 
                 // Update current feed
                 await db.feeds.updateOne({_id},

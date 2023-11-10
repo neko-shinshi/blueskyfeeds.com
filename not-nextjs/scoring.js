@@ -24,9 +24,9 @@ const updateScores = async(db) => {
             let dbQuery = {};
             if (allowList.length > 0) {
                 // Only search posts from x users
-                dbQuery.author = {$in: allowList};
+                dbQuery.author = {$in: allowList.map(x => x.did)};
             } else if (blockList.length > 0) {
-                dbQuery.author = {$nin: blockList};
+                dbQuery.author = {$nin: blockList.map(x => x.did)};
             }
             const wantPics = pics.indexOf("pics") >= 0;
             const wantText = pics.indexOf("text") >= 0;
@@ -69,7 +69,7 @@ const updateScores = async(db) => {
             }
 
             if (everyList.length > 0) {
-                let authorQuery = {author: {$in: everyList}};
+                let authorQuery = {author: {$in: everyList.map(x => x.did)}};
                 if (dbQuery.lang) {
                     authorQuery.lang = dbQuery.lang;
                 }

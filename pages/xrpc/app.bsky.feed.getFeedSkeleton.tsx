@@ -26,10 +26,20 @@ const makeExpiryDate = (nowTs) => {
     return new Date(nowTs + MS_ONE_WEEK);
 }
 
+const listsToDids = (l) => {
+    let list = l || [];
+    return list.map(x => x.did);
+}
+
 const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, now) => {
     let feed=[], cursor="";
     let {allowList, blockList, everyList, keywordSetting,
         keywords, keywordsQuote, languages, pics, postLevels, sort, sticky, hideLikeSticky, allowLabels, mustLabels} = feedObj;
+
+    allowList = listsToDids(allowList);
+    blockList = listsToDids(blockList);
+    everyList = listsToDids(everyList);
+
     let dbQuery:any = {};
     if (allowList.length > 0) {
         // Only search posts from x users
@@ -67,11 +77,12 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
     if (languages.length > 0) {
         languages = languages.reduce((acc, x) => {
             acc.push(x);
-            acc.push(new RegExp(`^${x}-`));
+            if (x) {
+                acc.push(new RegExp(`^${x}-`));
+            }
             return acc;
         }, []);
         dbQuery.lang = {$in: languages};
-        console.log(languages);
     }
 
     let keywordSearch = [], fail=false;
@@ -217,16 +228,13 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
             const check = global.likeChecks.get(key);
             let hasLike;
             if (!check || now - check.then > MS_CHECK_DELAY) { // don't check for at least 30 min
-                console.log("feed", feedId, user, limit);
                 const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
                 if (agent) {
                     hasLike = await feedHasUserLike(agent, feedId, user);
-                    console.log("check", feedId, user, hasLike);
                     global.likeChecks.set(key, {then:now, hasLike});
                 }
             } else {
                 hasLike = check.hasLike;
-                console.log("cached", feedId, user, hasLike, limit);
             }
             if (hasLike) {
                 sticky = null;
@@ -335,7 +343,7 @@ export async function getServerSideProps({req, res, query}) {
         user = await getAndLogUser(req, db, feedId, now);
     }
 
-    if (Array.isArray(viewers) && viewers.length > 0 && viewers.indexOf(user) < 0) {
+    if (Array.isArray(viewers) && viewers.length > 0 && !viewers.find(x => x.did === user)) {
         res.write(JSON.stringify({feed:[], cursor:""}));
         res.end();
         return {props: {}};
@@ -353,7 +361,8 @@ export async function getServerSideProps({req, res, query}) {
         let {mode} = feedObj;
         if (mode === "responses") {
             let {everyList, blockList, sort, postLevels, pics} = feedObj;
-            blockList = blockList || [];
+            everyList = listsToDids(everyList);
+            blockList = listsToDids(blockList);
             const dbQuery:any = {author: {$nin: [...everyList, ...blockList]}, $or:[{quote: {$in:everyList}}, {replyParent:{$in:everyList}}, {replyRoot:{$in:everyList}}]}
             const skip = parseInt(queryCursor) || 0;
 

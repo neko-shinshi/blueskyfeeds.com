@@ -12,6 +12,7 @@ export default function InputMultiWord(
         labelText,
         placeHolder,
         disabled = false,
+        inputHidden=false,
         splitWithSpace = false,
         orderedList = true,
         fieldName,
@@ -26,6 +27,7 @@ export default function InputMultiWord(
         labelText:string,
         placeHolder:string,
         disabled?:boolean,
+        inputHidden?:boolean,
         splitWithSpace?:boolean,
         orderedList?:boolean
         fieldName:string,
@@ -74,9 +76,12 @@ export default function InputMultiWord(
 
     return (
         <div className={clsx("space-y-2", className)}>
-            <label htmlFor="about" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="about" className="block text-md font-bold text-gray-700">
                 {labelText}
             </label>
+            {
+                children && children
+            }
 
             <Controller
                 control={control}
@@ -98,50 +103,51 @@ export default function InputMultiWord(
 
                     return (
                         <div className="mt-1 space-y-2">
-                            <div className="mt-1 flex rounded-md shadow-sm">
-                                <div className="relative flex flex-grow items-stretch focus-within:z-10">
-                                    <input
-                                        ref={inputRef}
-                                        type="text"
-                                        autoComplete="off"
-                                        autoCapitalize={autoCapitalize}
-                                        className={clsx(disabled && "cursor-not-allowed bg-gray-300",
-                                            "focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-l-md sm:text-sm border-gray-400 border-2 p-2")}
-                                        placeholder={placeHolder}
-                                        disabled={disabled}
-                                        onChange={() => {}}
-                                        onFocus={() => {
-                                            clearErrors(fieldName);
-                                        }}
-                                        onKeyDown={(event) => {
-                                            const key = event.key;
-                                            if (key === "Enter" || (splitWithSpace && key === "Space" )) {
-                                                event.preventDefault();
-                                                event.stopPropagation();
-                                                submit();
-                                            }
-                                        }}/>
-                                </div>
-                                <button
-                                    type="button"
-                                    className="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                    onClick={() => {
-                                        submit();
-                                    }}
-                                >
-                                    <span>Add</span>
-                                </button>
-                            </div>
                             {
-                                dotObjectStringPath(errors, fieldName) && <div className="text-red-700">{dotObjectStringPath(errors, fieldName).message as unknown as string}</div>
-                            }
+                                !inputHidden && <>
+                                    <div className="mt-1 flex rounded-md shadow-sm">
+                                        <div className="relative flex flex-grow items-stretch focus-within:z-10">
+                                            <input
+                                                ref={inputRef}
+                                                type="text"
+                                                autoComplete="off"
+                                                autoCapitalize={autoCapitalize}
+                                                className={clsx(disabled && "cursor-not-allowed bg-gray-300",
+                                                    "focus:ring-indigo-500 focus:border-indigo-500 flex-1 block w-full rounded-l-md sm:text-sm border-gray-400 border-2 p-2")}
+                                                placeholder={placeHolder}
+                                                disabled={disabled}
+                                                onChange={() => {}}
+                                                onFocus={() => {
+                                                    clearErrors(fieldName);
+                                                }}
+                                                onKeyDown={(event) => {
+                                                    const key = event.key;
+                                                    if (key === "Enter" || (splitWithSpace && key === "Space" )) {
+                                                        event.preventDefault();
+                                                        event.stopPropagation();
+                                                        submit();
+                                                    }
+                                                }}/>
 
-                            {
-                                children && children
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                            onClick={() => {
+                                                submit();
+                                            }}
+                                        >
+                                            <span>Add</span>
+                                        </button>
+                                    </div>
+                                    {
+                                        dotObjectStringPath(errors, fieldName) && <div className="text-red-700">{dotObjectStringPath(errors, fieldName).message as unknown as string}</div>
+                                    }
+                                </>
                             }
 
                             <SortableWordBubbles
-                                value={value} orderedList={orderedList} disabled={disabled} valueModifier={valueModifier.current}
+                                value={value} orderedList={orderedList} clickable={!disabled} valueModifier={valueModifier.current}
                                 buttonCallback={(val, action) => {
                                     if (action === "x") {
                                         const toDelete = valueModifier.current(val);
