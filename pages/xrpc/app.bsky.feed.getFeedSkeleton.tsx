@@ -228,11 +228,11 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
             const check = global.likeChecks.get(key);
             let hasLike;
             if (!check || now - check.then > MS_CHECK_DELAY) { // don't check for at least 30 min
-                const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
+                /*const agent = await getAgent("bsky.social" , process.env.BLUESKY_USERNAME, process.env.BLUESKY_PASSWORD);
                 if (agent) {
                     hasLike = await feedHasUserLike(agent, feedId, user);
                     global.likeChecks.set(key, {then:now, hasLike});
-                }
+                }*/
             } else {
                 hasLike = check.hasLike;
             }
