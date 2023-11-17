@@ -45,7 +45,7 @@ export default async function handler(req, res) {
 
             const did = agent.session.did;
             const _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
-            wLogger.info({t:"submit", id:`${_id}`});
+            wLogger.info(`submit ${_id}`);
 
 
             mustLabels = mustLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
@@ -251,12 +251,12 @@ export default async function handler(req, res) {
 
                 if (mode === "user-likes" || mode === "user-posts") {
                     generateFeed(db, agent, _id, o).then(r => {
-                        wLogger.info({t:"generate", id:`${_id}`});
+                        wLogger.info(`generate ${_id}`);
                         // Nothing
                     });
                 }
 
-                wLogger.info({t:"submitted", id:`${_id}`});
+                wLogger.info(`submitted ${_id}`);
 
                 res.status(200).json({did});
             } catch (e) {

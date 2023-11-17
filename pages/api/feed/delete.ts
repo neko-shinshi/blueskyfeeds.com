@@ -17,7 +17,7 @@ export default async function handler(req, res) {
             db.allFeeds.deleteOne({_id: uri});
             db.feeds.deleteOne({_id: uri});
             res.status(200).send();
-            wLogger.info({t:"delete", id:`${uri}`});
+            wLogger.info(`delete ${uri}`);
 
             return;
         }
