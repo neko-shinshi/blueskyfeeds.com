@@ -1257,10 +1257,13 @@ export default function Home({feed, updateSession, VIP}) {
                                                            setKeywordsQuote([]);
                                                        }
                                                    }} />
-                                            <div className="font-bold">Add Quoted Post to Feed [Beta]</div>
+                                            <div className="font-bold">Add Posts with Quoted Keywords to Feed [Beta]</div>
                                         </div>
                                         {
-                                            specialQuote && <KeywordsEdit bg="bg-blue-100" keywords={keywordsQuote} setKeywords={setKeywordsQuote} VIP={VIP}/>
+                                            specialQuote && <>
+                                                <div className="bg-blue-100 p-2 font-bold text-xl">Quoted Keywords</div>
+                                                <KeywordsEdit bg="bg-blue-100" keywords={keywordsQuote} setKeywords={setKeywordsQuote} VIP={VIP}/>
+                                            </>
                                         }
                                     </div>
                                 }
