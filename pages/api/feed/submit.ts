@@ -42,6 +42,11 @@ export default async function handler(req, res) {
                 viewers, viewersSync
             } = body;
 
+            const did = agent.session.did;
+            const _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
+            console.log(`Edit ${_id}`);
+
+
 
             mustLabels = mustLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
             allowLabels = allowLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
@@ -98,8 +103,7 @@ export default async function handler(req, res) {
                 mode = "live";
             }
 
-            const did = agent.session.did;
-            const _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
+
 
             if (!isVIP(agent)) {
                 const feedIds = await getMyCustomFeedIds(agent, db);
