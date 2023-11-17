@@ -232,7 +232,6 @@ export const getAllPosts = async (agent, target, filter= (post) => true) => {
                 }
             });
             found += feed.length;
-            console.log("found", found);
             const diff = uris.size - oldSize;
             if (!newCursor || diff === 0) {
                 cursor = null;
@@ -244,7 +243,6 @@ export const getAllPosts = async (agent, target, filter= (post) => true) => {
         console.log(e);
     }
 
-    console.log("complete");
 
     return posts;
 }
@@ -468,7 +466,10 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
     }
 
     let _actors = new Set();
-    let updateEveryList = false, updateBlockList = false, updateAllowList = false, updateViewers = false;
+    let updateEveryList = false,
+        updateBlockList = false,
+        updateAllowList = false,
+        updateViewers = false;
     const processList = (list) => {
         if (Array.isArray(list) && list.length > 0) {
             if (typeof list[0] === 'string' || list[0] instanceof String) {
@@ -534,6 +535,7 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
             updateAllowList = true;
         }
     }
+
     if (viewersSync) {
         const o = listMap.get(viewersSync);
         if (o) {
@@ -557,7 +559,7 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
         const profiles = await getActorsInfo(agent, actors);
         const convert = (container) => {
             if (compress) {
-                return container.filter(x => profiles.find(y => y.did === x));
+                return profiles.filter(x => container.find(y => y === x.did)).map(x => {return {did: x.did}});
             } else {
                 return profiles.filter(x => container.find(y => y === x.did));
             }
@@ -578,7 +580,10 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
 
     return {
         ...feedData,
-        allowList, blockList, everyList, viewers,
+        allowList:allowList||[],
+        blockList:blockList||[],
+        everyList:everyList||[],
+        viewers:viewers||[],
         everyListSync: everyListSync||"",
         blockListSync: blockListSync||"",
         allowListSync: allowListSync||"",
