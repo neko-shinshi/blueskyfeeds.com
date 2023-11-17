@@ -1,6 +1,7 @@
 import {userPromise} from "features/utils/apiUtils";
 import {feedRKeyToUri} from "features/utils/feedUtils";
 import {deleteFeed, rebuildAgentFromToken} from "features/utils/bsky";
+import {wLogger} from "features/utils/logger";
 
 export default async function handler(req, res) {
     return userPromise(req, res, "DELETE", true, true,
@@ -16,6 +17,7 @@ export default async function handler(req, res) {
             db.allFeeds.deleteOne({_id: uri});
             db.feeds.deleteOne({_id: uri});
             res.status(200).send();
+            wLogger.info({t:"delete", id:`${uri}`});
 
             return;
         }

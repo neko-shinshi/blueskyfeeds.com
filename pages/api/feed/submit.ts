@@ -22,6 +22,7 @@ import {isValidDomain} from "features/utils/validationUtils";
 import {getMyCustomFeedIds} from "features/utils/feedUtils";
 import {compressKeyword} from "features/utils/objectUtils";
 import {generate as generateFeed} from "features/algos/user-feed";
+import {wLogger} from "features/utils/logger";
 
 // Regular users are restricted to MAX_FEEDS_PER_USER feeds and MAX_KEYWORDS_PER_FEED keywords
 
@@ -44,8 +45,7 @@ export default async function handler(req, res) {
 
             const did = agent.session.did;
             const _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
-            console.log(`Edit ${_id}`);
-
+            wLogger.info({t:"submit", id:`${_id}`});
 
 
             mustLabels = mustLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
@@ -251,9 +251,12 @@ export default async function handler(req, res) {
 
                 if (mode === "user-likes" || mode === "user-posts") {
                     generateFeed(db, agent, _id, o).then(r => {
+                        wLogger.info({t:"generate", id:`${_id}`});
                         // Nothing
                     });
                 }
+
+                wLogger.info({t:"submitted", id:`${_id}`});
 
                 res.status(200).json({did});
             } catch (e) {
