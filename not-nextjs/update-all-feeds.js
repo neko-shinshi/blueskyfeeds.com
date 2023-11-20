@@ -17,7 +17,7 @@ const updateAllFeeds = async (db) => {
         return acc;
     }, new Set())];
     const agent = await getAgent();
-    let feeds = [];
+    let feeds = new Map();
     for (const actor of users) {
         console.log("actor", actor);
         let cursor = {};
@@ -30,8 +30,12 @@ const updateAllFeeds = async (db) => {
                 if (newCursor === cursor?.cursor) {
                     break;
                 }
-
-                newFeeds.forEach(x => feeds.push(x));
+                let existing = feeds.get(actor);
+                if (!existing) {
+                    existing = [];
+                }
+                newFeeds.forEach(x => existing.push(x));
+                feeds.set(actor, existing);
 
                 if (!newCursor) {
                     cursor = null;
@@ -52,21 +56,26 @@ const updateAllFeeds = async (db) => {
         } while (cursor);
     }
 
-    if (feeds.length > 0) {
+    if (feeds.size > 0) {
         const ts = Math.floor(new Date().getTime()/1000);
-        const command = feeds.map(x => {
-            const {uri: _id, ...o} = x;
-            return {
-                replaceOne: {
-                    filter: {_id},
-                    replacement: {...o, ts},
-                    upsert: true
-                }
-            }
-        });
-        console.log(JSON.stringify(command));
+        let commands = [];
+        for (let [did, value] of feeds) {
+            const deleteOthers = {deleteMany: {filter: {"creator.did": did, _id: {$nin: value.map(x => x.uri)}}}};
+            commands.push(deleteOthers);
 
-        console.log(await db.allFeeds.bulkWrite(command, {ordered:false}));
+            for (const x of value) {
+                const {uri: _id, ...o} = x;
+                commands.push({
+                    replaceOne: {
+                        filter: {_id},
+                        replacement: {...o, ts},
+                        upsert: true
+                    }
+                });
+            }
+        }
+
+        console.log(await db.allFeeds.bulkWrite(commands, {ordered:false}));
         console.log(await db.allFeedsUpdate.deleteMany({_id: {$in: ids}}));
     }
 

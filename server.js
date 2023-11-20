@@ -55,7 +55,7 @@ app.prepare().then(async () => {
 
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             await updateScores(db);
-            Cron('*/12 * * * *', async () => {
+            Cron('*/13 * * * *', async () => {
                 const db = await connectToDatabase();
                 await updateScores(db);
             });
