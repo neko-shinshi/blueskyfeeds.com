@@ -8,6 +8,7 @@ const port = 9123;
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 const {updateScores} = require("./not-nextjs/scoring");
+const {updateAllFeeds} = require("./not-nextjs/update-all-feeds");
 const {connectToDatabase} = require("./features/utils/dbUtils");
 const { Cron } = require("croner");
 const {updateOnlyFollowing} = require("./features/algos/only-following");
@@ -55,12 +56,20 @@ app.prepare().then(async () => {
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             await updateScores(db);
             Cron('*/12 * * * *', async () => {
+                const db = await connectToDatabase();
                 await updateScores(db);
             });
 
             await updateOnlyFollowing(db);
             Cron('*/5 * * * *', async () => {
+                const db = await connectToDatabase();
                 await updateOnlyFollowing(db);
+            });
+
+            await updateAllFeeds(db);
+            Cron('*/7 * * * *', async () => {
+                const db = await connectToDatabase();
+                await updateAllFeeds(db);
             });
         }
     });

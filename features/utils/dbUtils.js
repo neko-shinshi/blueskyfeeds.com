@@ -18,6 +18,7 @@ const connectToDatabase = async () => {
             let db = client.db('blueskyfeeds');
             global.cachedDb = {
                 db: db,
+                allFeedsUpdate: db.collection("allFeedsUpdate"),
                 sticky: db.collection("sticky"),
                 sessions: db.collection("sessions"), // session keys for rollover
                 data: db.collection("data"),
