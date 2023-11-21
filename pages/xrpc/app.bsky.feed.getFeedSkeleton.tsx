@@ -96,6 +96,10 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
         keywordSearch.push({kwText:{$in: findKeywords, $nin: blockKeywords}});
     }
 
+    if (keywordSetting.indexOf("link") >= 0 && findKeywords.length > 0) {
+        keywordSearch.push({kwLink:{$in: findKeywords, $nin: blockKeywords}});
+    }
+
 
     switch (keywordSearch.length) {
         case 1: {
