@@ -35,7 +35,6 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
     let feed=[], cursor="";
     let {allowList, blockList, everyList, keywordSetting, mentionList,
         keywords, keywordsQuote, languages, pics, postLevels, sort, sticky, hideLikeSticky, allowLabels, mustLabels} = feedObj;
-    console.log(feedObj);
 
     allowList = listsToDids(allowList);
     blockList = listsToDids(blockList);
@@ -92,7 +91,6 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
         dbQuery.lang = {$in: languages};
     }
 
-    console.log("1", dbQuery);
     let keywordSearch = [];
     const findKeywords = keywords.filter(x => x.a).map(x => x.t);
     const blockKeywords = keywords.filter(x => !x.a).map(x => x.t);
@@ -144,7 +142,6 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
 
         if (findKeywords.length + findKeywordsQuote.length === 0) {
            // dbQuery = authorQuery; // Totally block not in everyList
-            console.log("empty");
             queryOrs.push(authorQuery);
         } else {
             //dbQuery = {$or: [authorQuery, dbQuery]};
@@ -152,10 +149,8 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
             queryOrs.push(dbQuery);
         }
     } else {
-        console.log("2")
         if (findKeywords.length === 0) {
             if (mentionList.length > 0) {
-                console.log("3x");
                 queryOrs.push(dbQuery);
             } else {
                 if (!searchQuoteKeywords) {
@@ -164,7 +159,6 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
             }
         } else {
             queryOrs.push(dbQuery);
-            console.log("3a")
         }
     }
 
@@ -180,7 +174,6 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
         dbQuery = {$or: queryOrs};
     }
 
-    console.log(dbQuery);
 
     const sortMethod = getSortMethod(sort);
     if (queryCursor) {
