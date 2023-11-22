@@ -35,11 +35,14 @@ export default async function handler(req, res) {
 
             let body = await expandUserLists(req.body, agent, true);
             let {
-                image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, keywords:_keywords, keywordsQuote:_keywordsQuote, mode, posts:_posts,
+                image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting,
+                keywords:_keywords, keywordsQuote:_keywordsQuote, keywordsLink:_keywordsLink, // TODO handle keywords in links
+                mode, posts:_posts,
                 sort, displayName, shortName, description, mustUrl, blockUrl, copy, highlight, sticky, mustLabels, allowLabels,
                 allowList, allowListSync,
                 blockList, blockListSync,
                 everyList, everyListSync,
+                mentionList, mentionListSync,
                 viewers, viewersSync
             } = body;
 
@@ -230,6 +233,7 @@ export default async function handler(req, res) {
                     allowList, allowListSync,
                     blockList, blockListSync,
                     everyList, everyListSync,
+                    mentionList, mentionListSync,
                     mustUrl, blockUrl, mode, updated: new Date().toISOString()};
 
                 // Update current feed

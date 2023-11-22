@@ -390,6 +390,7 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
     let {
         allowList, allowListSync,
         blockList, blockListSync,
+        mentionList, mentionListSync,
         everyList, everyListSync,
         viewers, viewersSync,
     } = feedData;
@@ -405,6 +406,9 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
     }
     if (viewersSync) {
         listMap.set(viewersSync, []);
+    }
+    if (mentionListSync) {
+        listMap.set(mentionListSync, []);
     }
 
     let dids = new Set();
@@ -469,6 +473,7 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
     let updateEveryList = false,
         updateBlockList = false,
         updateAllowList = false,
+        updateMentionList = false,
         updateViewers = false;
     const processList = (list) => {
         if (Array.isArray(list) && list.length > 0) {
@@ -536,6 +541,24 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
         }
     }
 
+    if (mentionListSync) {
+        const o = listMap.get(mentionListSync);
+        if (o) {
+            if (compress) {
+                mentionList = o.map(x => {return {did: x.did, uri:x.uri}});
+            } else {
+                mentionList = o;
+            }
+        } else {
+            mentionList = [];
+        }
+    } else if (mentionList) {
+        mentionList = processList(mentionList);
+        if (mentionList) {
+            updateMentionList = true;
+        }
+    }
+
     if (viewersSync) {
         const o = listMap.get(viewersSync);
         if (o) {
@@ -567,6 +590,9 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
         if (updateAllowList) {
             allowList = convert(allowList);
         }
+        if (updateMentionList) {
+            mentionList = convert(mentionList);
+        }
         if (updateBlockList) {
             blockList = convert(blockList);
         }
@@ -582,11 +608,13 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
         ...feedData,
         allowList:allowList||[],
         blockList:blockList||[],
+        mentionList:mentionList||[],
         everyList:everyList||[],
         viewers:viewers||[],
         everyListSync: everyListSync||"",
         blockListSync: blockListSync||"",
         allowListSync: allowListSync||"",
+        mentionListSync: mentionListSync || "",
         viewersSync: viewersSync||""
     };
 }

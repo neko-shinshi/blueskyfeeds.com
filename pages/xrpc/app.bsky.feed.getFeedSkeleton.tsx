@@ -33,12 +33,14 @@ const listsToDids = (l) => {
 
 const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, now) => {
     let feed=[], cursor="";
-    let {allowList, blockList, everyList, keywordSetting,
+    let {allowList, blockList, everyList, keywordSetting, mentionList,
         keywords, keywordsQuote, languages, pics, postLevels, sort, sticky, hideLikeSticky, allowLabels, mustLabels} = feedObj;
+    console.log(feedObj);
 
     allowList = listsToDids(allowList);
     blockList = listsToDids(blockList);
     everyList = listsToDids(everyList);
+    mentionList = listsToDids(mentionList);
 
     let dbQuery:any = {};
     if (allowList.length > 0) {
@@ -47,6 +49,11 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
     } else if (blockList.length > 0) {
         dbQuery.author = {$nin: blockList};
     }
+
+    if (mentionList.length > 0) {
+        dbQuery.mentions = {$in: mentionList};
+    }
+
     const wantPics = pics.indexOf("pics") >= 0;
     const wantText = pics.indexOf("text") >= 0;
     if (!(wantPics && wantText)) {
@@ -85,7 +92,8 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
         dbQuery.lang = {$in: languages};
     }
 
-    let keywordSearch = [], fail=false;
+    console.log("1", dbQuery);
+    let keywordSearch = [];
     const findKeywords = keywords.filter(x => x.a).map(x => x.t);
     const blockKeywords = keywords.filter(x => !x.a).map(x => x.t);
     if (keywordSetting.indexOf("alt") >= 0 && findKeywords.length > 0) {
@@ -136,6 +144,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
 
         if (findKeywords.length + findKeywordsQuote.length === 0) {
            // dbQuery = authorQuery; // Totally block not in everyList
+            console.log("empty");
             queryOrs.push(authorQuery);
         } else {
             //dbQuery = {$or: [authorQuery, dbQuery]};
@@ -143,13 +152,19 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
             queryOrs.push(dbQuery);
         }
     } else {
+        console.log("2")
         if (findKeywords.length === 0) {
-            if (!searchQuoteKeywords) {
-                fail = true;
-                sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3k4ematehei27";
-            } // else, ignore all other settings and just look for quote
+            if (mentionList.length > 0) {
+                console.log("3x");
+                queryOrs.push(dbQuery);
+            } else {
+                if (!searchQuoteKeywords) {
+                    return {feed:[{post: "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3k4ematehei27"}], cursor:""};
+                } // else, ignore all other settings and just look for quote
+            }
         } else {
             queryOrs.push(dbQuery);
+            console.log("3a")
         }
     }
 
@@ -165,8 +180,10 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
         dbQuery = {$or: queryOrs};
     }
 
+    console.log(dbQuery);
+
     const sortMethod = getSortMethod(sort);
-    if (queryCursor && !fail) {
+    if (queryCursor) {
         if (sort === "new") {
             try {
                 let [_postId, tss] = queryCursor.split("::");

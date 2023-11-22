@@ -45,6 +45,7 @@ import {compressedToJsonString} from "features/utils/textAndKeywords";
 import PostsEdit from "features/components/specific/PostsEdit";
 import PopupWithAddPost from "features/components/PopupWithAddPost";
 import EditFeedWizard from "features/components/specific/EditFeedWizard";
+import InputUserFilter from "features/input/InputUserFilter";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -130,7 +131,7 @@ export default function Home({feed, updateSession, VIP}) {
     const [postLevels, setPostLevels] = useState<string[]>([]);
     const [keywordSetting, setKeywordSetting] = useState<string[]>([]);
     const [keywords, setKeywords] = useState<FeedKeyword[]>([]);
-    const [popupState, setPopupState] = useState<"delete"|"edit_sticky"|"edit_user"|"sync_everyList"|"sync_blockList"|"sync_allowList"|"sync_viewers"|false>(false);
+    const [popupState, setPopupState] = useState<"delete"|"edit_sticky"|"edit_user"|"sync_everyList"|"sync_blockList"|"sync_mentionList"|"sync_allowList"|"sync_viewers"|false>(false);
     const [pics, setPics] = useState<string[]>([]);
     const [busy, setBusy] = useState(false);
 
@@ -142,6 +143,9 @@ export default function Home({feed, updateSession, VIP}) {
     const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"wizard-posts"|"edit"|"done">(feed? "edit" : "wizard");
     const [specialQuote, setSpecialQuote] = useState(false);
     const [keywordsQuote, setKeywordsQuote] = useState<string[]>([]);
+
+    const [liveMentionList, setLiveMentionList] = useState(false);
+    const [liveAllowList, setLiveAllowList] = useState(false);
 
     const recaptcha = useRecaptcha();
 
@@ -159,10 +163,12 @@ export default function Home({feed, updateSession, VIP}) {
 
     const watchSticky = watch("sticky");
     const watchAllow = watch("allowList");
+    const watchMention = watch("mentionList");
     const watchAllowLabels = watch("allowLabels");
     const watchMustLabels = watch("mustLabels");
     const watchEveryListSync = watch("everyListSync");
     const watchAllowListSync = watch("allowListSync");
+    const watchMentionListSync = watch("mentionListSync");
     const watchBlockListSync = watch("blockListSync");
     const watchViewersSync = watch("viewersSync");
 
@@ -177,7 +183,7 @@ export default function Home({feed, updateSession, VIP}) {
 
     useEffect(() => {
         if (!feed) {
-            reset({sticky:"", sort:"new", allowList:[], blockList:[], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes", posts:[], allowLabels:SUPPORTED_CW_LABELS, mustLabels:[], viewers:[]});
+            reset({sticky:"", sort:"new", allowList:[], blockList:[], mentionList: [], everyList:[], mustUrl:[], blockUrl:[], copy:[], highlight: "yes", posts:[], allowLabels:SUPPORTED_CW_LABELS, mustLabels:[], viewers:[]});
             setMode("live");
             setLanguages([]);
             setPrivacy("public");
@@ -189,11 +195,19 @@ export default function Home({feed, updateSession, VIP}) {
             let {avatar, sort, uri, displayName, description,
                 blockList, blockListSync,
                 allowList, allowListSync,
+                mentionList, mentionListSync,
                 everyList, everyListSync,
                 languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords,
                 copy, highlight, mode, sticky, posts, allowLabels, mustLabels, keywordsQuote,
                 viewers, viewersSync,
             } = feed;
+
+            if (allowList.length > 0 || allowListSync) {
+                setLiveAllowList(true);
+            }
+            if (mentionList.length > 0 || mentionListSync) {
+                setLiveMentionList(true);
+            }
 
             let stickyUri;
             if (sticky) {
@@ -222,7 +236,12 @@ export default function Home({feed, updateSession, VIP}) {
             let o:any = {
                 sticky:stickyUri || "", allowLabels: allowLabels || SUPPORTED_CW_LABELS, mustLabels: mustLabels || [],
                 sort,displayName, description, copy: copy || [], highlight: highlight || "yes", viewers, viewersSync,
-                shortName: uri.split("/").at(-1), blockList, blockListSync, allowList, allowListSync, everyList, everyListSync, mustUrl: mustUrl || [], blockUrl: blockUrl || [], posts: posts || [],
+                shortName: uri.split("/").at(-1),
+                blockList, blockListSync,
+                allowList, allowListSync,
+                mentionList, mentionListSync,
+                everyList, everyListSync,
+                mustUrl: mustUrl || [], blockUrl: blockUrl || [], posts: posts || [],
             };
 
             if (avatar) {
@@ -381,7 +400,11 @@ export default function Home({feed, updateSession, VIP}) {
             }}/>
 
         <PopupWithInputText
-            isOpen={popupState === "sync_allowList" || popupState === "sync_blockList" || popupState === "sync_everyList" || popupState === "sync_viewers"}
+            isOpen={popupState === "sync_allowList" ||
+                popupState === "sync_blockList" ||
+                popupState === "sync_mentionList" ||
+                popupState === "sync_everyList" ||
+                popupState === "sync_viewers"}
             setOpen={setPopupState}
             title="Set List"
             message="Leave blank to remove"
@@ -533,22 +556,35 @@ export default function Home({feed, updateSession, VIP}) {
                         recaptcha={recaptcha}
                         useFormReturn={useFormReturn}
                         cleanUpData={async (data) => {
-                            if (mode === "live" && keywords.length + keywordsQuote.length === 0 && (getValues("everyList") || []).length === 0) {
+                            if (mode === "live" && keywords.length + keywordsQuote.length === 0 && (getValues("everyList") || []).length === 0 && getValues("mentionList").length === 0) {
                                 alert("Your live data feed has no keywords and no everyList. Please remember to tap 'Add' after typing the desired keyword")
                                 return false;
                             }
 
                             setBusy(true);
-                            const {file, sort, displayName, shortName, description,
+                            let {file, sort, displayName, shortName, description,
                                 allowList:_allowList, allowListSync,
                                 blockList:_blockList, blockListSync,
+                                mentionList: _mentionList, mentionListSync,
                                 everyList:_everyList, everyListSync,
                                 viewers:_viewers, viewersSync,
                                 mustUrl, blockUrl, copy, highlight, sticky, posts, allowLabels, mustLabels, } = data;
-                            const allowList = (_allowList || []).map(x => x.did);
                             const blockList = (_blockList || []).map(x => x.did);
                             const everyList = (_everyList || []).map(x => x.did);
                             const viewers = (_viewers || []).map(x => x.did);
+
+                            let mentionList = (_mentionList || []).map(x => x.did);
+                            let allowList = (_allowList || []).map(x => x.did);
+
+                            if (!liveAllowList) {
+                                allowList = [];
+                                allowListSync = "";
+                            }
+                            if (!liveMentionList) {
+                                mentionList = [];
+                                mentionListSync = "";
+                            }
+
                             let imageObj:any = {};
                             if (file) {
                                 const {type:encoding, changed, url} = file;
@@ -564,6 +600,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 sort, displayName, shortName, description,
                                 allowList, allowListSync,
                                 blockList, blockListSync,
+                                mentionList, mentionListSync,
                                 everyList, everyListSync,
                                 viewers, viewersSync,
                                 mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels};
@@ -688,12 +725,18 @@ export default function Home({feed, updateSession, VIP}) {
                                                 setMode(id);
                                                 setValue("posts", []);
                                                 setValue("allowList", []);
+                                                setValue("allowListSync", "");
                                                 setValue("blockList", []);
+                                                setValue("blockListSync", "");
+                                                setValue("mentionList", []);
+                                                setValue("mentionListSync", "");
                                                 setValue("everyList", []);
                                                 setValue("everyListSync", "");
                                                 setValue("mustLabels", []);
                                                 setValue("allowLabels", SUPPORTED_CW_LABELS);
-                                                setSubMode("posts")
+                                                setSubMode("posts");
+                                                setLiveAllowList(false);
+                                                setLiveMentionList(false);
                                                 switch (id) {
                                                     case "responses":
                                                     case "user": {
@@ -1056,75 +1099,71 @@ export default function Home({feed, updateSession, VIP}) {
                             <div className="bg-white p-2 space-y-2">
                                 <div className="text-lg font-bold">User Filters</div>
                                 {
-                                    (mode === "live" || mode === "responses") &&
-                                    [
+                                    (mode === "live" || mode === "responses") && <>
+                                    <div>
                                         {
-                                            id: "everyList",
-                                            c: "bg-lime-100",
-                                            sync: "sync_everyList",
-                                            watch: watchEveryListSync,
-                                            t: mode === "live"?
-                                                `Every List: Show all posts from these users (${getValues("everyList")?.length || 0})` :
-                                                `Get responses to posts from these users (${getValues("everyList")?.length || 0})`
-                                        },
-                                        mode === "live"? {
-                                            id: "allowList",
-                                            c: "bg-yellow-100",
-                                            sync: "sync_allowList",
-                                            watch: watchAllowListSync,
-                                            t: `Only List: Only search posts from these Users, if empty, will search all users for keywords (${getValues("allowList")?.length || 0})`
-                                        } : false,
-                                        {
-                                            id: "blockList",
-                                            c: "bg-pink-100",
-                                            sync: "sync_blockList",
-                                            watch: watchBlockListSync,
-                                            t: `Block List: Block all posts from these Users (${getValues("blockList")?.length || 0})`
-                                        }]
-                                        .filter(x => x)
-                                        //@ts-ignore
-                                        .map(({id, t, c, sync, watch:watchSync}) =>
-                                            <InputMultiWord
-                                                key={id}
-                                                className={clsx("border border-2 border-black p-2 rounded-xl", c)}
-                                                labelText={t}
-                                                placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
-                                                fieldName={id}
-                                                inputHidden={watchSync}
-                                                disabled={watchSync}
-                                                handleItem={(item, value, onChange) => {
-                                                    if (Array.isArray(item)) {
-                                                        for (const itm of item) {
-                                                            let add = true;
-                                                            for (const l of ["everyList", "allowList", "blockList"]) {
-                                                                const ll = getValues(l) || [];
-                                                                if (ll.find(x => x.did === itm.did)) {
-                                                                    add = false;
-                                                                    break;
+                                            [
+                                                {
+                                                    id: "everyList",
+                                                    c: "bg-lime-100",
+                                                    sync: "sync_everyList",
+                                                    watch: watchEveryListSync,
+                                                    t: mode === "live"?
+                                                        `Every List: Show all posts from these users without further filtering (${getValues("everyList")?.length || 0})` :
+                                                        `Get responses to posts from these users (${getValues("everyList")?.length || 0})`
+                                                },
+                                                {
+                                                    id: "blockList",
+                                                    c: "bg-pink-100",
+                                                    sync: "sync_blockList",
+                                                    watch: watchBlockListSync,
+                                                    t: `Block List: Block all posts from these Users (${getValues("blockList")?.length || 0})`
+                                                }
+                                            ].map(({id, t, c, sync, watch:watchSync}) =>
+                                                <InputMultiWord
+                                                    key={id}
+                                                    className={clsx("border border-2 border-black p-2 rounded-xl", c)}
+                                                    labelText={t}
+                                                    placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
+                                                    fieldName={id}
+                                                    inputHidden={watchSync}
+                                                    disabled={watchSync}
+                                                    handleItem={(item, value, onChange) => {
+                                                        if (Array.isArray(item)) {
+                                                            for (const itm of item) {
+                                                                let add = true;
+                                                                for (const l of ["everyList", "blockList"]) {
+                                                                    const ll = getValues(l) || [];
+                                                                    if (ll.find(x => x.did === itm.did)) {
+                                                                        add = false;
+                                                                        break;
+                                                                    }
+                                                                }
+                                                                if (add) {
+                                                                    value.push(itm);
                                                                 }
                                                             }
-                                                            if (add) {
-                                                                value.push(itm);
-                                                            }
+                                                        } else {
+                                                            value.push(item);
                                                         }
-                                                    } else {
-                                                        value.push(item);
-                                                    }
 
-                                                    value.sort((a, b) => {
-                                                        return a.handle.localeCompare(b.handle);
-                                                    });
-                                                    onChange(value);
-                                                }}
-                                                valueModifier={item => {
-                                                    return `${item.displayName} @${item.handle}`
-                                                }}
-                                                useFormReturn={useFormReturn}
-                                                check={multiWordCallback(id, ["everyList", "allowList", "blockList"], true)}>
+                                                        value.sort((a, b) => {
+                                                            return a.handle.localeCompare(b.handle);
+                                                        });
+                                                        onChange(value);
+                                                    }}
+                                                    valueModifier={item => {
+                                                        return `${item.displayName} @${item.handle}`
+                                                    }}
+                                                    useFormReturn={useFormReturn}
+                                                    check={multiWordCallback(id, ["everyList", "blockList"], true)}>
                                                     <button
                                                         type="button"
                                                         className="bg-gray-100 border border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
-                                                        onClick={() => setPopupState(sync)}>
+                                                        onClick={() => {
+                                                            // @ts-ignore
+                                                            setPopupState(sync)
+                                                        }}>
                                                         <div className="font-semibold">Sync with List { !watchSync && "Instead" }</div>
                                                         {
                                                             watchSync && <div className="ml-2">
@@ -1132,8 +1171,12 @@ export default function Home({feed, updateSession, VIP}) {
                                                             </div>
                                                         }
                                                     </button>
-                                            </InputMultiWord>
-                                        )
+                                                </InputMultiWord>
+                                            )
+                                        }
+                                    </div>
+
+                                    </>
                                 }
                                 {
                                     mode === "user" &&
@@ -1181,6 +1224,103 @@ export default function Home({feed, updateSession, VIP}) {
 
                                         }
                                     </div>
+                                }
+                            </div>
+                        }
+
+
+                        {
+                            mode === "live" && <div className="bg-white p-2 space-y-2">
+                                <div className="text-lg font-bold">Other User Filters</div>
+                                <div className="flex place-items-center">
+                                    <div className="flex place-items-center gap-1 hover:bg-gray-300 p-1"
+                                         onClick={() => {
+                                             if (liveAllowList || liveMentionList) {
+                                                 setLiveAllowList(false);
+                                                 setLiveMentionList(false);
+                                             } else {
+                                                 setLiveAllowList(true);
+                                                 setLiveMentionList(true);
+                                             }
+                                         }}
+                                    >
+                                        <input type="checkbox"
+                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                               onChange={() => {}}
+                                               onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   if (liveAllowList || liveMentionList) {
+                                                       setLiveAllowList(false);
+                                                       setLiveMentionList(false);
+                                                   } else {
+                                                       setLiveAllowList(true);
+                                                       setLiveMentionList(true);
+                                                   }
+                                               }}
+                                               checked={!liveAllowList && !liveMentionList}
+                                        />
+                                        All Posts
+                                    </div>
+                                    <div className="flex place-items-center gap-1 hover:bg-gray-300 p-1"
+                                         onClick={() => {
+                                             setLiveMentionList(!liveMentionList);
+                                         }}
+                                    >
+                                        <input type="checkbox"
+                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                               onChange={() => {}}
+                                               onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   setLiveMentionList(!liveMentionList);
+                                               }}
+                                               checked={liveMentionList}
+                                        />
+                                        Posts with @Mention
+                                    </div>
+                                    <div className="flex place-items-center gap-1 hover:bg-gray-300 p-1"
+                                         onClick={() => {
+                                             setLiveAllowList(!liveAllowList);
+                                         }}
+                                    >
+                                        <input type="checkbox"
+                                               className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                               onChange={() => {}}
+                                               onClick={(e) => {
+                                                   e.stopPropagation();
+                                                   setLiveAllowList(!liveAllowList);
+                                               }}
+                                               checked={liveAllowList}
+                                        />
+                                        Posts from list of Allowed Users
+                                    </div>
+                                </div>
+
+                                {
+                                    liveMentionList &&
+                                    <InputUserFilter
+                                        labelText={`Mention List: Search only posts that @mention Users in this list (${getValues("mentionList")?.length || 0})`}
+                                        className="bg-indigo-100"
+                                        fieldName="mentionList"
+                                        watchSync={watchMentionListSync}
+                                        deduplicateArr={ ["mentionList"]}
+                                        useFormReturn={useFormReturn}
+                                        check={multiWordCallback}
+                                        syncClick={() => setPopupState("sync_mentionList")}
+                                    />
+                                }
+
+                                {
+                                    liveAllowList &&
+                                    <InputUserFilter
+                                        labelText={`Only List: Search posts from these Users, leave empty to search all users for keywords (${getValues("allowList")?.length || 0})`}
+                                        className="bg-yellow-100"
+                                        fieldName="allowList"
+                                        watchSync={watchAllowListSync}
+                                        deduplicateArr={ ["allowList"]}
+                                        useFormReturn={useFormReturn}
+                                        check={multiWordCallback}
+                                        syncClick={() => setPopupState("sync_allowList")}
+                                    />
                                 }
                             </div>
                         }
@@ -1331,6 +1471,7 @@ export default function Home({feed, updateSession, VIP}) {
                                             let {
                                                 sort, displayName, shortName, description,
                                                 allowList, allowListSync,
+                                                mentionList, mentionListSync,
                                                 blockList, blockListSync,
                                                 everyList, everyListSync,
                                                 viewers, viewersSync,
@@ -1338,9 +1479,19 @@ export default function Home({feed, updateSession, VIP}) {
                                             } = getValues();
 
                                             allowList = (allowList || []).map(x => x.did);
+                                            mentionList = (mentionList || []).map(x => x.did);
                                             blockList = (blockList || []).map(x => x.did);
                                             everyList = (everyList || []).map(x => x.did);
                                             viewers = (viewers || []).map(x => x.did);
+
+                                            if (!liveAllowList) {
+                                                allowList = [];
+                                                allowListSync = "";
+                                            }
+                                            if (!liveMentionList) {
+                                                mentionList = [];
+                                                mentionListSync = "";
+                                            }
 
                                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
 
@@ -1348,6 +1499,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                 languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), keywordsQuote: keywordsQuote.map(x => compressKeyword(x)), copy, highlight, sticky, posts: posts? posts.map(x => x.uri) : [],
                                                 sort, displayName, shortName, description,
                                                 allowList, allowListSync: allowListSync || "",
+                                                mentionList, mentionListSync: mentionListSync || "",
                                                 blockList, blockListSync: blockListSync || "",
                                                 everyList, everyListSync: everyListSync || "",
                                                 viewers, viewersSync: viewersSync || "",
@@ -1406,10 +1558,15 @@ export default function Home({feed, updateSession, VIP}) {
                                                         data:{
                                                             blockList, blockListSync,
                                                             allowList, allowListSync,
+                                                            mentionList, mentionListSync,
                                                             everyList, everyListSync,
                                                             viewers, viewersSync
                                                         }
                                                     } = await localPost("/check/lists_users", {captcha, data:parsed});
+
+
+
+
 
                                                     let mode = _mode;
                                                     let subMode = "";
@@ -1434,6 +1591,9 @@ export default function Home({feed, updateSession, VIP}) {
                                                         alert("Invalid posts or no posts");
                                                         return;
                                                     }
+
+                                                    setLiveMentionList(mentionListSync || mentionList.length > 0);
+                                                    setLiveAllowList(allowListSync || allowList.length > 0);
 
                                                     if (mode === "posts") {
                                                         let posts = [];
@@ -1513,14 +1673,21 @@ export default function Home({feed, updateSession, VIP}) {
 
                                                         let o:any = {
                                                             sort,displayName, description, copy: copy || [], highlight: highlight || "yes", mustLabels, allowLabels,
-                                                            allowList, allowListSync, blockList, blockListSync, everyList, everyListSync,
+                                                            allowList, allowListSync,
+                                                            blockList, blockListSync,
+                                                            mentionList, mentionListSync,
+                                                            everyList, everyListSync,
                                                             shortName,  mustUrl: mustUrl || [], blockUrl: blockUrl || [], sticky, posts:[], viewers, viewersSync,
                                                         };
                                                         setMode(mode);
+
                                                         if (subMode) {
                                                             // @ts-ignore
                                                             setSubMode(subMode);
                                                         }
+                                                        
+                                                        setLiveAllowList(allowList.length > 0);
+                                                        setLiveMentionList(mentionList.length > 0);
 
                                                         setLanguages(languages || []);
                                                         setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
