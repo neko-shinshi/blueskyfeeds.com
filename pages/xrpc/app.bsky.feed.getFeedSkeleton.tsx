@@ -41,6 +41,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
     everyList = listsToDids(everyList);
     mentionList = listsToDids(mentionList);
 
+
     let dbQuery:any = {};
     if (allowList.length > 0) {
         // Only search posts from x users
@@ -108,11 +109,15 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
 
 
     switch (keywordSearch.length) {
+        case 0: {
+            break;
+        }
         case 1: {
             dbQuery = {...dbQuery, ...keywordSearch[0]};
             break;
         }
-        case 2: {
+        case 2:
+        case 3: {
             dbQuery = {...dbQuery, $or:keywordSearch};
             break;
         }
