@@ -15,6 +15,7 @@ import {getLoggedInData} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
 import {isVIP} from "features/utils/bsky";
 import {MAX_FEEDS_PER_USER} from "features/utils/constants";
+import PageFooter from "features/components/PageFooter";
 
 export async function getServerSideProps({req, res}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -100,6 +101,7 @@ export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
             !session && <div className="flex flex-col place-items-center gap-4">
                 <PageHeader title={title} description={description} />
                 <FormSignIn/>
+                <PageFooter/>
             </div>
         }
 
@@ -127,6 +129,7 @@ export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
                         )
                     }
                 </div>
+                <PageFooter/>
             </div>
         }
     </>

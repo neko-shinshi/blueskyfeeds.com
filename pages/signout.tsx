@@ -2,6 +2,7 @@ import {useEffect} from "react";
 import HeadExtended from "features/layout/HeadExtended";
 import PageHeader from "features/components/PageHeader";
 import {signOut} from "next-auth/react";
+import PageFooter from "features/components/PageFooter";
 
 export default function Home({}) {
     const title = "BlueskyFeeds.com";
@@ -17,6 +18,7 @@ export default function Home({}) {
             <PageHeader title={title} description={description}/>
 
             <div>Signing out... Please wait...</div>
+            <PageFooter/>
         </div>
     </>
 }

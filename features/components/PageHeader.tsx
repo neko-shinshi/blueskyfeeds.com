@@ -1,4 +1,5 @@
 import {FaInstagram, FaMastodon, FaTumblr, FaTwitter} from "react-icons/fa";
+import Image from "next/image";
 
 export default function PageHeader({title, description, description2=""}) {
     return <div className="p-2 bg-white rounded-xl border-2 border-black space-y-1">
@@ -58,6 +59,12 @@ export default function PageHeader({title, description, description2=""}) {
                 </a>
                 <a href="https://anianimals-moe.tumblr.com/">
                     <FaTumblr className="h-6 w-6 p-1 text-white bg-[#34526f] rounded-lg" title="Tumblr"/>
+                </a>
+
+                <a className="h-7 w-7 rounded-lg hover:bg-gray-400 relative"
+                   href="https://ko-fi.com/anianimalsmoe"
+                   target="_blank" rel="noreferrer">
+                    <Image unoptimized fill alt="ko-fi icon" src="/ko-fi.png" className="absolute"/>
                 </a>
             </div>
         </div>

@@ -2,6 +2,7 @@ import HeadExtended from "features/layout/HeadExtended";
 import Image from "next/image";
 import AppPasswordLink from "features/components/AppPasswordLink";
 import PageHeader from "features/components/PageHeader";
+import PageFooter from "features/components/PageFooter";
 
 
 export default function Home({}) {
@@ -157,6 +158,7 @@ export default function Home({}) {
                         <li>You can verify this by checking the Open Source Code of this website on <a className="underline text-blue-500 hover:text-blue-800" href="https://github.com/neko-shinshi/blueskyfeeds.com">GitHub</a></li>
                     </ul>
                 </div>
+                <PageFooter/>
             </div>
         </>
     )

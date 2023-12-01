@@ -11,6 +11,7 @@ import {useRouter} from "next/router";
 import {getLoggedInData} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
 import {removeUndefined} from "features/utils/validationUtils";
+import PageFooter from "features/components/PageFooter";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -140,6 +141,7 @@ export default function Home({updateSession, feeds:_feeds}) {
                     )
                 }
             </div>
+            <PageFooter/>
         </div>
 
     </>

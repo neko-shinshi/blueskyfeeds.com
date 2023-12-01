@@ -46,6 +46,7 @@ import PostsEdit from "features/components/specific/PostsEdit";
 import PopupWithAddPost from "features/components/PopupWithAddPost";
 import EditFeedWizard from "features/components/specific/EditFeedWizard";
 import InputUserFilter from "features/input/InputUserFilter";
+import PageFooter from "features/components/PageFooter";
 
 export async function getServerSideProps({req, res, query}) {
     const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
@@ -1730,6 +1731,7 @@ export default function Home({feed, updateSession, VIP}) {
                         </button>
                     </RHForm>
                 }
+                <PageFooter/>
             </div>
         }
     </>

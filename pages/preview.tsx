@@ -16,6 +16,7 @@ import SortableWordBubbles from "features/components/SortableWordBubbles";
 import {toJson} from "really-relaxed-json";
 import {compressedToJsonString} from "features/utils/textAndKeywords";
 import {removeUndefined} from "features/utils/validationUtils";
+import PageFooter from "features/components/PageFooter";
 
 export async function getServerSideProps({req, res, query}) {
     const {feed} = query;
@@ -222,10 +223,7 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
                     }
                 </div>
             }
-
-
-
-
+            <PageFooter/>
         </div>
 
 

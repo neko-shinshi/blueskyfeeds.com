@@ -14,6 +14,7 @@ import {APP_SESSION} from "features/auth/authUtils";
 import PopupLoading from "features/components/PopupLoading";
 import BackAndForwardButtons from "features/components/BackAndForwardButtons";
 import {removeUndefined} from "features/utils/validationUtils";
+import PageFooter from "features/components/PageFooter";
 
 export async function getServerSideProps({req, res, query}) {
     // TODO if no query, show most popular feeds made here
@@ -301,6 +302,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                         feeds.length > 0 && <BackAndForwardButtons  basePath={`${BASE_URL}`} params={router.query}/>
                     }
                 </div>
+                <PageFooter/>
             </div>
         </>
     )
