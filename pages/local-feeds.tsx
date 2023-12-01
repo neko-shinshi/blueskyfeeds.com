@@ -49,11 +49,14 @@ export async function getServerSideProps({req, res, query}) {
             return {uri, did, creator, avatar: avatar || null,
                 displayName, description, likeCount, indexedAt};
         });
-        feeds = feedsHere.map(x => {
+        feeds = feedsHere.reduce((acc,x) => {
             const {_id:uri, y} = x;
             const temp = updatedFeeds.find(y => y.uri === uri);
-            return temp || {uri,...y};
-        });
+            if (temp) {
+                acc.push(temp);
+            }
+            return acc;
+        }, []);
     } else {
         feeds = await db.allFeeds.find({_id: {$in: feedsHere.map(x => x._id)}}).toArray();
         feeds = feeds.map(x => {
