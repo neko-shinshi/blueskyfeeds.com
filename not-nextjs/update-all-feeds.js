@@ -28,7 +28,7 @@ const updateAllFeeds = async (db) => {
             try {
                 const {data} = await agent.api.app.bsky.feed.getActorFeeds(params);
                 const {cursor:newCursor, feeds:newFeeds} = data;
-                if (newCursor === cursor?.cursor) {
+                if (!!newCursor && newCursor === cursor?.cursor) {
                     break;
                 }
                 let existing = feeds.get(actor);
@@ -44,7 +44,7 @@ const updateAllFeeds = async (db) => {
                     cursor = {cursor: newCursor};
                 }
             } catch (e) {
-                if (e.status === 400) {
+                if (e.status === 400 && e.error === "InvalidRequest") {
                     console.log("feed actor not found ", actor);
                     commands.push({deleteMany: {filter: {"creator.did": actor}}});
                     break;
@@ -62,18 +62,23 @@ const updateAllFeeds = async (db) => {
     if (feeds.size > 0) {
         const ts = Math.floor(new Date().getTime()/1000);
         for (let [did, value] of feeds) {
-            const deleteOthers = {deleteMany: {filter: {"creator.did": did, _id: {$nin: value.map(x => x.uri)}}}};
-            commands.push(deleteOthers);
+            if (value.length > 0) {
+                const deleteOthers = {deleteMany: {filter: {"creator.did": did, _id: {$nin: value.map(x => x.uri)}}}};
+                commands.push(deleteOthers);
 
-            for (const x of value) {
-                const {uri: _id, ...o} = x;
-                commands.push({
-                    replaceOne: {
-                        filter: {_id},
-                        replacement: {...o, ts},
-                        upsert: true
-                    }
-                });
+                for (const x of value) {
+                    const {uri: _id, ...o} = x;
+                    commands.push({
+                        replaceOne: {
+                            filter: {_id},
+                            replacement: {...o, ts},
+                            upsert: true
+                        }
+                    });
+                }
+            } else {
+                const deleteOthers = {deleteMany: {filter: {"creator.did": did}}};
+                commands.push(deleteOthers);
             }
         }
     }
