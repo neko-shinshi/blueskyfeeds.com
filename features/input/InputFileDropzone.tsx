@@ -2,7 +2,7 @@ import {useDropzone} from "react-dropzone";
 import clsx from "clsx";
 import {Controller} from "react-hook-form";
 
-export default function InputFileDropzone ({fieldName, acceptedTypes, acceptedTypesLabel, useFormReturn, className=""}) {
+export default function InputFileDropzone ({fieldName, acceptedTypes, acceptedTypesLabel, useFormReturn, className="", additionalCheck = async(file):Promise<string|false> => file.type}) {
     const {
         control,
         watch
@@ -19,16 +19,19 @@ export default function InputFileDropzone ({fieldName, acceptedTypes, acceptedTy
         } = useDropzone({
             accept: acceptedTypes,
             minSize: 0,
-            maxSize: 200000,
+            maxSize: 20000000,
             maxFiles: 1,
-            onDrop: (acceptedFiles, rejectedFiles) => {
+            onDrop: async (acceptedFiles, rejectedFiles) => {
                 if (acceptedFiles.length === 1) {
                     let file = acceptedFiles[0];
-                    onChange({
-                        changed: true,
-                        url: URL.createObjectURL(file),
-                        type: file.type
-                    });
+                    const fileType = await additionalCheck(file);
+                    if (fileType) {
+                        onChange({
+                            changed: true,
+                            url: URL.createObjectURL(file),
+                            type: fileType
+                        });
+                    }
                 } else if (rejectedFiles.length > 0 && rejectedFiles[0].errors.length > 0) {
                     alert(rejectedFiles[0].errors[0].message);
                 }

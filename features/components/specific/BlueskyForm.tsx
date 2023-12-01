@@ -40,6 +40,31 @@ export default function BlueskyForm({shortNameLocked, setPopupState, useFormRetu
                         fieldName="file"
                         className="inset-0 absolute rounded-xl z-10"
                         useFormReturn={useFormReturn}
+                        additionalCheck={async(file) => {
+                            const blobToData = (blob: Blob) => {
+                                return new Promise((resolve) => {
+                                    const reader = new FileReader()
+                                    reader.onloadend = () => resolve(reader.result)
+                                    reader.readAsDataURL(blob)
+                                });
+                            }
+
+                            const data = await blobToData(file) as string;
+                            const header = data.split(",")[1].slice(0,30);
+                            if (header.startsWith("iVBORw0K")) {
+                                console.log("png");
+                                return "image/png";
+                            } else if (header.startsWith("/9j/")) {
+                                console.log("jpg");
+                                return "image/jpeg";
+                            } else if (header.startsWith("UklGR")) {
+                                console.log("webp");
+                                return "image/webp";
+                            }
+
+                            console.log("unknown");
+                            return false;
+                        }}
                         acceptedTypes={{'image/jpeg': [".jpg", ".jpeg"], 'image/png':[".png"]}}
                         acceptedTypesLabel="jpg or png"/>
                     {

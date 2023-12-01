@@ -23,6 +23,7 @@ import {getMyCustomFeedIds} from "features/utils/feedUtils";
 import {compressKeyword} from "features/utils/objectUtils";
 import {generate as generateFeed} from "features/algos/user-feed";
 import {wLogger} from "features/utils/logger";
+import sharp from "sharp";
 
 // Regular users are restricted to MAX_FEEDS_PER_USER feeds and MAX_KEYWORDS_PER_FEED keywords
 
@@ -210,15 +211,18 @@ export default async function handler(req, res) {
                 res.status(400).send("missing urls"); return;
             }
 
-
-
-
             let img = {};
             if (encoding) {
                 if (imageUrl) {
                     image = await serializeFile(imageUrl);
                 }
-                const imageBlob = Buffer.from(image, "base64");
+                let imageBlob = Buffer.from(image, "base64");
+                if (encoding === "image/webp") {
+                    encoding = "image/png";
+                    imageBlob = await sharp(imageBlob)
+                        .toFormat('png')
+                        .toBuffer();
+                }
                 img = {imageBlob, encoding};
             }
 
