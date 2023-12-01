@@ -12,6 +12,7 @@ const {updateAllFeeds} = require("./not-nextjs/update-all-feeds");
 const {connectToDatabase} = require("./features/utils/dbUtils");
 const { Cron } = require("croner");
 const {updateOnlyFollowing} = require("./features/algos/only-following");
+const {clearPosts} = require("./not-nextjs/clear-posts")
 
 const handleData = async (req, res) => {
     try {
@@ -70,6 +71,11 @@ app.prepare().then(async () => {
             Cron('*/7 * * * *', async () => {
                 const db = await connectToDatabase();
                 await updateAllFeeds(db);
+            });
+
+            Cron("26 15 * * *", { timezone: 'Asia/Singapore' }, async () => {
+                const db = await connectToDatabase();
+                await clearPosts(db);
             });
         }
     });
