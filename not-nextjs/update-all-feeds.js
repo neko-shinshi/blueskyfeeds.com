@@ -18,6 +18,7 @@ const updateAllFeeds = async (db) => {
     }, new Set())];
     const agent = await getAgent();
     let feeds = new Map();
+    let commands = [];
     for (const actor of users) {
         console.log("actor", actor);
         let cursor = {};
@@ -44,7 +45,9 @@ const updateAllFeeds = async (db) => {
                 }
             } catch (e) {
                 if (e.status === 400) {
-                    console.log("feed actor not found ", actor); break;
+                    console.log("feed actor not found ", actor);
+                    commands.push({deleteMany: {filter: {"creator.did": actor}}});
+                    break;
                 } else {
                     console.log(e);
                 }
@@ -58,7 +61,6 @@ const updateAllFeeds = async (db) => {
 
     if (feeds.size > 0) {
         const ts = Math.floor(new Date().getTime()/1000);
-        let commands = [];
         for (let [did, value] of feeds) {
             const deleteOthers = {deleteMany: {filter: {"creator.did": did, _id: {$nin: value.map(x => x.uri)}}}};
             commands.push(deleteOthers);
@@ -74,10 +76,13 @@ const updateAllFeeds = async (db) => {
                 });
             }
         }
+    }
 
+    if (commands.length > 0) {
         console.log(await db.allFeeds.bulkWrite(commands, {ordered:false}));
         console.log(await db.allFeedsUpdate.deleteMany({_id: {$in: ids}}));
     }
+
 
     console.log("feeds updated");
 }
