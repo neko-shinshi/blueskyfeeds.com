@@ -73,10 +73,12 @@ app.prepare().then(async () => {
                 await updateAllFeeds(db);
             });
 
+            /*
             Cron("26 15 * * *", { timezone: 'Asia/Singapore' }, async () => {
                 const db = await connectToDatabase();
                 await clearPosts(db);
             });
+            */
         }
     });
 });
