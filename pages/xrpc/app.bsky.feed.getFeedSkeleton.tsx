@@ -31,10 +31,9 @@ const listsToDids = (l) => {
     return list.map(x => x.did);
 }
 
-const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, now) => {
-    let feed=[], cursor="";
+const getKeywordQuery = (feedObj) => {
     let {allowList, blockList, everyList, keywordSetting, mentionList,
-        keywords, keywordsQuote, languages, pics, postLevels, sort, sticky, hideLikeSticky, allowLabels, mustLabels} = feedObj;
+        keywords, keywordsQuote, languages, pics, postLevels, allowLabels, mustLabels} = feedObj;
 
     allowList = listsToDids(allowList);
     blockList = listsToDids(blockList);
@@ -127,8 +126,6 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
     const searchQuoteKeywords = findKeywordsQuote.length > 0;
 
     let queryOrs = [];
-
-    let result:any[] = [];
     if (everyList.length > 0) {
         let authorQuery:any = {author: {$in: everyList}};
         if (dbQuery.lang) {
@@ -146,7 +143,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
         }
 
         if (findKeywords.length + findKeywordsQuote.length === 0) {
-           // dbQuery = authorQuery; // Totally block not in everyList
+            // dbQuery = authorQuery; // Totally block not in everyList
             queryOrs.push(authorQuery);
         } else {
             //dbQuery = {$or: [authorQuery, dbQuery]};
@@ -179,7 +176,21 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
         dbQuery = {$or: queryOrs};
     }
 
+    return dbQuery;
+}
 
+
+const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, now) => {
+    let feed=[], cursor="";
+    const dbQuery = getKeywordQuery(feedObj);
+
+    let { sort, sticky, hideLikeSticky, keywordsQuote} = feedObj;
+
+    const findKeywordsQuote = keywordsQuote?.filter(x => x.a).map(x => x.t) || [];
+    const searchQuoteKeywords = findKeywordsQuote.length > 0;
+
+
+    let result:any[] = [];
     const sortMethod = getSortMethod(sort);
     if (queryCursor) {
         if (sort === "new") {
