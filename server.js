@@ -13,6 +13,7 @@ const {connectToDatabase} = require("./features/utils/dbUtils");
 const { Cron } = require("croner");
 const {updateOnlyFollowing} = require("./features/algos/only-following");
 const {clearPosts} = require("./not-nextjs/clear-posts")
+const {updateLabels} = require("./not-nextjs/update-labels")
 
 const handleData = async (req, res) => {
     try {
@@ -54,6 +55,8 @@ app.prepare().then(async () => {
         const db = await connectToDatabase();
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
 
+
+
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             await updateScores(db);
             Cron('*/13 * * * *', async () => {
@@ -71,6 +74,12 @@ app.prepare().then(async () => {
             Cron('*/7 * * * *', async () => {
                 const db = await connectToDatabase();
                 await updateAllFeeds(db);
+            });
+
+            await updateLabels(db);
+            Cron('*/6 * * * *', async () => {
+                const db = await connectToDatabase();
+                await updateLabels(db);
             });
 
             /*
