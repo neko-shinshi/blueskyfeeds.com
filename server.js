@@ -71,13 +71,13 @@ app.prepare().then(async () => {
             });
 
             await updateAllFeeds(db);
-            Cron('*/7 * * * *', async () => {
+            Cron('*/23 * * * *', async () => {
                 const db = await connectToDatabase();
                 await updateAllFeeds(db);
             });
 
             await updateLabels(db);
-            Cron('*/6 * * * *', async () => {
+            Cron('*/11 * * * *', async () => {
                 const db = await connectToDatabase();
                 await updateLabels(db);
             });
