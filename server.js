@@ -55,7 +55,7 @@ app.prepare().then(async () => {
         if (err) throw err;
         const db = await connectToDatabase();
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
-        
+
         const agents = [{
             identifier: process.env.BLUESKY_USERNAME0,
             password: process.env.BLUESKY_PASSWORD0
@@ -93,12 +93,6 @@ app.prepare().then(async () => {
         const agent = await getAgent();
         await updateLabels(db, agent);
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
-            await updateScores(db);
-            Cron('*/13 * * * *', async () => {
-                const db = await connectToDatabase();
-                await updateScores(db);
-            });
-
             const agent = await getAgent();
             await updateAllFeeds(db, agent);
             Cron('*/7 * * * *', async () => {
@@ -112,6 +106,12 @@ app.prepare().then(async () => {
                 const agent = await getAgent();
                 const db = await connectToDatabase();
                 await updateLabels(db, agent);
+            });
+
+            await updateScores(db);
+            Cron('*/13 * * * *', async () => {
+                const db = await connectToDatabase();
+                await updateScores(db);
             });
 
 
