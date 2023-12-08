@@ -11,9 +11,8 @@ const {updateScores} = require("./not-nextjs/scoring");
 const {updateAllFeeds} = require("./not-nextjs/update-all-feeds");
 const {connectToDatabase} = require("./features/utils/dbUtils");
 const { Cron } = require("croner");
-const {updateOnlyFollowing} = require("./features/algos/only-following");
-const {clearPosts} = require("./not-nextjs/clear-posts")
 const {updateLabels} = require("./not-nextjs/update-labels")
+const {BskyAgent} = require("@atproto/api");
 
 const handleData = async (req, res) => {
     try {
@@ -46,6 +45,8 @@ const getServer = (secure) => {
     }
 }
 
+
+
 app.prepare().then(async () => {
     const secure = dev; // https is provided by load balancer and cloudflare
     const server = getServer(secure);
@@ -54,9 +55,43 @@ app.prepare().then(async () => {
         if (err) throw err;
         const db = await connectToDatabase();
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
+        
+        const agents = [{
+            identifier: process.env.BLUESKY_USERNAME0,
+            password: process.env.BLUESKY_PASSWORD0
+        },{
+            identifier: process.env.BLUESKY_USERNAME,
+            password: process.env.BLUESKY_PASSWORD
+        }];
+        let currentAgentIndex = 0;
+        const getAgent = async () => {
+            const agent = new BskyAgent({ service: "https://bsky.social/" });
+            let currentAgent = agents[currentAgentIndex];
+            try {
+                await agent.login(currentAgent);
+                return agent;
+            } catch (e) {
+                console.log(`login switch from ${currentAgent.identifier}`);
+                console.log(e);
+
+                currentAgentIndex = (currentAgentIndex + 1)%2;
+                currentAgent = agents[currentAgentIndex];
+                console.log(`login switch to ${currentAgent.identifier}`);
+                try {
+                    await agent.login(currentAgent);
+                    return agent;
+                } catch (e) {
+                    console.log("login fail");
+                    console.log(e.status, e.error);
+                    return null;
+                }
+            }
+        }
 
 
 
+        const agent = await getAgent();
+        await updateLabels(db, agent);
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             await updateScores(db);
             Cron('*/13 * * * *', async () => {
@@ -64,26 +99,21 @@ app.prepare().then(async () => {
                 await updateScores(db);
             });
 
+            const agent = await getAgent();
+            await updateAllFeeds(db, agent);
+            Cron('*/7 * * * *', async () => {
+                const agent = await getAgent();
+                const db = await connectToDatabase();
+                await updateAllFeeds(db, agent);
+            });
 
-            if (false) { // Skip these for now
-                await updateOnlyFollowing(db);
-                Cron('*/5 * * * *', async () => {
-                    const db = await connectToDatabase();
-                    await updateOnlyFollowing(db);
-                });
+            await updateLabels(db, agent);
+            Cron('*/3 * * * *', async () => {
+                const agent = await getAgent();
+                const db = await connectToDatabase();
+                await updateLabels(db, agent);
+            });
 
-                await updateAllFeeds(db);
-                Cron('*/23 * * * *', async () => {
-                    const db = await connectToDatabase();
-                    await updateAllFeeds(db);
-                });
-
-                await updateLabels(db);
-                Cron('*/11 * * * *', async () => {
-                    const db = await connectToDatabase();
-                    await updateLabels(db);
-                });
-            }
 
             /*
             Cron("26 15 * * *", { timezone: 'Asia/Singapore' }, async () => {

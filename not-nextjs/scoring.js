@@ -169,7 +169,7 @@ const generateScoreWithTime = (ups, now, then, gravity) => {
 const updateScores = async(db) => {
     const GRAVITY = 1.6;
     try {
-       // await db.data.insertOne({_id: "calculate_score", expireAt: secondsAfter(6.5*60)});
+        await db.data.insertOne({_id: "calculate_score", expireAt: secondsAfter(6.5*60)});
 
         const feeds = await db.feeds.find({mode: "live", sort: {$ne: "new"}, $or: [{"keywords.0":{$exists:true}}, {"everyList.0":{$exists:true}}]}).toArray();
         console.log(feeds.length);

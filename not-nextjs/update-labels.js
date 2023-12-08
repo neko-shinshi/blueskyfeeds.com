@@ -1,15 +1,4 @@
-const {BskyAgent} = require("@atproto/api");
-const getAgent = async () => {
-    const agent = new BskyAgent({ service: "https://bsky.social/" });
-    await agent.login({
-        identifier: process.env.BLUESKY_USERNAME,
-        password: process.env.BLUESKY_PASSWORD
-    });
-    return agent;
-}
-
-
-const updateLabels = async (db) => {
+const updateLabels = async (db, agent) => {
     const now = new Date();
     // 1 min ago
     now.setMinutes(now.getMinutes()-1);
@@ -26,7 +15,6 @@ const updateLabels = async (db) => {
 
     if (postIds.length > 0) {
         const MAX_QUERY = 25;
-        const agent = await getAgent();
 
         let commands = [];
         for (let i = 0; i < postIds.length; i += MAX_QUERY) {

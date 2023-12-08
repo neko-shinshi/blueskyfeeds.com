@@ -1,22 +1,11 @@
-const {BskyAgent} = require("@atproto/api");
 
-const getAgent = async () => {
-    const agent = new BskyAgent({ service: "https://bsky.social/" });
-    await agent.login({
-        identifier: process.env.BLUESKY_USERNAME,
-        password: process.env.BLUESKY_PASSWORD
-    });
-    return agent;
-}
-
-const updateAllFeeds = async (db) => {
+const updateAllFeeds = async (db, agent) => {
     const result = await db.allFeedsUpdate.find({}).toArray();
     const ids = result.map(x => x._id);
     const users = [...result.reduce((acc, x) => {
         x.users.forEach(y => acc.add(y));
         return acc;
     }, new Set())];
-    const agent = await getAgent();
     let feeds = new Map();
     let commands = [];
     let failed = [];
