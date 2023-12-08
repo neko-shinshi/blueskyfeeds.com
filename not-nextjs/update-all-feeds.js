@@ -19,6 +19,7 @@ const updateAllFeeds = async (db) => {
     const agent = await getAgent();
     let feeds = new Map();
     let commands = [];
+    let failed = [];
     for (const actor of users) {
         console.log("actor", actor);
         let cursor = {};
@@ -53,6 +54,7 @@ const updateAllFeeds = async (db) => {
                 }
                 attempt++;
                 if (attempt > 2) {
+                    failed.push(actor);
                     break;
                 }
             }
@@ -87,7 +89,9 @@ const updateAllFeeds = async (db) => {
         console.log(await db.allFeeds.bulkWrite(commands, {ordered:false}));
         console.log(await db.allFeedsUpdate.deleteMany({_id: {$in: ids}}));
     }
-
+    if (failed.length > 0) {
+        console.log("feed update fail", await db.allFeedsUpdate.insert({users: failed}));
+    }
 
     console.log("feeds updated");
 }
