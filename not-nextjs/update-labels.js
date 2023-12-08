@@ -43,7 +43,7 @@ const updateLabels = async (db, agent) => {
                 console.log(e);
             }
         }
-        await db.posts.bulkWrite(commands, {ordered:false});
+        console.log("label fetched", await db.posts.bulkWrite(commands, {ordered:false}));
     }
 
 }

@@ -75,8 +75,8 @@ const updateAllFeeds = async (db, agent) => {
     }
 
     if (commands.length > 0) {
-        console.log(await db.allFeeds.bulkWrite(commands, {ordered:false}));
-        console.log(await db.allFeedsUpdate.deleteMany({_id: {$in: ids}}));
+        console.log("feeds updated", await db.allFeeds.bulkWrite(commands, {ordered:false}));
+        console.log("feed update ids cleared", await db.allFeedsUpdate.deleteMany({_id: {$in: ids}}));
     }
     if (failed.length > 0) {
         console.log("feed update fail", await db.allFeedsUpdate.insert({users: failed}));
