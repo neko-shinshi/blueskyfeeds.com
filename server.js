@@ -64,23 +64,26 @@ app.prepare().then(async () => {
                 await updateScores(db);
             });
 
-            await updateOnlyFollowing(db);
-            Cron('*/5 * * * *', async () => {
-                const db = await connectToDatabase();
+
+            if (false) { // Skip these for now
                 await updateOnlyFollowing(db);
-            });
+                Cron('*/5 * * * *', async () => {
+                    const db = await connectToDatabase();
+                    await updateOnlyFollowing(db);
+                });
 
-            await updateAllFeeds(db);
-            Cron('*/23 * * * *', async () => {
-                const db = await connectToDatabase();
                 await updateAllFeeds(db);
-            });
+                Cron('*/23 * * * *', async () => {
+                    const db = await connectToDatabase();
+                    await updateAllFeeds(db);
+                });
 
-            await updateLabels(db);
-            Cron('*/11 * * * *', async () => {
-                const db = await connectToDatabase();
                 await updateLabels(db);
-            });
+                Cron('*/11 * * * *', async () => {
+                    const db = await connectToDatabase();
+                    await updateLabels(db);
+                });
+            }
 
             /*
             Cron("26 15 * * *", { timezone: 'Asia/Singapore' }, async () => {
