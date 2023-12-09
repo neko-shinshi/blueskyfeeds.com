@@ -93,20 +93,30 @@ app.prepare().then(async () => {
         const agent = await getAgent();
         await updateLabels(db, agent);
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
-            const agent = await getAgent();
-            await updateAllFeeds(db, agent);
-            Cron('*/7 * * * *', async () => {
-                const agent = await getAgent();
-                const db = await connectToDatabase();
-                await updateAllFeeds(db, agent);
-            });
 
-            await updateLabels(db, agent);
-            Cron('*/3 * * * *', async () => {
+            if (false) {
                 const agent = await getAgent();
-                const db = await connectToDatabase();
-                await updateLabels(db, agent);
-            });
+                if (agent) {
+                    await updateAllFeeds(db, agent);
+                    Cron('*/11 * * * *', async () => {
+                        const agent = await getAgent();
+                        if (agent) {
+                            const db = await connectToDatabase();
+                            await updateAllFeeds(db, agent);
+                        }
+                    });
+
+                    await updateLabels(db, agent);
+                    Cron('*/13 * * * *', async () => {
+                        const agent = await getAgent();
+                        if (agent) {
+                            const db = await connectToDatabase();
+                            await updateLabels(db, agent);
+                        }
+                    });
+                }
+            }
+
 
             await updateScores(db);
             Cron('*/13 * * * *', async () => {
