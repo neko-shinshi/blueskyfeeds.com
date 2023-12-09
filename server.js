@@ -89,9 +89,7 @@ app.prepare().then(async () => {
         }
 
 
-
-        const agent = await getAgent();
-        await updateLabels(db, agent);
+        
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             await updateScores(db);
             Cron('*/7 * * * *', async () => {
