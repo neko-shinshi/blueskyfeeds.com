@@ -81,8 +81,8 @@ app.prepare().then(async () => {
                     await agent.login(currentAgent);
                     return agent;
                 } catch (e) {
-                    console.log("login fail");
-                    console.log(e.status, e.error);
+                    console.error("login fail");
+                    console.error(e.status, e.error);
                     return null;
                 }
             }
