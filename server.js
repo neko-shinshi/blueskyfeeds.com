@@ -89,13 +89,37 @@ app.prepare().then(async () => {
         }
 
 
-        
+
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             await updateScores(db);
             Cron('*/7 * * * *', async () => {
                 const db = await connectToDatabase();
                 await updateScores(db);
             });
+
+            const agent = await getAgent();
+            if (agent) {
+                await updateAllFeeds(db, agent);
+                Cron('*/9 * * * *', async () => {
+                    const agent = await getAgent();
+                    if (agent) {
+                        const db = await connectToDatabase();
+                        await updateAllFeeds(db, agent);
+                    } else {
+                        console.error("agent issue");
+                    }
+                });
+                await updateLabels(db, agent);
+                Cron('*/5 * * * *', async () => {
+                    const agent = await getAgent();
+                    if (agent) {
+                        const db = await connectToDatabase();
+                        await updateLabels(db, agent);
+                    } else {
+                        console.error("agent issue");
+                    }
+                });
+            }
         }
     });
 });
