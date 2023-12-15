@@ -36,7 +36,7 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
                 <div className="flex place-items-center">
                     <div className="mr-2">{keyword}</div>
                     {prefix &&
-                        <div className="border-1 border-gray-700 bg-gray-400 p-2 rounded-l-md sm:text-sm">
+                        <div className="border border-1 border-gray-700 bg-gray-400 p-2 rounded-l-md sm:text-sm">
                             {prefix}
                         </div>
                     }

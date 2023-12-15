@@ -41,7 +41,7 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                 KEYWORD_TYPES.map((x, i) =>
                     <div key={x} className={clsx(
                         ["bg-pink-100 hover:bg-pink-200", "bg-yellow-100 hover:bg-yellow-200", "bg-sky-100 hover:bg-sky-200"][i],
-                        "flex items-center p-2 border-x-2 border-t-2 border-b-0 border-black")}
+                        "flex items-center p-2 border border-x-2 border-t-2 border-b-0 border-black")}
                          onClick={() => {
                              setNewKeywordMode(x);
                          }}>
@@ -59,7 +59,7 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
             }
         </div>
 
-        <div className={clsx("p-2 border-l-2 border-r-2 border-y-0 border-black",
+        <div className={clsx("p-2 border border-l-2 border-r-2 border-y-0 border-black",
             newKeywordMode === "token" && "bg-pink-100",
             newKeywordMode === "segment" && "bg-yellow-100",
             newKeywordMode === "hashtag" && "bg-sky-100"

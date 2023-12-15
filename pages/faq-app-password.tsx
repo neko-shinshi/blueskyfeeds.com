@@ -39,7 +39,7 @@ export default function Home({}) {
                     <div className="font-bold text-lg">How to Generate a Bluesky App Password?</div>
                     <div>If you are accessing from the web, you can skip straight to <a href="#step-4" className="underline text-blue-600 hover:text-blue-800">Step 4</a> by going to <AppPasswordLink text="bsky.app/settings/app-passwords" /></div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                        <div className="p-1 border-black border-dashed rounded-xl flex flex-col place-items-center">
+                        <div className="p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Step 1</div>
                             <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
@@ -53,7 +53,7 @@ export default function Home({}) {
                             <div className="p-2">Tap the menu icon on the top left of the Bluesky App to open the side panel</div>
                         </div>
 
-                        <div className="p-1 border-black border-dashed rounded-xl flex flex-col place-items-center">
+                        <div className="p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Step 2</div>
                             <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
@@ -66,7 +66,7 @@ export default function Home({}) {
                             </div>
                             <div className="p-2">Tap the Settings button to go to the Settings page</div>
                         </div>
-                        <div className="p-1 border-black border-dashed rounded-xl flex flex-col place-items-center">
+                        <div className="p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Step 3</div>
                             <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
@@ -79,7 +79,7 @@ export default function Home({}) {
                             </div>
                             <div className="p-2">Scroll down and tap the App Passwords button in the Settings Page</div>
                         </div>
-                        <div className="bg-orange-100 p-1 border-black border-dashed rounded-xl flex flex-col place-items-center"
+                        <div className="bg-orange-100 p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center"
                              id="step-4"
                         >
                             <div className="font-semibold text-lg">Step 4</div>
@@ -94,7 +94,7 @@ export default function Home({}) {
                             </div>
                             <div className="p-2">Tap Add Password button to open the password creation popup</div>
                         </div>
-                        <div className="p-1 border-black border-dashed rounded-xl flex flex-col place-items-center">
+                        <div className="p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Step 5</div>
                             <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
@@ -107,7 +107,7 @@ export default function Home({}) {
                             </div>
                             <div className="p-2">Create a name for this app password, preferably based on the app you want to sign into, like <span className="font-italic">blueskyfeeds</span></div>
                         </div>
-                        <div className="p-1 border-black border-dashed rounded-xl flex flex-col place-items-center">
+                        <div className="p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Step 6</div>
                             <div className="w-70 h-56 aspect-[10/8]">
                                 {/* 10 x 8 ratio*/}
@@ -124,7 +124,7 @@ export default function Home({}) {
                             </div>
                         </div>
 
-                        <div className="bg-red-100 p-1 border-black border-dashed rounded-xl flex flex-col place-items-center">
+                        <div className="bg-red-100 p-1 border border-black border-dashed rounded-xl flex flex-col place-items-center">
                             <div className="font-semibold text-lg">Deleting the App Password</div>
                                 <div className="p-2">To Delete the app password, go back to <a href="#step-4" className="underline text-blue-600 hover:text-blue-800">Step 4</a> and tap the bin icon next to the password</div>
                                 <div className="w-70 h-56 aspect-[10/8]">

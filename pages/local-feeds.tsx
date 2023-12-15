@@ -137,7 +137,7 @@ export default function Home({updateSession, feeds:_feeds}) {
        <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
             <PageHeader title={title} description={description} />
 
-            <div className="border-2 border-black p-4 bg-white rounded-xl">
+            <div className="border border-2 border-black p-4 bg-white rounded-xl">
                 {
                     feeds && feeds.map(x =>
                         <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />

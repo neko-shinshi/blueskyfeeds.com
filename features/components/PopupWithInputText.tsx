@@ -84,7 +84,7 @@ export default function PopupWithInputText(
                 <button
                     type="button"
                     className={clsx(buttonClass || "bg-white hover:text-white hover:bg-violet-700",
-                        "mt-3 w-full inline-flex justify-center rounded-md border-2 shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black sm:mt-0 sm:col-start-1 sm:text-sm")}
+                        "mt-3 w-full inline-flex justify-center rounded-md border border-2 shadow-sm px-4 py-2 text-base font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black sm:mt-0 sm:col-start-1 sm:text-sm")}
                     onClick={() => {
                         yesCallback(ref.current.value, (error) => {
                             if (error) {

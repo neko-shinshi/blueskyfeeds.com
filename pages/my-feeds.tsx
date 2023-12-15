@@ -112,7 +112,7 @@ export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
                 {
                     canCreate && <Link href="/edit-feed">
                         <button type="button"
-                                className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             <RiTestTubeLine className="w-6 h-6"/> Make a new Feed {`(max ${MAX_FEEDS_PER_USER})`}
                         </button>
                     </Link>
@@ -121,7 +121,7 @@ export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
                     !canCreate && <div>You have reached the maximum number of feeds your account can create</div>
                 }
 
-                <div className="border-2 border-black p-4 bg-white rounded-xl">
+                <div className="border border-2 border-black p-4 bg-white rounded-xl">
                     <div>Feeds Editable here are in green</div>
                     {
                         myFeeds && myFeeds.map(x =>

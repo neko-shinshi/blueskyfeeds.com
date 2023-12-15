@@ -542,7 +542,7 @@ export default function Home({feed, updateSession, VIP}) {
 
                         <Link href={"/my-feeds"}>
                             <button type="button"
-                                    className="mt-4 inline-flex justify-center items-center px-4 py-2 border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    className="mt-4 inline-flex justify-center items-center px-4 py-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                 <IoArrowBackSharp className="w-6 h-6"/>
                                 <div className="text-lg font-medium">Return to My Feeds</div>
                             </button>
@@ -667,7 +667,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 {
                                     privacy === "shared" &&
                                     <InputMultiWord
-                                        className={clsx("border-2 border-black p-2 rounded-xl bg-lime-100")}
+                                        className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
                                         labelText="Viewers: Show feed ONLY to these users"
                                         placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                                         fieldName="viewers"
@@ -705,7 +705,7 @@ export default function Home({feed, updateSession, VIP}) {
                                         check={multiWordCallback("viewers", ["viewers"], true)}>
                                         <button
                                             type="button"
-                                            className="bg-gray-100 border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
+                                            className="bg-gray-100 border border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
                                             onClick={() => setPopupState("sync_viewers")}>
                                             <div className="font-semibold">Sync with List { !watchViewersSync && "Instead" }</div>
                                             {
@@ -819,7 +819,7 @@ export default function Home({feed, updateSession, VIP}) {
 
                                         <button
                                             type="button"
-                                            className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
+                                            className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
                                             onClick={() => {
                                                 setPopupState("edit_sticky");
                                             }}
@@ -830,7 +830,7 @@ export default function Home({feed, updateSession, VIP}) {
                                         {
                                             watchSticky &&
                                             <a href={`https://bsky.app/profile/${watchSticky.slice(5).replace("app.bsky.feed.post", "post")}`} target="_blank" rel="noreferrer">
-                                                <div className="mt-2 p-2 border-2 border-transparent hover:bg-yellow-100 hover:border-black rounded-xl">
+                                                <div className="mt-2 p-2 border border-2 border-transparent hover:bg-yellow-100 hover:border-black rounded-xl">
                                                     <div className="text-sm">Preview</div>
                                                     <InputTextBasic fieldName="sticky" disabled={true} fieldReadableName="" useFormReturn={useFormReturn} options={{}}/>
                                                     <div className="bg-gray-50 p-2">{stickyText}</div>
@@ -1123,7 +1123,7 @@ export default function Home({feed, updateSession, VIP}) {
                                             ].map(({id, t, c, sync, watch:watchSync}) =>
                                                 <InputMultiWord
                                                     key={id}
-                                                    className={clsx("border-2 border-black p-2 rounded-xl", c)}
+                                                    className={clsx("border border-2 border-black p-2 rounded-xl", c)}
                                                     labelText={t}
                                                     placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                                                     fieldName={id}
@@ -1160,7 +1160,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                     check={multiWordCallback(id, ["everyList", "blockList"], true)}>
                                                     <button
                                                         type="button"
-                                                        className="bg-gray-100 border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
+                                                        className="bg-gray-100 border border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
                                                         onClick={() => {
                                                             // @ts-ignore
                                                             setPopupState(sync)
@@ -1191,7 +1191,7 @@ export default function Home({feed, updateSession, VIP}) {
                                         <div className="mt-1 flex rounded-md shadow-sm gap-2">
                                             <button
                                                 type="button"
-                                                className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
+                                                className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
                                                 onClick={async () => {
                                                     setValue("allowList",[{
                                                         did: session.user.did,
@@ -1204,7 +1204,7 @@ export default function Home({feed, updateSession, VIP}) {
                                             </button>
                                             <button
                                                 type="button"
-                                                className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
+                                                className={clsx("relative -ml-px inline-flex items-center space-x-2 rounded-xl border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-indigo-200 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500")}
                                                 onClick={() => {
                                                     setPopupState("edit_user");
                                                 }}
@@ -1431,7 +1431,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 ].map(({id, t, c}) =>
                                     <InputMultiWord
                                         key={id}
-                                        className={clsx("border-2 border-yellow-700 p-2 rounded-xl", c)}
+                                        className={clsx("border border-2 border-yellow-700 p-2 rounded-xl", c)}
                                         labelText={t}
                                         placeHolder="skip http://... or https://..."
                                         fieldName={id}
@@ -1512,7 +1512,7 @@ export default function Home({feed, updateSession, VIP}) {
                                             dlAnchorElem.setAttribute("download", `${shortName}.json`);
                                             dlAnchorElem.click();
                                         }}
-                                        className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                        className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     Download JSON file backup
                                 </button>
 
@@ -1718,7 +1718,7 @@ export default function Home({feed, updateSession, VIP}) {
                                         }
                                         input.click();
                                     }}
-                                    className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-lime-600 hover:bg-lime-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime-500">
+                                    className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-lime-600 hover:bg-lime-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-lime-500">
                                     Recover from JSON backup
                                 </button>
                             </div>
@@ -1726,7 +1726,7 @@ export default function Home({feed, updateSession, VIP}) {
 
                         <button type="button"
                                 onClick={() => {formRef.current.requestSubmit();}}
-                                className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                className="mt-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             Submit
                         </button>
                     </RHForm>
