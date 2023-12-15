@@ -7,6 +7,7 @@ import {BsPinFill} from "react-icons/bs";
 import {HiPencil, HiTrash} from "react-icons/hi";
 import {HiMagnifyingGlass} from "react-icons/hi2";
 import {FaUserGear} from "react-icons/fa6";
+import {FaRegCopy} from "react-icons/fa";
 
 export default function FeedItem ({item, setSelectedItem, setPopupState}) {
     return <div className={clsx("w-full border border-2 flex gap-2 p-1 -mt-0.5",
@@ -69,6 +70,17 @@ export default function FeedItem ({item, setSelectedItem, setPopupState}) {
                         <HiMagnifyingGlass className="w-6 h-6" title="Preview Feed"/>
                     </button>
                 </Link>
+                <button type="button"
+                        className="text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-xl p-1"
+                        onClick={() => {
+                            const feedUrl = `https://bsky.app/profile/${item.uri.slice(5).replace("app.bsky.feed.generator", "feed")}`
+                            navigator.clipboard.writeText(feedUrl).then(r => {
+                                alert(`Url copied to clipboard\n${feedUrl}`);
+                            });
+                        }}
+                >
+                    <FaRegCopy className="w-6 h-6 p-0.5" title="Copy Feed URL"/>
+                </button>
                 {
                     item.custom && <Link href={`/personalize-feed?feed=${item.uri.split("/").at(-1)}`}>
                         <button type="button"
