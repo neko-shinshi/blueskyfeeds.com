@@ -10,7 +10,7 @@ import {FaUserGear} from "react-icons/fa6";
 import {FaRegCopy} from "react-icons/fa";
 
 export default function FeedItem ({item, setSelectedItem, setPopupState}) {
-    return <div className={clsx("w-full border border-2 flex gap-2 p-1 -mt-0.5",
+    return <div className={clsx("w-full border-2 flex gap-2 p-1 -mt-0.5",
           item.edit? "bg-green-200 border-green-600" : "bg-white border-black"
     )}>
         <div>

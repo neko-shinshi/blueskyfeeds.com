@@ -4,7 +4,7 @@ import clsx from "clsx";
 export default function InputUserFilter({labelText, className, fieldName, watchSync, deduplicateArr, useFormReturn, check, syncClick}) {
     const {getValues} = useFormReturn;
     return  <InputMultiWord
-        className={clsx("border border-2 border-black p-2 rounded-xl", className)}
+        className={clsx("border-2 border-black p-2 rounded-xl", className)}
         labelText={labelText}
         placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
         fieldName={fieldName}
@@ -42,7 +42,7 @@ export default function InputUserFilter({labelText, className, fieldName, watchS
         check={check(fieldName, [fieldName], true)}>
         <button
             type="button"
-            className="bg-gray-100 border border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
+            className="bg-gray-100 border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
             onClick={syncClick}>
             <div className="font-semibold">Sync with List { !watchSync && "Instead" }</div>
             {

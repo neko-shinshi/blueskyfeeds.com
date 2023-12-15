@@ -59,7 +59,7 @@ export default function InputTextBasic(
                     type={specialType || "text"}
                     className={clsx(
                         disabled && "cursor-not-allowed bg-gray-200",
-                        "block w-full focus:outline-none sm:text-sm rounded-md appearance-none block px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400",
+                        "block w-full focus:outline-none sm:text-sm rounded-md appearance-none block px-3 py-2 border-gray-300 rounded-md shadow-sm placeholder-gray-400",
                         dotObjectStringPath(errors, fieldName)? "pr-10 focus:border-red-500 focus:ring-red-500 border-red-300 text-red-900 placeholder-red-300"
                             :"text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm")}
                     aria-invalid="true"

@@ -93,7 +93,7 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
         <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
             <PageHeader title={title} description={description}/>
 
-            <div className="bg-white border border-black border-2 p-4 inline-flex gap-1 rounded-xl">
+            <div className="bg-white border-black border-2 p-4 inline-flex gap-1 rounded-xl">
                 <div>
                     <BlueskyAvatar type="feed" avatar={feedDescription.avatar} uri={feedDescription.uri}/>
                     <div className="flex place-items-center">
@@ -207,11 +207,11 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
             }
 
             {
-                session && <div className="p-4 space-y-2 bg-white border border-black border-2 rounded-xl">
+                session && <div className="p-4 space-y-2 bg-white border-black border-2 rounded-xl">
                     {
                         feedItems && feedItems.map(x =>
                             <div key={x.uri}
-                                 className="border border-gray-700 border-2 border-dashed w-full inline-flex p-1 gap-1">
+                                 className="border-gray-700 border-2 border-dashed w-full inline-flex p-1 gap-1">
                                 <BlueskyAvatar type="user" avatar={x.author.avatar} uri={x.author.handle}/>
 
                                 <div>

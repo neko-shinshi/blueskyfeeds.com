@@ -26,13 +26,13 @@ export default function EditFeedWizard({modal, setModal, setMode, setSubMode, se
             <>
                 <div className="font-bold text-xl">What kind of feed do you want to make?</div>
                 <div>
-                    <button type="button" className="w-full bg-blue-100 hover:bg-blue-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-keywords")}}>
+                    <button type="button" className="w-full bg-blue-100 hover:bg-blue-400 hover:font-bold p-8 border-black" onClick={() => {setModal("wizard-keywords")}}>
                         <span className="font-bold">Latest Posts with Keywords:</span> I want to create a feed to show the latest posts of a community or fandom
                     </button>
-                    <button type="button" className="w-full bg-yellow-100 hover:bg-yellow-400 hover:font-bold p-8 border border-black" onClick={() => {setModal("wizard-everyList")}}>
+                    <button type="button" className="w-full bg-yellow-100 hover:bg-yellow-400 hover:font-bold p-8 border-black" onClick={() => {setModal("wizard-everyList")}}>
                         <span className="font-bold">Users` Latest Posts:</span> I want to create a feed showing the latest posts of specific users
                     </button>
-                    <button type="button" className="w-full bg-lime-100 p-8 hover:bg-lime-400 p-8 hover:font-bold border border-black"
+                    <button type="button" className="w-full bg-lime-100 p-8 hover:bg-lime-400 p-8 hover:font-bold border-black"
                             onClick={async () => {
                                 setMode("user");
                                 setSubMode("posts");
@@ -46,7 +46,7 @@ export default function EditFeedWizard({modal, setModal, setMode, setSubMode, se
                             }}>
                         <span className="font-bold">My Posts:</span> I want to create feed to show MY posts, with some filtering
                     </button>
-                    <button type="button" className="w-full bg-violet-100 p-8 hover:bg-violet-400 p-8 hover:font-bold border border-black"
+                    <button type="button" className="w-full bg-violet-100 p-8 hover:bg-violet-400 p-8 hover:font-bold border-black"
                             onClick={() => {
                                 setModal("wizard-posts");
                                 setMode("posts");
@@ -54,7 +54,7 @@ export default function EditFeedWizard({modal, setModal, setMode, setSubMode, se
                         <span className="font-bold">List of Posts:</span> I want to create feed to show a list of specific posts
                     </button>
 
-                    <button type="button" className="w-full bg-red-100 p-8 hover:bg-red-400 p-8 hover:font-bold border border-black" onClick={() => {setModal("edit")}}>
+                    <button type="button" className="w-full bg-red-100 p-8 hover:bg-red-400 p-8 hover:font-bold border-black" onClick={() => {setModal("edit")}}>
                         <span className="font-bold">Other:</span> I want to create some other type of feed (sorry, more templates will be added in the future).
                     </button>
                 </div>
@@ -148,7 +148,7 @@ export default function EditFeedWizard({modal, setModal, setMode, setSubMode, se
                 <div className="font-bold text-xl">Which users` posts do you want to show?</div>
 
                 <InputMultiWord
-                    className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
+                    className={clsx("border-2 border-black p-2 rounded-xl bg-lime-100")}
                     labelText={`Every List: Show all posts from these users (${getValues("everyList")?.length || 0})`}
                     placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                     fieldName="everyList"
@@ -184,7 +184,7 @@ export default function EditFeedWizard({modal, setModal, setMode, setSubMode, se
                     check={multiWordCallback("everyList", ["everyList", "allowList", "blockList"], true)}>
                     <button
                         type="button"
-                        className="bg-gray-100 border border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
+                        className="bg-gray-100 border-black p-1 rounded-xl flex place-items-center gap-2 text-sm"
                         onClick={() => setPopupState("sync_everyList")}>
                         <div className="font-semibold">Sync with List { !watchEveryListSync && "Instead" }</div>
                         {

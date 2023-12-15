@@ -228,7 +228,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
             <div className="bg-sky-200 w-full max-w-7xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} description2="*This site is not affiliated with Bluesky or the ATProtocol, both of which are still in Beta. Feeds here are not guaranteed to work 100% of the time as it is maintained by only 1 person, and may be impacted by changes in Bluesky." />
 
-                <div className="bg-white border border-2 border-black p-2 rounded-xl">
+                <div className="bg-white border-2 border-black p-2 rounded-xl">
                     <div className="font-bold">Search Feed Directory</div>
                     <div className="flex place-items-center gap-2 bg-sky-200 w-fit p-2 rounded-xl">
                         <div className="flex">
@@ -240,7 +240,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                             }} />
                             <button
                                 type="button"
-                                className={"relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"}
+                                className={"relative -ml-px inline-flex items-center space-x-2 rounded-r-md border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"}
                                 onClick={async () => {
                                     setBusy(true);
                                     await startSearch();
@@ -258,7 +258,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
 
                 <Link href="/my-feeds">
                     <button type="button"
-                            className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         <SiBuzzfeed className="w-6 h-6"/>
                         <div className="text-lg font-medium">{session? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
                         <SiBuzzfeed className="w-6 h-6"/>
@@ -267,12 +267,12 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
 
                 {
                     popularMadeHere && popularMadeHere.length > 0 &&
-                    <div className="bg-lime-100 border border-black border-2 p-4 rounded-xl space-y-2">
+                    <div className="bg-lime-100 border-black border-2 p-4 rounded-xl space-y-2">
                         <div className="inline-flex justify-between w-full place-items-center">
                             <div className="text-lg font-medium">Highlights of Feeds made here</div>
                             <Link href="/local-feeds">
                                 <button type="button"
-                                        className="w-full inline-flex justify-center items-center p-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                        className="w-full inline-flex justify-center items-center p-2 border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     <div className="text-lg font-medium">See More</div>
                                 </button>
                             </Link>
@@ -288,7 +288,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                 }
 
 
-                <div className="bg-white border border-black border-2 p-4 rounded-xl space-y-2">
+                <div className="bg-white border-black border-2 p-4 rounded-xl space-y-2">
                     <div className="text-lg font-medium">Existing Feeds (Updated Irregularly)</div>
                     <BackAndForwardButtons  basePath={`${BASE_URL}`} params={router.query}/>
 
