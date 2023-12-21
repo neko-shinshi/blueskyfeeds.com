@@ -1,4 +1,4 @@
-
+const FEED_BLACKLIST_DID = ["did:web:localhost", "did:web:example.com"];
 const updateAllFeeds = async (db, agent) => {
     const result = await db.allFeedsUpdate.find({}).toArray();
     const ids = result.map(x => x._id);
@@ -25,9 +25,14 @@ const updateAllFeeds = async (db, agent) => {
                 if (!existing) {
                     existing = [];
                 }
-                newFeeds.forEach(x => existing.push(x));
-                feeds.set(actor, existing);
-
+                newFeeds.forEach(x => {
+                    if (FEED_BLACKLIST_DID.indexOf(x.did) < 0) {
+                        existing.push(x);
+                    }
+                });
+                if (existing.length > 0) {
+                    feeds.set(actor, existing);
+                }
                 if (!newCursor) {
                     cursor = null;
                 } else {
