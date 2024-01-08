@@ -167,7 +167,7 @@ const generateScoreWithTime = (ups, now, then, gravity) => {
 }
 
 const updateScores = async(db) => {
-    const GRAVITY = 1.6;
+    const GRAVITY = 1.4;
     try {
         await db.data.insertOne({_id: "calculate_score", expireAt: secondsAfter(14.5*60)});
 
