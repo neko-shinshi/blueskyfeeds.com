@@ -1716,6 +1716,8 @@ export default function Home({feed, updateSession, VIP}) {
                                                         console.log(o);
                                                         setBusy(false);
                                                     }
+
+                                                    setKeywordsEdited(true);
                                                     setTimeout(() => {
                                                         input.remove();
                                                     }, 100);

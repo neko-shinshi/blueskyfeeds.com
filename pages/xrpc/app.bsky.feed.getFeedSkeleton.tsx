@@ -180,7 +180,7 @@ const getKeywordQuery = (feedObj) => {
 }
 
 
-export const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, now) => {
+export const liveFeedHandler = async ({db, feedObj, queryCursor, feedId, user, limit, now=0, customSort=""}) => {
     let feed=[], cursor="";
     const dbQuery = getKeywordQuery(feedObj);
 
@@ -191,7 +191,7 @@ export const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, li
 
 
     let result:any[] = [];
-    const sortMethod = getSortMethod(sort);
+    const sortMethod = getSortMethod(customSort || sort);
     if (queryCursor) {
         if (sort === "new") {
             try {
@@ -430,7 +430,7 @@ export async function getServerSideProps({req, res, query}) {
             feed = posts.slice(skip, limit).map(x => {return {post: x};});
             cursor = `${feed.length+skip}`;
         } else {
-            const {feed: feedV, cursor: cursorV} = await liveFeedHandler (db, feedObj, queryCursor, feedId, user, limit, now);
+            const {feed: feedV, cursor: cursorV} = await liveFeedHandler ({db, feedObj, queryCursor, feedId, user, limit, now});
             feed = feedV;
             cursor = cursorV;
         }

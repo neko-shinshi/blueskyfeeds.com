@@ -271,114 +271,133 @@ export default async function handler(req, res) {
                     }
                     case "live": {
                         if (keywordsEdited || keywordsQuoteEdited) {
-                            console.log("keywords edited");
-                            liveFeedHandler(db, o, "", _id, "", 10000, 0).then(({feed}) => {
-                                wLogger.info(`live update ${_id}`);
-                                getPostInfo(agent, feed.map(x => x.post)).then(posts => {
-                                    const rawKeywords = o.keywords.map(x => {return {_id:x.t}});
-                                    const kw = prepKeywords(rawKeywords);
+                            const updateKeywords = ({size, loop=false, customSort=""}) => {
+                                liveFeedHandler( {db, feedObj:o, queryCursor:"", feedId:_id, user:"", limit:size, customSort}).then(({feed}) => {
+                                    if (feed.length === 0) {
+                                        console.log(`no feed items ${_id}`);
+                                        return;
+                                    }
 
-                                    const commands = posts.reduce((acc, {uri, record}) => {
-                                        let {embed, facets, text} = record;
-                                        let kwAlt = new Set<string>();
-                                        let kwLink = new Set<string>();
-                                        let kwTag = new Set<string>();
-
-                                        let tags = new Set<string>();
-                                        if (Array.isArray(facets)) {
-                                            // @ts-ignore
-                                            facets.filter(x => Array.isArray(x.features) && x.features[0] &&
-                                                x.features[0]["$type"] === "app.bsky.richtext.facet#tag").forEach(x => {
-                                                const tag = x.features[0].tag as string;
-                                                tags.add(tag);
-                                            });
-
-                                            let buffer = Buffer.from(text);
-                                            facets.filter(x => Array.isArray(x.features) && x.features[0] &&
-                                                x.features[0]["$type"] === "app.bsky.richtext.facet#link").sort((a, b) => {
-                                                return a.index.byteStart < b.index.byteStart ? 1 : -1;
-                                            }).forEach(x => {
-                                                let parts: any = [];
-                                                if (buffer) {
-                                                    parts.push(buffer.subarray(x.index.byteEnd, buffer.length));
-                                                    parts.push(buffer.subarray(0, x.index.byteStart));
-                                                    parts = parts.reverse();
-                                                }
-
-                                                buffer = Buffer.concat(parts);
-
-                                                const url = x.features[0]["uri"];
-                                                if (url) {
-                                                    findKeywords(url, kw).keywords.forEach(kw => kwLink.add(kw));
-                                                }
-                                            });
-                                            text = buffer.toString("utf8");
+                                    wLogger.info(`live update ${_id}`);
+                                    getPostInfo(agent, feed.map(x => x.post)).then(posts => {
+                                        if (posts.length === 0) {
+                                            console.log(`no posts ${_id}`);
+                                            return;
                                         }
+                                        const rawKeywords = o.keywords.map(x => {return {_id:x.t}});
+                                        const kw = prepKeywords(rawKeywords);
 
-                                        checkHashtags([...tags].map(x => x.toLowerCase()), kw["#"], kwTag);
+                                        const commands = posts.reduce((acc, {uri, record}) => {
+                                            let {embed, facets, text} = record;
+                                            let kwAlt = new Set<string>();
+                                            let kwLink = new Set<string>();
+                                            let kwTag = new Set<string>();
 
-                                        if (embed) {
-                                            switch (embed["$type"]) {
-                                                case "app.bsky.embed.recordWithMedia": {
-                                                    // @ts-ignore
-                                                    const imagess = embed.media?.images;
-                                                    if (Array.isArray(imagess)) {
-                                                        for (const image of imagess) {
-                                                            if (image.alt) {
-                                                                findKeywords(image.alt, kw).keywords.forEach(kw => kwAlt.add(kw));
+                                            let tags = new Set<string>();
+                                            if (Array.isArray(facets)) {
+                                                // @ts-ignore
+                                                facets.filter(x => Array.isArray(x.features) && x.features[0] &&
+                                                    x.features[0]["$type"] === "app.bsky.richtext.facet#tag").forEach(x => {
+                                                    const tag = x.features[0].tag as string;
+                                                    tags.add(tag);
+                                                });
+
+                                                let buffer = Buffer.from(text);
+                                                facets.filter(x => Array.isArray(x.features) && x.features[0] &&
+                                                    x.features[0]["$type"] === "app.bsky.richtext.facet#link").sort((a, b) => {
+                                                    return a.index.byteStart < b.index.byteStart ? 1 : -1;
+                                                }).forEach(x => {
+                                                    let parts: any = [];
+                                                    if (buffer) {
+                                                        parts.push(buffer.subarray(x.index.byteEnd, buffer.length));
+                                                        parts.push(buffer.subarray(0, x.index.byteStart));
+                                                        parts = parts.reverse();
+                                                    }
+
+                                                    buffer = Buffer.concat(parts);
+
+                                                    const url = x.features[0]["uri"];
+                                                    if (url) {
+                                                        findKeywords(url, kw).keywords.forEach(kw => kwLink.add(kw));
+                                                    }
+                                                });
+                                                text = buffer.toString("utf8");
+                                            }
+
+                                            checkHashtags([...tags].map(x => x.toLowerCase()), kw["#"], kwTag);
+
+                                            if (embed) {
+                                                switch (embed["$type"]) {
+                                                    case "app.bsky.embed.recordWithMedia": {
+                                                        // @ts-ignore
+                                                        const imagess = embed.media?.images;
+                                                        if (Array.isArray(imagess)) {
+                                                            for (const image of imagess) {
+                                                                if (image.alt) {
+                                                                    findKeywords(image.alt, kw).keywords.forEach(kw => kwAlt.add(kw));
+                                                                }
                                                             }
                                                         }
-                                                    }
 
-                                                    // @ts-ignore
-                                                    const external = embed.external?.uri;
-                                                    if (external) {
-                                                        findKeywords(external, kw).keywords.forEach(kw => kwLink.add(kw));
+                                                        // @ts-ignore
+                                                        const external = embed.external?.uri;
+                                                        if (external) {
+                                                            findKeywords(external, kw).keywords.forEach(kw => kwLink.add(kw));
+                                                        }
+                                                        break;
                                                     }
-                                                    break;
-                                                }
-                                                case "app.bsky.embed.images": {
-                                                    if (Array.isArray(embed.images)) {
+                                                    case "app.bsky.embed.images": {
+                                                        if (Array.isArray(embed.images)) {
+                                                            //@ts-ignore
+                                                            for (const image of embed.images) {
+                                                                if (image.alt) {
+                                                                    findKeywords(image.alt, kw).keywords.forEach(kw => kwAlt.add(kw));
+                                                                }
+                                                            }
+                                                        }
+                                                        break;
+                                                    }
+                                                    case "app.bsky.embed.external": {
                                                         //@ts-ignore
-                                                        for (const image of embed.images) {
-                                                            if (image.alt) {
-                                                                findKeywords(image.alt, kw).keywords.forEach(kw => kwAlt.add(kw));
-                                                            }
-                                                        }
+                                                        findKeywords(embed.external?.uri, kw).keywords.forEach(kw => kwLink.add(kw));
+                                                        break;
                                                     }
-                                                    break;
-                                                }
-                                                case "app.bsky.embed.external": {
-                                                    //@ts-ignore
-                                                    findKeywords(embed.external?.uri, kw).keywords.forEach(kw => kwLink.add(kw));
-                                                    break;
                                                 }
                                             }
-                                        }
-                                        let {keywords:kwText} = findKeywords(text, kw); // remove url from keyword search
+                                            let {keywords:kwText} = findKeywords(text, kw); // remove url from keyword search
 
-                                        if (kwText.length + kwAlt.size + kwTag.size + kwLink.size > 0) {
-                                            const $addToSet = {kwText, kwAlt:[...kwAlt], kwTag:[...kwTag], kwLink:[...kwLink]};
-                                            acc.push({
-                                                updateOne: {
-                                                    filter: {_id: uri},
-                                                    update: {$addToSet}
+                                            if (kwText.length + kwAlt.size + kwTag.size + kwLink.size > 0) {
+                                                const $addToSet = {kwText, kwAlt:[...kwAlt], kwTag:[...kwTag], kwLink:[...kwLink]};
+                                                acc.push({
+                                                    updateOne: {
+                                                        filter: {_id: uri},
+                                                        update: {$addToSet}
+                                                    }
+                                                });
+                                            }
+
+                                            return acc;
+                                        }, []);
+
+                                        if (commands.length > 0) {
+                                            db.posts.bulkWrite(commands, {ordered:false}).then((result) => {
+                                                wLogger.info(`${_id}: ${commands.length}/${posts.length} ${result.nModified}/${result.nMatched}`);
+                                                if (loop) {
+                                                    wLogger.info("looping");
+                                                    setTimeout(() => {
+                                                        // Update the most recent 300 posts 5 min later just in case they were not updated
+                                                        updateKeywords({size:200, customSort:"new"});
+                                                    }, 30*1000);
                                                 }
                                             });
-                                        }
-
-                                        return acc;
-                                    }, []);
-
-                                    db.posts.bulkWrite(commands, {ordered:false}).then((result) => {
-                                        if (result.ok) {
-                                            wLogger.info(_id, posts.length, commands.length, result.nModified);
                                         } else {
-                                            wLogger.info(_id, posts.length, commands.length, result);
+                                            wLogger.info(`no commands ${_id}`);
                                         }
+
                                     });
                                 });
-                            });
+                            }
+                            updateKeywords({size:10000, loop:true});
                         }
                         break;
                     }
@@ -388,8 +407,8 @@ export default async function handler(req, res) {
 
                 res.status(200).json({did});
             } catch (e) {
-                console.log(e);
-                console.log("failed to edit feed");
+                wLogger.error(e);
+                wLogger.error("failed to edit feed");
                 res.status(400).send();
             }
         });
