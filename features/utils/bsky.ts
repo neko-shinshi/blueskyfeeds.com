@@ -171,7 +171,7 @@ export const getPostInfo = async (agent, postUris) => {
                 const {record, uri}  = x;
                 if (uri) {
                     const {text} = record;
-                    result.push({text: text || "", uri});
+                    result.push({text: text || "", uri, record});
                 }
             });
         }

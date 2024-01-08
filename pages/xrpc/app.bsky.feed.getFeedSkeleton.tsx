@@ -180,7 +180,7 @@ const getKeywordQuery = (feedObj) => {
 }
 
 
-const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, now) => {
+export const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, now) => {
     let feed=[], cursor="";
     const dbQuery = getKeywordQuery(feedObj);
 
@@ -206,7 +206,7 @@ const liveFeedHandler = async (db, feedObj, queryCursor, feedId, user, limit, no
                 result = await db.posts.find(dbQuery).sort(sortMethod).limit(limit+100).project(projection).toArray(); // don't bother querying beyond 500
                 if (result.length === 0) {
                     return {cursor, feed};
-                } else {
+                } else if (now) {
                     db.posts.updateMany({_id: {$in: result.map(x => x._id)}}, {$set: {last: now }});
                 }
                 if (searchQuoteKeywords) {

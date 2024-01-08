@@ -77,7 +77,13 @@ export async function getServerSideProps({req, res, query}) {
                 } else {
 
                     if (sticky) {
-                        [sticky] = await getPostInfo(agent, [sticky]) || [""];
+                        let posts = await getPostInfo(agent, [sticky]);
+                        if (posts.length === 0) {
+                            sticky = "";
+                        } else {
+                            const {uri, text} = posts[0];
+                            sticky = {uri, text};
+                        }
                     } else {
                         sticky = "";
                     }
@@ -132,6 +138,9 @@ export default function Home({feed, updateSession, VIP}) {
     const [postLevels, setPostLevels] = useState<string[]>([]);
     const [keywordSetting, setKeywordSetting] = useState<string[]>([]);
     const [keywords, setKeywords] = useState<FeedKeyword[]>([]);
+    const [keywordsEdited, setKeywordsEdited] = useState(false);
+    const [keywordsQuoteEdited, setKeywordsQuoteEdited] = useState(false);
+
     const [popupState, setPopupState] = useState<"delete"|"edit_sticky"|"edit_user"|"sync_everyList"|"sync_blockList"|"sync_mentionList"|"sync_allowList"|"sync_viewers"|false>(false);
     const [pics, setPics] = useState<string[]>([]);
     const [busy, setBusy] = useState(false);
@@ -604,7 +613,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 mentionList, mentionListSync,
                                 everyList, everyListSync,
                                 viewers, viewersSync,
-                                mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels};
+                                mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels, keywordsEdited, keywordsQuoteEdited};
                             console.log(result);
 
                             return result;
@@ -1374,7 +1383,7 @@ export default function Home({feed, updateSession, VIP}) {
                                     }
                                 </div>
 
-                                <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP}/>
+                                <KeywordsEdit keywords={keywords} setKeywords={setKeywords} VIP={VIP} setDirty={setKeywordsEdited}/>
 
 
                                 {
@@ -1403,7 +1412,7 @@ export default function Home({feed, updateSession, VIP}) {
                                         {
                                             specialQuote && <>
                                                 <div className="bg-blue-100 p-2 font-bold text-xl">Quoted Keywords</div>
-                                                <KeywordsEdit bg="bg-blue-100" keywords={keywordsQuote} setKeywords={setKeywordsQuote} VIP={VIP}/>
+                                                <KeywordsEdit bg="bg-blue-100" keywords={keywordsQuote} setKeywords={setKeywordsQuote} VIP={VIP} setDirty={setKeywordsQuoteEdited}/>
                                             </>
                                         }
                                     </div>

@@ -73,12 +73,12 @@ export const generate = async(db, agent, feedId, feedConfig) => {
                 // Filter keywords based on keywordSetting
                 let foundKeywords = new Set();
                 if (searchText) {
-                    findKeywords(text, keywords).forEach(kw => foundKeywords.add(kw));
+                    findKeywords(text, keywords).keywords.forEach(kw => foundKeywords.add(kw));
                 }
                 if (searchAlt) {
                     for (const image of embed.images) {
                         if (image.alt) {
-                            findKeywords(image.alt, keywords).forEach(kw => foundKeywords.add(kw));
+                            findKeywords(image.alt, keywords).keywords.forEach(kw => foundKeywords.add(kw));
                         }
                     }
                 }

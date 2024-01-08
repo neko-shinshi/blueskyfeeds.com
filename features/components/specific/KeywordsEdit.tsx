@@ -5,7 +5,7 @@ import {isValidToken} from "features/utils/validationUtils";
 import SortableWordBubbles from "features/components/SortableWordBubbles";
 import {useState} from "react";
 
-export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-100"}) {
+export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-100", setDirty}: {keywords, setKeywords, VIP, bg?, setDirty?}) {
     const [editTag, setEditTag] = useState<any>(null);
     const [newKeywordMode, setNewKeywordMode] = useState<KeywordType>("token");
 
@@ -81,6 +81,9 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                     submitKeyword={(w, r, a) => {
                         setKeywords([...keywords, {t:"t", w:w.toLowerCase().trim(), a, r}]);
                         setEditTag(null);
+                        if (setDirty) {
+                            setDirty(true);
+                        }
                     }}>
                     <ul className="list-disc pl-4">
                         <li ><span className="font-bold">Does not work for non-latin languages</span> like Korean, Mandarin or Japanese, use <span className="font-bold underline">Segment</span> Mode</li>
@@ -105,6 +108,9 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                     submitKeyword={(w, r, a) => {
                         setKeywords([...keywords, {t:"s", w:w.toLowerCase().trim(), a, r}]);
                         setEditTag(null);
+                        if (setDirty) {
+                            setDirty(true);
+                        }
                     }}>
                     <ul className="list-disc pl-4">
                         <li>Posts are searched character-by-character, but may accidentally find longer words that include the search terms</li>
@@ -135,6 +141,9 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                     }} submitKeyword={(w, rejectWords, a) => {
                     setKeywords([...keywords, {t:"#", w:w.toLowerCase().trim(), a}]);
                     setEditTag(null);
+                    if (setDirty) {
+                        setDirty(true);
+                    }
                 }}
                 >
                     <ul className="list-disc pl-4">
@@ -152,12 +161,12 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                         case "#":
                             return `#${val.w}`;
                         case "s": {
-                            const v = val.r.length === 0? "": ` -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
+                            const v = val.r.length === 0? "": ` -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join(" ")).join(", ")}]`;
                             return `[${val.w}]${v}`;
 
                         }
                         case "t": {
-                            const v = val.r.length === 0? "": ` -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(",")}]`;
+                            const v = val.r.length === 0? "": ` -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join(" ")).join(", ")}]`;
                             return `${val.w}${v}`;
                         }
                     }

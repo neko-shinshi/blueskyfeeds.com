@@ -24,6 +24,8 @@ import {compressKeyword} from "features/utils/objectUtils";
 import {generate as generateFeed} from "features/algos/user-feed";
 import {wLogger} from "features/utils/logger";
 import sharp from "sharp";
+import {liveFeedHandler} from "pages/xrpc/app.bsky.feed.getFeedSkeleton";
+import {checkHashtags, findKeywords, prepKeywords} from "features/utils/textAndKeywords";
 
 // Regular users are restricted to MAX_FEEDS_PER_USER feeds and MAX_KEYWORDS_PER_FEED keywords
 
@@ -44,7 +46,8 @@ export default async function handler(req, res) {
                 blockList, blockListSync,
                 everyList, everyListSync,
                 mentionList, mentionListSync,
-                viewers, viewersSync
+                viewers, viewersSync,
+                keywordsEdited, keywordsQuoteEdited
             } = body;
 
             const did = agent.session.did;
@@ -257,11 +260,128 @@ export default async function handler(req, res) {
                 });
                 await db.allFeeds.bulkWrite(commands);
 
-                if (mode === "user-likes" || mode === "user-posts") {
-                    generateFeed(db, agent, _id, o).then(r => {
-                        wLogger.info(`generate ${_id}`);
-                        // Nothing
-                    });
+                switch (mode) {
+                    case "user-likes":
+                    case "user-posts": {
+                        generateFeed(db, agent, _id, o).then(r => {
+                            wLogger.info(`generate ${_id}`);
+                            // Nothing
+                        });
+                        break;
+                    }
+                    case "live": {
+                        if (keywordsEdited || keywordsQuoteEdited) {
+                            console.log("keywords edited");
+                            liveFeedHandler(db, o, "", _id, "", 10000, 0).then(({feed}) => {
+                                wLogger.info(`live update ${_id}`);
+                                getPostInfo(agent, feed.map(x => x.post)).then(posts => {
+                                    const rawKeywords = o.keywords.map(x => {return {_id:x.t}});
+                                    const kw = prepKeywords(rawKeywords);
+
+                                    const commands = posts.reduce((acc, {uri, record}) => {
+                                        let {embed, facets, text} = record;
+                                        let kwAlt = new Set<string>();
+                                        let kwLink = new Set<string>();
+                                        let kwTag = new Set<string>();
+
+                                        let tags = new Set<string>();
+                                        if (Array.isArray(facets)) {
+                                            // @ts-ignore
+                                            facets.filter(x => Array.isArray(x.features) && x.features[0] &&
+                                                x.features[0]["$type"] === "app.bsky.richtext.facet#tag").forEach(x => {
+                                                const tag = x.features[0].tag as string;
+                                                tags.add(tag);
+                                            });
+
+                                            let buffer = Buffer.from(text);
+                                            facets.filter(x => Array.isArray(x.features) && x.features[0] &&
+                                                x.features[0]["$type"] === "app.bsky.richtext.facet#link").sort((a, b) => {
+                                                return a.index.byteStart < b.index.byteStart ? 1 : -1;
+                                            }).forEach(x => {
+                                                let parts: any = [];
+                                                if (buffer) {
+                                                    parts.push(buffer.subarray(x.index.byteEnd, buffer.length));
+                                                    parts.push(buffer.subarray(0, x.index.byteStart));
+                                                    parts = parts.reverse();
+                                                }
+
+                                                buffer = Buffer.concat(parts);
+
+                                                const url = x.features[0]["uri"];
+                                                if (url) {
+                                                    findKeywords(url, kw).keywords.forEach(kw => kwLink.add(kw));
+                                                }
+                                            });
+                                            text = buffer.toString("utf8");
+                                        }
+
+                                        checkHashtags([...tags].map(x => x.toLowerCase()), kw["#"], kwTag);
+
+                                        if (embed) {
+                                            switch (embed["$type"]) {
+                                                case "app.bsky.embed.recordWithMedia": {
+                                                    // @ts-ignore
+                                                    const imagess = embed.media?.images;
+                                                    if (Array.isArray(imagess)) {
+                                                        for (const image of imagess) {
+                                                            if (image.alt) {
+                                                                findKeywords(image.alt, kw).keywords.forEach(kw => kwAlt.add(kw));
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // @ts-ignore
+                                                    const external = embed.external?.uri;
+                                                    if (external) {
+                                                        findKeywords(external, kw).keywords.forEach(kw => kwLink.add(kw));
+                                                    }
+                                                    break;
+                                                }
+                                                case "app.bsky.embed.images": {
+                                                    if (Array.isArray(embed.images)) {
+                                                        //@ts-ignore
+                                                        for (const image of embed.images) {
+                                                            if (image.alt) {
+                                                                findKeywords(image.alt, kw).keywords.forEach(kw => kwAlt.add(kw));
+                                                            }
+                                                        }
+                                                    }
+                                                    break;
+                                                }
+                                                case "app.bsky.embed.external": {
+                                                    //@ts-ignore
+                                                    findKeywords(embed.external?.uri, kw).keywords.forEach(kw => kwLink.add(kw));
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        let {keywords:kwText} = findKeywords(text, kw); // remove url from keyword search
+
+                                        if (kwText.length + kwAlt.size + kwTag.size + kwLink.size > 0) {
+                                            const $addToSet = {kwText, kwAlt:[...kwAlt], kwTag:[...kwTag], kwLink:[...kwLink]};
+                                            acc.push({
+                                                updateOne: {
+                                                    filter: {_id: uri},
+                                                    update: {$addToSet}
+                                                }
+                                            });
+                                        }
+
+                                        return acc;
+                                    }, []);
+
+                                    db.posts.bulkWrite(commands, {ordered:false}).then((result) => {
+                                        if (result.ok) {
+                                            wLogger.info(_id, posts.length, commands.length, result.nModified);
+                                        } else {
+                                            wLogger.info(_id, posts.length, commands.length, result);
+                                        }
+                                    });
+                                });
+                            });
+                        }
+                        break;
+                    }
                 }
 
                 wLogger.info(`submitted ${_id}`);

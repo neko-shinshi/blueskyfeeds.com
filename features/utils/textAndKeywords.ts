@@ -160,6 +160,7 @@ const findHashtagKeyword = (kw, splitTxt) => {
 export const findKeywords = (text, _keywords) => {
     const lowText = text.toLowerCase();
     let keywords = [];
+    let result:any = {};
     if (_keywords["t"]) {
         const nonAlpha = splitByNonAlpha(lowText);
         const nonAlphaNumeric = splitByNonAlphaNumeric(lowText);
@@ -192,7 +193,9 @@ export const findKeywords = (text, _keywords) => {
         }
     }
 
-    return keywords;
+    result.keywords = keywords;
+
+    return result;
 }
 
 export const compressedToJsonString = (txt) => {
@@ -232,4 +235,61 @@ export const compressedToJsonString = (txt) => {
         }
         return acc;
     }, []).join("");
+}
+
+export const prepKeywords = (data) => {
+    const unEscapeRelaxed = (s) => {
+        return s.replaceAll("\\*", "*").replaceAll("\\/", "/");
+    }
+
+    return data.map(x => {
+        let o = JSON.parse(toJson(x._id));
+        o.o = x._id;
+        return o;
+    }).reduce((acc, x) => {
+        let arr = acc[x.t];
+        if (!arr) {
+            arr = [];
+        }
+        const {t, ...y} = x;
+        y.w = unEscapeRelaxed(y.w);
+        if (t === "s") { // Pre-processing for segment
+            if (!y.r) {
+                y.r = [];
+            }
+            // prevent combining emojis by adding ZWJ to prefix and suffix reject filter
+            y.r.push({p: "\u200d"});
+            y.r.push({s: "\u200d"});
+
+            y.r = y.r.map(xx => {
+                let {s, p} = xx;
+                if (s) {
+                    s = unEscapeRelaxed(s);
+                }
+                if (p) {
+                    p = unEscapeRelaxed(p);
+                }
+                return {
+                    w: [p, y.w, s].filter(z => z).join(""),
+                    i: [-p?.length || 0, s?.length || 0]
+                }
+            });
+        }
+
+        arr.push(y);
+        acc[t] = arr;
+
+        return acc;
+    }, {});
+}
+
+export const checkHashtags = (stringArray, hashtagsToSearch, existingSet, modifier = (x) => x) => {
+    if (hashtagsToSearch) {
+        stringArray.forEach(y => {
+            if (hashtagsToSearch.find(x => x.w === y)) {
+                existingSet.add(modifier(y));
+            }
+        });
+    }
+    return existingSet;
 }
