@@ -367,7 +367,19 @@ export default async function handler(req, res) {
                                             let {keywords:kwText} = findKeywords(text, kw); // remove url from keyword search
 
                                             if (kwText.length + kwAlt.size + kwTag.size + kwLink.size > 0) {
-                                                const $addToSet = {kwText, kwAlt:[...kwAlt], kwTag:[...kwTag], kwLink:[...kwLink]};
+                                                let $addToSet:any = {};
+                                                if (kwText.length > 0) {
+                                                    $addToSet.kwText = {$each: kwText};
+                                                }
+                                                if (kwAlt.size > 0) {
+                                                    $addToSet.kwAlt = {$each: [...kwAlt]};
+                                                }
+                                                if (kwTag.size > 0) {
+                                                    $addToSet.kwTag = {$each: [...kwTag]};
+                                                }
+                                                if (kwLink.size > 0) {
+                                                    $addToSet.kwTag = {$each: [...kwLink]};
+                                                }
                                                 acc.push({
                                                     updateOne: {
                                                         filter: {_id: uri},
@@ -393,7 +405,6 @@ export default async function handler(req, res) {
                                         } else {
                                             wLogger.info(`no commands ${_id}`);
                                         }
-
                                     });
                                 });
                             }
