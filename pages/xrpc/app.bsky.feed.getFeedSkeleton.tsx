@@ -142,7 +142,7 @@ const getKeywordQuery = (feedObj) => {
             authorQuery.labels = dbQuery.labels;
         }
         if (Array.isArray(everyListBlockKeyword) && everyListBlockKeyword.length > 0) {
-            authorQuery.kwText = {$nin: everyListBlockKeyword};
+            authorQuery.kwText = {$nin: everyListBlockKeyword.map(x => x.t)};
         }
 
         if (findKeywords.length + findKeywordsQuote.length === 0) {
@@ -178,7 +178,7 @@ const getKeywordQuery = (feedObj) => {
     } else {
         dbQuery = {$or: queryOrs};
     }
-
+    
     return dbQuery;
 }
 
