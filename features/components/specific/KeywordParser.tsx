@@ -2,7 +2,7 @@ import clsx from "clsx";
 import {HiMinus, HiPlus} from "react-icons/hi";
 import {useEffect, useRef, useState} from "react";
 
-export default function KeywordParser({keyword, children, validateKeyword, handleTokenization, submitKeyword, prefix="", editTag}) {
+export default function KeywordParser({keyword, children, validateKeyword, handleTokenization, submitKeyword, prefix="", editTag, blockOnly=false}) {
     const [manualKeyword, setManualKeyword] = useState("");
     const [rejectWords, setRejectWords] = useState<{p?:string, s?:string}[]>([]);
     const [error, setError] = useState("");
@@ -54,7 +54,7 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
                             if (e.key === "Enter") {
                                 const val = keywordRef.current.value;
                                 if (!validateAndHandleError(val, rejectWords)) {return;}
-                                submitKeyword(val, rejectWords, true);
+                                submitKeyword(val, rejectWords, !blockOnly);
                                 setRejectWords([]);
                                 keywordRef.current.value = "";
                             }
@@ -156,15 +156,18 @@ export default function KeywordParser({keyword, children, validateKeyword, handl
             </div>
 
             <div className="w-24 flex flex-col ">
-                <button type="button" className="w-full flex-1  bg-lime-200 hover:bg-lime-300" onClick={() => {
-                    const val = keywordRef.current.value;
-                    if (!validateAndHandleError(val, rejectWords)) {return;}
-                    submitKeyword(val, rejectWords, true);
-                    setRejectWords([]);
-                    keywordRef.current.value = "";
-                }}>
-                    Add
-                </button>
+                {
+                    !blockOnly && <button type="button" className="w-full flex-1  bg-lime-200 hover:bg-lime-300" onClick={() => {
+                        const val = keywordRef.current.value;
+                        if (!validateAndHandleError(val, rejectWords)) {return;}
+                        submitKeyword(val, rejectWords, true);
+                        setRejectWords([]);
+                        keywordRef.current.value = "";
+                    }}>
+                        Add
+                    </button>
+                }
+
                 <button type="button" className="w-full flex-1 bg-red-200 hover:bg-red-300" onClick={() => {
                     const val = keywordRef.current.value;
                     if (!validateAndHandleError(val, rejectWords)) {return;}

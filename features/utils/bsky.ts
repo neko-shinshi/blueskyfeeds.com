@@ -201,7 +201,8 @@ export const getActorsInfo = async (agent, actors) => {
 export const isVIP = (agent) => {
     return ["did:plc:eubjsqnf5edgvcc6zuoyixhw",
         "did:plc:tazrmeme4dzahimsykusrwrk",
-        "did:plc:2dozc4lhicvbmpsbxnicvdpj"
+        "did:plc:2dozc4lhicvbmpsbxnicvdpj",
+        "did:plc:be5wkrivorcuc6db22drsc6z",
     ].indexOf(agent.session.did) >= 0;
 }
 

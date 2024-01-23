@@ -47,7 +47,7 @@ export default async function handler(req, res) {
                 everyList, everyListSync,
                 mentionList, mentionListSync,
                 viewers, viewersSync,
-                keywordsEdited, keywordsQuoteEdited
+                keywordsEdited, keywordsQuoteEdited, everyListBlockKeyword,
             } = body;
 
             const did = agent.session.did;
@@ -55,6 +55,29 @@ export default async function handler(req, res) {
             wLogger.info(`submit ${_id}`);
 
 
+            everyListBlockKeyword = everyListBlockKeyword || [];
+            everyListBlockKeyword = everyListBlockKeyword.filter(x => {
+                const {w,t,r,a, ...other} = x;
+                if (Object.keys(other).length === 0 && (typeof w === 'string' || w instanceof String) && typeof a == "boolean" ) {
+                    switch (t) {
+                        case "t":
+                        case "s": {
+                            return Array.isArray(r) &&
+                                r.every(y => (typeof y.p === 'string' || y.p instanceof String || typeof y.s === 'string' || y.s instanceof String));
+                        }
+                        case "#": {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            });
+
+            everyListBlockKeyword = everyListBlockKeyword.map(x => compressKeyword(x));
+            everyListBlockKeyword.sort((a,b) => {
+                return a.t.localeCompare(b.t);
+            });
             mustLabels = mustLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
             allowLabels = allowLabels.filter(x => SUPPORTED_CW_LABELS.indexOf(x) >= 0);
 
@@ -234,7 +257,9 @@ export default async function handler(req, res) {
                 await editFeed(agent, {img, shortName, displayName, description});
 
                 const o = {
-                    languages,  postLevels, pics, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, posts, allowLabels, mustLabels,
+                    languages,  postLevels, pics, keywordSetting,
+                    keywords, keywordsQuote, everyListBlockKeyword,
+                    copy, highlight, sticky, posts, allowLabels, mustLabels,
                     sort,
                     viewers, viewersSync,
                     allowList, allowListSync,

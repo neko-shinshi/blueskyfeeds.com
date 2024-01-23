@@ -153,6 +153,7 @@ export default function Home({feed, updateSession, VIP}) {
     const [modal, setModal] = useState<"wizard"|"wizard-everyList"|"wizard-keywords"|"wizard-bsky"|"wizard-posts"|"edit"|"done">(feed? "edit" : "wizard");
     const [specialQuote, setSpecialQuote] = useState(false);
     const [keywordsQuote, setKeywordsQuote] = useState<string[]>([]);
+    const [everyListBlockKeyword, setEveryListBlockKeyword] = useState<FeedKeyword[]>([])
 
     const [liveMentionList, setLiveMentionList] = useState(false);
     const [liveAllowList, setLiveAllowList] = useState(false);
@@ -199,6 +200,7 @@ export default function Home({feed, updateSession, VIP}) {
             setPrivacy("public");
             setPostLevels(POST_LEVELS.map(x => x.id));
             setKeywordSetting(["text"]);
+            setEveryListBlockKeyword([]);
             setPics(["text", "pics"]);
         } else {
             console.log("feed", feed);
@@ -208,7 +210,7 @@ export default function Home({feed, updateSession, VIP}) {
                 mentionList, mentionListSync,
                 everyList, everyListSync,
                 languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords,
-                copy, highlight, mode, sticky, posts, allowLabels, mustLabels, keywordsQuote,
+                copy, highlight, mode, sticky, posts, allowLabels, mustLabels, keywordsQuote, everyListBlockKeyword,
                 viewers, viewersSync,
             } = feed;
 
@@ -279,6 +281,16 @@ export default function Home({feed, updateSession, VIP}) {
                 return o;
             }) || [];
 
+            everyListBlockKeyword = everyListBlockKeyword?.map(x => {
+                const {t, a} = x;
+                let o = JSON.parse(toJson(t));
+                o.a = a;
+                if ((o.t === "t" || o.t === "s") && !o.r) {
+                    o.r = [];
+                }
+                return o;
+            }) || [];
+
 
             reset(o);
 
@@ -299,6 +311,7 @@ export default function Home({feed, updateSession, VIP}) {
                 setSpecialQuote(true);
                 setKeywordsQuote(keywordsQuote);
             }
+            setEveryListBlockKeyword(everyListBlockKeyword);
         }
     }, [feed]);
 
@@ -606,7 +619,10 @@ export default function Home({feed, updateSession, VIP}) {
                                 }
                             }
                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
-                            const result = {...imageObj, languages, postLevels, pics, keywordSetting, keywords, keywordsQuote, copy, highlight, sticky, posts:posts? posts.map(x => x.uri) : [],
+                            const result = {...imageObj, languages, postLevels, pics, keywordSetting,
+                                keywords, keywordsQuote,
+                                everyListBlockKeyword,
+                                copy, highlight, sticky, posts:posts? posts.map(x => x.uri) : [],
                                 sort, displayName, shortName, description,
                                 allowList, allowListSync,
                                 blockList, blockListSync,
@@ -1110,7 +1126,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 <div className="text-lg font-bold">User Filters</div>
                                 {
                                     (mode === "live" || mode === "responses") && <>
-                                    <div>
+                                    <div className="space-y-1">
                                         {
                                             [
                                                 {
@@ -1129,9 +1145,8 @@ export default function Home({feed, updateSession, VIP}) {
                                                     watch: watchBlockListSync,
                                                     t: `Block List: Block all posts from these Users (${getValues("blockList")?.length || 0})`
                                                 }
-                                            ].map(({id, t, c, sync, watch:watchSync}) =>
+                                            ].map(({id, t, c, sync, watch:watchSync}) => <div key={id}>
                                                 <InputMultiWord
-                                                    key={id}
                                                     className={clsx("border border-2 border-black p-2 rounded-xl", c)}
                                                     labelText={t}
                                                     placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
@@ -1182,8 +1197,16 @@ export default function Home({feed, updateSession, VIP}) {
                                                         }
                                                     </button>
                                                 </InputMultiWord>
+                                                {
+                                                    id === "everyList" && getValues("everyList")?.length > 0 && <div className="p-2 bg-gray-200 rounded-xl">
+                                                        <div className="font-bold text-lg">Block keywords from posts in Every List</div>
+                                                        <KeywordsEdit keywords={everyListBlockKeyword} setKeywords={setEveryListBlockKeyword} VIP={VIP} blockOnly={true}/>
+                                                    </div>
+                                                }
+                                                </div>
                                             )
                                         }
+
                                     </div>
 
                                     </>
@@ -1338,7 +1361,7 @@ export default function Home({feed, updateSession, VIP}) {
                         {
                             mode !== "responses" && mode !== "posts" && !(mode === "user" && subMode === "likes") &&
                             <div className="bg-white p-2 space-y-2">
-                                <div className="text-lg font-bold">Keyword Filters {VIP ? "" : `(max ${mode === "live" ? MAX_KEYWORDS_PER_LIVE_FEED : MAX_KEYWORDS_PER_USER_FEED})`}</div>
+                                <div className="text-lg font-bold">Keyword Filters {!liveAllowList && !liveMentionList && "of All Posts"}{liveAllowList && liveMentionList? "from both Mention List and Only List": liveAllowList? "from Only List": liveMentionList && "from Mention List"}{VIP ? "" : ` (max ${mode === "live" ? MAX_KEYWORDS_PER_LIVE_FEED : MAX_KEYWORDS_PER_USER_FEED})`}</div>
                                 <div>A post is blocked if it contains at least one blocked keyword, and is allowed only
                                     if it has no blocked keywords and at least one search keyword
                                 </div>
@@ -1506,7 +1529,11 @@ export default function Home({feed, updateSession, VIP}) {
                                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
 
                                             const result = {
-                                                languages, postLevels, pics, keywordSetting, keywords: keywords.map(x => compressKeyword(x)), keywordsQuote: keywordsQuote.map(x => compressKeyword(x)), copy, highlight, sticky, posts: posts? posts.map(x => x.uri) : [],
+                                                languages, postLevels, pics, keywordSetting,
+                                                keywords: keywords.map(x => compressKeyword(x)),
+                                                keywordsQuote: keywordsQuote.map(x => compressKeyword(x)),
+                                                everyListBlockKeyword: everyListBlockKeyword.map(x => compressKeyword(x)),
+                                                copy, highlight, sticky, posts: posts? posts.map(x => x.uri) : [],
                                                 sort, displayName, shortName, description,
                                                 allowList, allowListSync: allowListSync || "",
                                                 mentionList, mentionListSync: mentionListSync || "",
@@ -1555,7 +1582,8 @@ export default function Home({feed, updateSession, VIP}) {
                                                     let {
                                                         sort, shortName, displayName, description,
                                                         languages, postLevels, pics, mustUrl, blockUrl, keywordSetting,
-                                                        keywords, keywordsQuote, copy, highlight, sticky,
+                                                        keywords, keywordsQuote, everyListBlockKeyword,
+                                                        copy, highlight, sticky,
                                                         mode:_mode, posts:_posts, mustLabels, allowLabels,
                                                     } = parsed
 
@@ -1628,6 +1656,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                         setKeywords([]);
                                                         setKeywordsQuote([]);
                                                         setSpecialQuote(false);
+                                                        setEveryListBlockKeyword([]);
 
                                                         reset(o);
                                                         setBusy(false);
@@ -1666,6 +1695,22 @@ export default function Home({feed, updateSession, VIP}) {
                                                             return o;
                                                         }) || [];
 
+                                                        everyListBlockKeyword = everyListBlockKeyword?.map(x => {
+                                                            console.log(x);
+                                                            const {t, a} = x;
+                                                            let o:any;
+                                                            try {
+                                                                o = JSON.parse(toJson(t));
+                                                            } catch (e) {
+                                                                o = JSON.parse(compressedToJsonString(t));
+                                                            }
+
+                                                            o.a = a;
+                                                            if ((o.t === "t" || o.t === "s") && !o.r) {
+                                                                o.r = [];
+                                                            }
+                                                            return o;
+                                                        }) || [];
 
 
                                                         if (sticky) {
@@ -1704,6 +1749,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                         setKeywordSetting(keywordSetting || ["text"]);
                                                         setPics(pics || ["text", "pics"]);
                                                         setKeywords(keywords);
+                                                        setEveryListBlockKeyword(everyListBlockKeyword);
                                                         if (keywordsQuote.length > 0) {
                                                             setSpecialQuote(true);
                                                             setKeywordsQuote(keywordsQuote);

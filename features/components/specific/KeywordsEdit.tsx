@@ -5,7 +5,7 @@ import {isValidToken} from "features/utils/validationUtils";
 import SortableWordBubbles from "features/components/SortableWordBubbles";
 import {useState} from "react";
 
-export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-100", setDirty}: {keywords, setKeywords, VIP, bg?, setDirty?}) {
+export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-100", setDirty, blockOnly=false}: {keywords, setKeywords, VIP, bg?, setDirty?, blockOnly?}) {
     const [editTag, setEditTag] = useState<any>(null);
     const [newKeywordMode, setNewKeywordMode] = useState<KeywordType>("token");
 
@@ -70,6 +70,7 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                 <KeywordParser
                     editTag={editTag}
                     keyword="Token"
+                    blockOnly={blockOnly}
                     handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join(" ")}
                     validateKeyword={(word, reject) => {
                         const trimmed = word.trim();
@@ -100,6 +101,7 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                 newKeywordMode === "segment" && <KeywordParser
                     editTag={editTag}
                     keyword="Segment"
+                    blockOnly={blockOnly}
                     handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join("")}
                     validateKeyword={(word, reject) => {
                         const trimmed = word.trim();
@@ -125,6 +127,7 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                 newKeywordMode === "hashtag" && <KeywordParser
                     editTag={editTag}
                     keyword="Hashtag"
+                    blockOnly={blockOnly}
                     prefix="#"
                     handleTokenization={null}
                     validateKeyword={term => {
