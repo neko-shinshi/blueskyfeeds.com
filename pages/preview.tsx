@@ -14,7 +14,7 @@ import Image from "next/image";
 import {HiDownload, HiTrash} from "react-icons/hi";
 import SortableWordBubbles from "features/components/SortableWordBubbles";
 import {toJson} from "really-relaxed-json";
-import {compressedToJsonString} from "features/utils/textAndKeywords";
+import {compressedToJsonString, unEscapeRelaxed} from "features/utils/textAndKeywords";
 import {removeUndefined} from "features/utils/validationUtils";
 import PageFooter from "features/components/PageFooter";
 
@@ -33,7 +33,7 @@ export async function getServerSideProps({req, res, query}) {
             const {t, a} = x;
             let o:any;
             try {
-                o = JSON.parse(toJson(t));
+                o = JSON.parse(unEscapeRelaxed(toJson(t)));
             } catch (e) {
                 o = JSON.parse(compressedToJsonString(t));
             }

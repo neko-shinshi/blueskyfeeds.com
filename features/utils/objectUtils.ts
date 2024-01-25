@@ -28,7 +28,7 @@ export const objectToDotNotation = (o, header=null) => {
 }
 
 const escapeRelaxed = (s) => {
-    return s.replaceAll("*", "\\*").replaceAll("/", "\\/");
+    return s.replaceAll("*", "<^>").replaceAll("/", "\/");
 }
 
 
@@ -58,6 +58,7 @@ export const compressKeyword = (x) => {
             });
         }
     }
+
     return {
         t: toRJson(JSON.stringify(y)), // more than one backslash fails
         a: x.a // This is not used by the firehose

@@ -41,7 +41,7 @@ import PopupWithInputText from "features/components/PopupWithInputText";
 import {BiCopy} from "react-icons/bi";
 import KeywordsEdit from "features/components/specific/KeywordsEdit";
 import BlueskyForm from "features/components/specific/BlueskyForm";
-import {compressedToJsonString} from "features/utils/textAndKeywords";
+import {compressedToJsonString, unEscapeRelaxed} from "features/utils/textAndKeywords";
 import PostsEdit from "features/components/specific/PostsEdit";
 import PopupWithAddPost from "features/components/PopupWithAddPost";
 import EditFeedWizard from "features/components/specific/EditFeedWizard";
@@ -263,7 +263,7 @@ export default function Home({feed, updateSession, VIP}) {
 
             keywords = keywords?.map(x => {
                 const {t, a} = x;
-                let o = JSON.parse(toJson(t));
+                let o = JSON.parse(unEscapeRelaxed(toJson(t)));
                 o.a = a;
                 if ((o.t === "t" || o.t === "s") && !o.r) {
                     o.r = [];
@@ -273,7 +273,7 @@ export default function Home({feed, updateSession, VIP}) {
 
             keywordsQuote = keywordsQuote?.map(x => {
                 const {t, a} = x;
-                let o = JSON.parse(toJson(t));
+                let o = JSON.parse(unEscapeRelaxed(toJson(t)));
                 o.a = a;
                 if ((o.t === "t" || o.t === "s") && !o.r) {
                     o.r = [];
@@ -283,7 +283,7 @@ export default function Home({feed, updateSession, VIP}) {
 
             everyListBlockKeyword = everyListBlockKeyword?.map(x => {
                 const {t, a} = x;
-                let o = JSON.parse(toJson(t));
+                let o = JSON.parse(unEscapeRelaxed(toJson(t)));
                 o.a = a;
                 if ((o.t === "t" || o.t === "s") && !o.r) {
                     o.r = [];
@@ -1667,7 +1667,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                             const {t, a} = x;
                                                             let o:any;
                                                             try {
-                                                                o = JSON.parse(toJson(t));
+                                                                o = JSON.parse(unEscapeRelaxed(toJson(t)));
                                                             } catch (e) {
                                                                 o = JSON.parse(compressedToJsonString(t));
                                                             }
@@ -1683,7 +1683,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                             const {t, a} = x;
                                                             let o:any;
                                                             try {
-                                                                o = JSON.parse(toJson(t));
+                                                                o = JSON.parse(unEscapeRelaxed(toJson(t)));
                                                             } catch (e) {
                                                                 o = JSON.parse(compressedToJsonString(t));
                                                             }
@@ -1700,7 +1700,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                             const {t, a} = x;
                                                             let o:any;
                                                             try {
-                                                                o = JSON.parse(toJson(t));
+                                                                o = JSON.parse(unEscapeRelaxed(toJson(t)));
                                                             } catch (e) {
                                                                 o = JSON.parse(compressedToJsonString(t));
                                                             }
