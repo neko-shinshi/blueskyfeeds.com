@@ -1,7 +1,7 @@
-import * as onlyFollows from 'features/algos/only-following';
+import * as animangaRec from 'features/algos/animanga-hint';
 
 export const algos = {
    // [rarePosters.id]:  rarePosters.handler,
   //  [gordonRamses.id]: gordonRamses.handler,
-    [onlyFollows.id] : onlyFollows.handler
+    [animangaRec.id] : animangaRec.handler
 }
