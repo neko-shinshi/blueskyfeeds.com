@@ -92,7 +92,7 @@ app.prepare().then(async () => {
 
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             await updateScores(db);
-            Cron('*/20 * * * *', async () => {
+            Cron('*/15 * * * *', async () => {
                 const db = await connectToDatabase();
                 await updateScores(db);
             });
@@ -100,7 +100,7 @@ app.prepare().then(async () => {
             const agent = await getAgent();
             if (agent) {
                 await updateAllFeeds(db, agent);
-                Cron('*/45 * * * *', async () => {
+                Cron('*/9 * * * *', async () => {
                     const agent = await getAgent();
                     if (agent) {
                         const db = await connectToDatabase();
@@ -110,7 +110,7 @@ app.prepare().then(async () => {
                     }
                 });
                 await updateLabels(db, agent);
-                Cron('*/12 * * * *', async () => {
+                Cron('*/5 * * * *', async () => {
                     const agent = await getAgent();
                     if (agent) {
                         const db = await connectToDatabase();
