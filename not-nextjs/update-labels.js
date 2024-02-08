@@ -23,18 +23,28 @@ const updateLabels = async (db, agent) => {
                 const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris}));
                 if (posts && Array.isArray(posts) && posts.length > 0) {
                     posts.forEach(post => {
-                        let {uri, labels} = post;
-                        labels = labels.reduce((acc, label) => {
+                        let {uri, labels, embed} = post;
+                        let labelSet = new Set();
+                        for (const label of labels) {
                             const {val, neg} = label;
                             if (!neg) {
-                                acc.push(val);
+                                labelSet.add(val);
                             }
-                            return acc;
-                        }, []);
+                        }
+
+                        if (embed && embed["$type"] === "app.bsky.embed.record#view" && Array.isArray(embed.record.labels)) {
+                            for (const label of embed.record.labels) {
+                                const {val, neg} = label;
+                                if (!neg) {
+                                    labelSet.add(val);
+                                }
+                            }
+                        }
+
                         commands.push({
                             updateOne: {
                                 filter: {_id: uri},
-                                update: {$set: {labels, labelsFetched:true}}
+                                update: {$set: {labels:[...labelSet], labelsFetched:true}}
                             }
                         });
                     });
