@@ -34,7 +34,7 @@ const multipleIndexOf = (text, term) => {
 }
 
 export const unEscapeRelaxed = (s) => {
-    return s.replaceAll("<^>", "*");
+    return s.replaceAll("<^>", "*").replaceAll("<%>","/");
 }
 
 
@@ -238,10 +238,6 @@ export const compressedToJsonString = (txt) => {
 }
 
 export const prepKeywords = (data) => {
-    const unEscapeRelaxed = (s) => {
-        return s.replaceAll("\\*", "*").replaceAll("\\/", "/");
-    }
-
     return data.map(x => {
         let o = JSON.parse(toJson(x._id));
         o.o = x._id;

@@ -28,7 +28,7 @@ export const objectToDotNotation = (o, header=null) => {
 }
 
 const escapeRelaxed = (s) => {
-    return s.replaceAll("*", "<^>").replaceAll("/", "\/");
+    return s.replaceAll("*", "<^>").replaceAll("/", "<%>");
 }
 
 
