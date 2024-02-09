@@ -387,7 +387,7 @@ export async function getServerSideProps({req, res, query}) {
     let feed:any[];
 
     if (algo) {
-        const {feed: feedV, cursor: cursorV} = await algo(user, queryCursor, limit);
+        const {feed: feedV, cursor: cursorV} = await algo(db, user, queryCursor, limit);
         feed = feedV;
         cursor = cursorV;
     } else {
