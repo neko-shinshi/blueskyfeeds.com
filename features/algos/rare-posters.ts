@@ -5,7 +5,7 @@ import {connectToDatabase}  from "../utils/dbUtils";
 import {secondsAfter} from "features/utils/timeUtils";
 
 export const id = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/rare-posters";
-export const handler = async (user, cursor, limit) => {
+export const handler = async (db, user, cursor, limit) => {
     let start = 0;
     if (cursor) {
         const v = parseInt(cursor);
@@ -14,8 +14,6 @@ export const handler = async (user, cursor, limit) => {
         }
     }
 
-    const db = await connectToDatabase();
-    if (!db) {return {feed: [], cursor:""};} // DB fail
     const feedId = `rare-posters_${user}`;
     const feed = await db.postsAlgoFeed.find({feed: feedId}).sort({indexedAt:-1}).skip(start).limit(limit).project({_id:0, post:1}).toArray();
     generate(user); // try regenerating the feed in the background

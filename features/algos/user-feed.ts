@@ -33,7 +33,7 @@ export const handler = async (feedId, feedConfig, user, cursor, limit) => {
 }
 
 
-export const generate = async(db, agent, feedId, feedConfig) => {
+export const generateFeed = async(db, agent, feedId, feedConfig) => {
     try {
         // if successfully inserted, actually regenerate
         let {allowList, keywords, keywordSetting, postLevels, pics, mode} = feedConfig;

@@ -7,8 +7,7 @@ import {secondsAfter} from "features/utils/timeUtils";
 export const id = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/gordonramses";
 const feedId = "feed_gordon-ramses";
 
-export const handler = async (user, cursor, limit) => {
-    const db = await connectToDatabase();
+export const handler = async (db, user, cursor, limit) => {
     if (!db) {return {feed: [], cursor:""};} // DB fail
 
     console.log('ramses');

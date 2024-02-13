@@ -4,8 +4,6 @@ export const id = "at://did:plc:tazrmeme4dzahimsykusrwrk/app.bsky.feed.generator
 const sticky = "";
 
 export const handler = async (db, user, queryCursor, limit) => {
-    console.log("handler");
-
     let dbQuery:any = {
         $and: [
             {kwText: {$in:["{t:t w:animanga}",
@@ -16,6 +14,8 @@ export const handler = async (db, user, queryCursor, limit) => {
         ],
         replyRoot:null
     }
+    console.log(JSON.stringify(dbQuery));
+
     let result:any[] = [];
     let feed=[], cursor="";
 
@@ -56,7 +56,6 @@ export const handler = async (db, user, queryCursor, limit) => {
 
     } else {
         if (sticky) {limit = limit -1;}
-        console.log("else")
 
         let projection:any = {createdAt: 1};
         result = await db.posts.find(dbQuery).sort({createdAt: -1}).project(projection).limit(limit).toArray();

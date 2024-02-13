@@ -49,11 +49,9 @@ const getFollowing = async (agent, actor) => {
 const sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3kabxgbzcxs2c";
 const id = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.generator/only-following";
 
-const handler = async (user, inCursor, limit) => {
+const handler = async (db, user, inCursor, limit) => {
     console.log("algo feed");
     if (!user) {return {feed: [], cursor:""};}
-    const db = await connectToDatabase();
-    if (!db) {return {feed: [], cursor:""};} // DB fail
     const key = `follows_${user}`;
     const feedConfig = await db.dataAlgoFeed.findOne({_id:key, type:"only_following"});
     let feed=[], cursor="";
