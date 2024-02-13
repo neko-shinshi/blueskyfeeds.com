@@ -412,35 +412,6 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
         listMap.set(mentionListSync, []);
     }
 
-    let dids = new Set();
-    for (const lyst of listMap.keys()) {
-        const did = lyst.split("/")[0];
-        dids.add(did);
-    }
-
-    let uris = new Map();
-    for (const did of [...dids]) {
-        let cursor:any = {};
-        do {
-            const {data:{records, cursor:newCursor}} = await agent.api.com.atproto.repo.listRecords(
-                {repo:did, collection:"app.bsky.graph.listitem", limit:100, ...cursor});
-            if (newCursor === cursor?.cursor) {
-                break;
-            }
-
-            records.forEach(item => {
-                const {uri, value:{list, subject}} = item;
-                uris.set(`${list}_${subject}`, uri);
-            });
-
-            if (!newCursor) {
-                cursor = null;
-            } else {
-                cursor = {cursor: newCursor};
-            }
-        } while (cursor);
-    }
-
     for (const lyst of listMap.keys()) {
         let cursor:any = {};
         let users = new Map();
@@ -449,14 +420,14 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
             do {
                 const params = {list, ...cursor};
                 const {data:{items, cursor:newCursor}} = await agent.api.app.bsky.graph.getList(params);
-                if (newCursor === cursor?.cursor) {
+                if (newCursor &&  newCursor === cursor?.cursor) {
                     break;
                 }
 
                 items.forEach(x => {
-                    const {subject:{did, handle, displayName}} = x;
+                    const {subject:{did, handle, displayName}, uri} = x;
                     const key = `${list}_${did}`;
-                    users.set(did, {did, handle, displayName: displayName || "", uri: uris.get(key) || ""});
+                    users.set(did, {did, handle, displayName: displayName || "", uri});
                 });
                 if (!newCursor) {
                     cursor = null;
@@ -466,6 +437,7 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
             } while (cursor);
             listMap.set(lyst, [...users.values()]);
         } catch (e) {
+            console.log("repo not found?");
             console.log(e);
         }
     }
