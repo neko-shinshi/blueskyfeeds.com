@@ -9,7 +9,7 @@ export const handler = async (db, user, queryCursor, limit) => {
             {kwText: {$in:["{t:t w:animanga}",
                         "{t:t w:anime}", "{t:t w:animes}",
                         "{t:t w:manga}", "{t:t w:mangas}"]}},
-            {kwText: {$in:['{t:t w:need}',
+            {kwText: {$in:['{t:t w:need}', '{t:t w:looking for}', '{t:t w:recs}',
                         "{t:t w:suggest}", "{t:t w:suggestion}", '{t:t w:suggestions r:[{p:search}]}',
                         "{t:t w:recommend}", "{t:t w:recommendation}", "{t:t w:recommendations}"]}}
         ],
