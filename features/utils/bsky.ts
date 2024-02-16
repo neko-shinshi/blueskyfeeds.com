@@ -437,8 +437,8 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
             } while (cursor);
             listMap.set(lyst, [...users.values()]);
         } catch (e) {
-            console.log("repo not found?");
-            console.log(e);
+            console.error("repo not found?");
+            console.error(e);
         }
     }
 

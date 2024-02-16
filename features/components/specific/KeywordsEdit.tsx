@@ -164,7 +164,7 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                         case "#":
                             return `#${val.w}`;
                         case "s": {
-                            const v = val.r.length === 0? "": ` -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join(" ")).join(", ")}]`;
+                            const v = val.r.length === 0? "": ` -[${val.r.map(x =>  [x.p, val.w, x.s].filter(x => x).join("")).join(", ")}]`;
                             return `[${val.w}]${v}`;
 
                         }
