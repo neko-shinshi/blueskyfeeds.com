@@ -104,11 +104,10 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                     blockOnly={blockOnly}
                     handleTokenization={(r, term) =>  [r.p, term, r.s].filter(x => x).join("")}
                     validateKeyword={(word, reject) => {
-                        const trimmed = word.trim();
-                        return validateKeyword(trimmed, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(""));
+                        return validateKeyword(word, reject, (r, term) =>  [r.p, term, r.s].filter(x => x).join(""));
                     }}
                     submitKeyword={(w, r, a) => {
-                        setKeywords([...keywords, {t:"s", w:w.toLowerCase().trim(), a, r}]);
+                        setKeywords([...keywords, {t:"s", w:w.toLowerCase(), a, r}]);
                         setEditTag(null);
                         if (setDirty) {
                             setDirty(true);
