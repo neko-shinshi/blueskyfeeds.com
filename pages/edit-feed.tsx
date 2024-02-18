@@ -1361,7 +1361,7 @@ export default function Home({feed, updateSession, VIP}) {
                         {
                             mode !== "responses" && mode !== "posts" && !(mode === "user" && subMode === "likes") &&
                             <div className="bg-white p-2 space-y-2">
-                                <div className="text-lg font-bold">Keyword Filters {!liveAllowList && !liveMentionList && "of All Posts"}{liveAllowList && liveMentionList? "from both Mention List and Only List": liveAllowList? "from Only List": liveMentionList && "from Mention List"}{VIP ? "" : ` (max ${mode === "live" ? MAX_KEYWORDS_PER_LIVE_FEED : MAX_KEYWORDS_PER_USER_FEED})`}</div>
+                                <div className="text-lg font-bold">Keyword Filters {!liveAllowList && !liveMentionList && (getValues("everyList")?.length > 0? "of Other Posts not in EveryList": "of All Posts not in EveryList")}{liveAllowList && liveMentionList? "from both Mention List and Only List": liveAllowList? "from Only List": liveMentionList && "from Mention List"}{VIP ? "" : ` (max ${mode === "live" ? MAX_KEYWORDS_PER_LIVE_FEED : MAX_KEYWORDS_PER_USER_FEED})`}</div>
                                 <div>A post is blocked if it contains at least one blocked keyword, and is allowed only
                                     if it has no blocked keywords and at least one search keyword
                                 </div>

@@ -40,6 +40,10 @@ const getKeywordQuery = (feedObj) => {
     everyList = listsToDids(everyList);
     mentionList = listsToDids(mentionList);
 
+    if (everyList.length > 0) {
+        blockList = [...blockList, ...everyList]; // Filters on normal posts don't apply to everylist
+    }
+
 
     let dbQuery:any = {};
     if (allowList.length > 0) {
