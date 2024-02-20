@@ -3,7 +3,6 @@ import {randomInt} from "crypto";
 import {parseJwt} from "features/utils/jwtUtils";
 import {algos} from 'features/algos'
 import {handler as userFeedHandler} from 'features/algos/user-feed'
-import {feedHasUserLike, getAgent} from "features/utils/bsky";
 import {SUPPORTED_CW_LABELS} from "features/utils/constants";
 
 const getSortMethod = (sort) => {
@@ -92,34 +91,48 @@ const getKeywordQuery = (feedObj) => {
         dbQuery.lang = {$in: languages};
     }
 
-    let keywordSearch = [];
+
     const findKeywords = keywords.filter(x => x.a).map(x => x.t);
     const blockKeywords = keywords.filter(x => !x.a).map(x => x.t);
-    if (keywordSetting.indexOf("alt") >= 0 && findKeywords.length > 0) {
-        keywordSearch.push({kwAlt:{$in: findKeywords, $nin: blockKeywords}});
-    }
-
-    if (keywordSetting.indexOf("text") >= 0 && findKeywords.length > 0) {
-        keywordSearch.push({kwText:{$in: findKeywords, $nin: blockKeywords}});
-    }
-
-    if (keywordSetting.indexOf("link") >= 0 && findKeywords.length > 0) {
-        keywordSearch.push({kwLink:{$in: findKeywords, $nin: blockKeywords}});
-    }
 
 
-    switch (keywordSearch.length) {
-        case 0: {
-            break;
+    if (findKeywords.length > 0) {
+        let keywordSearch = [];
+
+        if (keywordSetting.indexOf("alt") >= 0) {
+            keywordSearch.push({kwAlt:{$in: findKeywords}});
         }
-        case 1: {
-            dbQuery = {...dbQuery, ...keywordSearch[0]};
-            break;
+
+        if (keywordSetting.indexOf("text") >= 0) {
+            keywordSearch.push({kwText:{$in: findKeywords}});
         }
-        case 2:
-        case 3: {
-            dbQuery = {...dbQuery, $or:keywordSearch};
-            break;
+
+        if (keywordSetting.indexOf("link") >= 0) {
+            keywordSearch.push({kwLink:{$in: findKeywords}});
+        }
+        switch (keywordSearch.length) {
+            case 1: {
+                dbQuery = {...dbQuery, ...keywordSearch[0]};
+                break;
+            }
+            case 2:
+            case 3: {
+                dbQuery = {...dbQuery, $or:keywordSearch};
+                break;
+            }
+        }
+    }
+    if (blockKeywords.length > 0) {
+        if (keywordSetting.indexOf("alt") >= 0) {
+            dbQuery.kwAlt = {$nin: blockKeywords};
+        }
+
+        if (keywordSetting.indexOf("text") >= 0) {
+            dbQuery.kwText = {$nin: blockKeywords};
+        }
+
+        if (keywordSetting.indexOf("link") >= 0) {
+            dbQuery.kwLink = {$nin: blockKeywords};
         }
     }
 
@@ -142,7 +155,7 @@ const getKeywordQuery = (feedObj) => {
         if (dbQuery.hasOwnProperty('labels')) {
             authorQuery.labels = dbQuery.labels;
         }
-        
+
         if (Array.isArray(everyListBlockKeyword) && everyListBlockKeyword.length > 0) {
             everyListBlockKeywordSetting = everyListBlockKeywordSetting || ["text"];
             if (everyListBlockKeywordSetting.indexOf("alt") >= 0) {
@@ -183,7 +196,11 @@ const getKeywordQuery = (feedObj) => {
 
     if (searchQuoteKeywords) {
         const blockKeywordsQuote = keywordsQuote.filter(x => !x.a).map(x => x.t);
-        queryOrs.push({kwText:{$in: findKeywordsQuote, $nin: blockKeywordsQuote}, quoteUri:{$ne:null}});
+        let cmd:any = {$in: findKeywordsQuote};
+        if (blockKeywordsQuote.length > 0) {
+            cmd.$nin = blockKeywordsQuote;
+        }
+        queryOrs.push({kwText:cmd, quoteUri:{$ne:null}});
     }
 
     if (queryOrs.length === 1) {
@@ -191,7 +208,7 @@ const getKeywordQuery = (feedObj) => {
     } else {
         dbQuery = {$or: queryOrs};
     }
-    
+
     return dbQuery;
 }
 
