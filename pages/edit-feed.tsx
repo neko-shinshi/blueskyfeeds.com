@@ -154,6 +154,7 @@ export default function Home({feed, updateSession, VIP}) {
     const [specialQuote, setSpecialQuote] = useState(false);
     const [keywordsQuote, setKeywordsQuote] = useState<string[]>([]);
     const [everyListBlockKeyword, setEveryListBlockKeyword] = useState<FeedKeyword[]>([])
+    const [everyListBlockKeywordSetting, setEveryListBlockKeywordSetting] = useState<string[]>([])
 
     const [liveMentionList, setLiveMentionList] = useState(false);
     const [liveAllowList, setLiveAllowList] = useState(false);
@@ -200,6 +201,7 @@ export default function Home({feed, updateSession, VIP}) {
             setPrivacy("public");
             setPostLevels(POST_LEVELS.map(x => x.id));
             setKeywordSetting(["text"]);
+            setEveryListBlockKeywordSetting(["text"]);
             setEveryListBlockKeyword([]);
             setPics(["text", "pics"]);
         } else {
@@ -210,7 +212,7 @@ export default function Home({feed, updateSession, VIP}) {
                 mentionList, mentionListSync,
                 everyList, everyListSync,
                 languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, keywords,
-                copy, highlight, mode, sticky, posts, allowLabels, mustLabels, keywordsQuote, everyListBlockKeyword,
+                copy, highlight, mode, sticky, posts, allowLabels, mustLabels, keywordsQuote, everyListBlockKeyword, everyListBlockKeywordSetting,
                 viewers, viewersSync,
             } = feed;
 
@@ -305,6 +307,7 @@ export default function Home({feed, updateSession, VIP}) {
             setLanguages(languages || []);
             setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
             setKeywordSetting(keywordSetting || ["text"]);
+            setEveryListBlockKeywordSetting(everyListBlockKeywordSetting || ["text"]);
             setPics(pics || ["text", "pics"]);
             setKeywords(keywords);
             if (keywordsQuote.length > 0) {
@@ -621,7 +624,7 @@ export default function Home({feed, updateSession, VIP}) {
                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
                             const result = {...imageObj, languages, postLevels, pics, keywordSetting,
                                 keywords, keywordsQuote,
-                                everyListBlockKeyword,
+                                everyListBlockKeyword, everyListBlockKeywordSetting,
                                 copy, highlight, sticky, posts:posts? posts.map(x => x.uri) : [],
                                 sort, displayName, shortName, description,
                                 allowList, allowListSync,
@@ -1200,6 +1203,47 @@ export default function Home({feed, updateSession, VIP}) {
                                                 {
                                                     id === "everyList" && getValues("everyList")?.length > 0 && <div className="p-2 bg-gray-200 rounded-xl">
                                                         <div className="font-bold text-lg">Block keywords from posts in Every List</div>
+                                                        <div className="bg-sky-200 p-2">
+                                                            <div className="font-semibold">Search location</div>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                {
+                                                                    KEYWORD_SETTING.map(x =>
+                                                                        <div key={x.id}
+                                                                             className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                                                             onClick={() => {
+                                                                                 if (everyListBlockKeywordSetting.indexOf(x.id) >= 0) {
+                                                                                     setEveryListBlockKeywordSetting([...everyListBlockKeywordSetting.filter(y => y !== x.id)]);
+                                                                                 } else {
+                                                                                     setEveryListBlockKeywordSetting([...everyListBlockKeywordSetting, x.id]);
+                                                                                 }
+                                                                                 console.log(everyListBlockKeywordSetting);
+                                                                             }}>
+                                                                            <input type="checkbox"
+                                                                                   onChange={() => {
+                                                                                   }}
+                                                                                   onClick={(e) => {
+                                                                                       e.stopPropagation();
+                                                                                       if (everyListBlockKeywordSetting.indexOf(x.id) >= 0) {
+                                                                                           setEveryListBlockKeywordSetting([...everyListBlockKeywordSetting.filter(y => y !== x.id)]);
+                                                                                       } else {
+                                                                                           everyListBlockKeywordSetting.push(x.id);
+                                                                                           setEveryListBlockKeywordSetting([...everyListBlockKeywordSetting]);
+                                                                                       }
+                                                                                   }}
+                                                                                   checked={everyListBlockKeywordSetting.indexOf(x.id) >= 0}
+                                                                                   className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                                                            />
+                                                                            <div>{x.txt}</div>
+                                                                        </div>)
+                                                                }
+                                                            </div>
+                                                            {
+                                                                everyListBlockKeywordSetting.length === 0 &&
+                                                                <div className="text-red-700">Please select at least one keyword search
+                                                                    method</div>
+                                                            }
+                                                        </div>
+
                                                         <KeywordsEdit keywords={everyListBlockKeyword} setKeywords={setEveryListBlockKeyword} VIP={VIP} blockOnly={true}/>
                                                     </div>
                                                 }
@@ -1529,7 +1573,7 @@ export default function Home({feed, updateSession, VIP}) {
                                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
 
                                             const result = {
-                                                languages, postLevels, pics, keywordSetting,
+                                                languages, postLevels, pics, keywordSetting, everyListBlockKeywordSetting,
                                                 keywords: keywords.map(x => compressKeyword(x)),
                                                 keywordsQuote: keywordsQuote.map(x => compressKeyword(x)),
                                                 everyListBlockKeyword: everyListBlockKeyword.map(x => compressKeyword(x)),
@@ -1581,7 +1625,7 @@ export default function Home({feed, updateSession, VIP}) {
 
                                                     let {
                                                         sort, shortName, displayName, description,
-                                                        languages, postLevels, pics, mustUrl, blockUrl, keywordSetting,
+                                                        languages, postLevels, pics, mustUrl, blockUrl, keywordSetting, everyListBlockKeywordSetting,
                                                         keywords, keywordsQuote, everyListBlockKeyword,
                                                         copy, highlight, sticky,
                                                         mode:_mode, posts:_posts, mustLabels, allowLabels,
@@ -1652,6 +1696,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                         setLanguages([]);
                                                         setPostLevels(POST_LEVELS.map(x => x.id));
                                                         setKeywordSetting(["text"]);
+                                                        setEveryListBlockKeywordSetting(["text"]);
                                                         setPics(["text", "pics"]);
                                                         setKeywords([]);
                                                         setKeywordsQuote([]);
@@ -1747,6 +1792,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                         setLanguages(languages || []);
                                                         setPostLevels(postLevels || POST_LEVELS.map(x => x.id));
                                                         setKeywordSetting(keywordSetting || ["text"]);
+                                                        setEveryListBlockKeywordSetting(everyListBlockKeywordSetting || ["text"]);
                                                         setPics(pics || ["text", "pics"]);
                                                         setKeywords(keywords);
                                                         setEveryListBlockKeyword(everyListBlockKeyword);

@@ -38,7 +38,7 @@ export default async function handler(req, res) {
 
             let body = await expandUserLists(req.body, agent, true);
             let {
-                image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting,
+                image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, everyListBlockKeywordSetting,
                 keywords:_keywords, keywordsQuote:_keywordsQuote, keywordsLink:_keywordsLink, // TODO handle keywords in links
                 mode, posts:_posts,
                 sort, displayName, shortName, description, mustUrl, blockUrl, copy, highlight, sticky, mustLabels, allowLabels,
@@ -144,6 +144,7 @@ export default async function handler(req, res) {
             }
 
             keywordSetting = keywordSetting.filter(x => KEYWORD_SETTING.find(y => y.id === x));
+            everyListBlockKeywordSetting = everyListBlockKeywordSetting.filter(x => KEYWORD_SETTING.find(y => y.id === x));
             const pics = _pics.filter(x => PICS_SETTING.find(y => y.id === x));
             if (pics.length === 0 || pics.length !== _pics.length) {
                 console.log("missing pics");
@@ -258,7 +259,7 @@ export default async function handler(req, res) {
 
                 const o = {
                     languages,  postLevels, pics, keywordSetting,
-                    keywords, keywordsQuote, everyListBlockKeyword,
+                    keywords, keywordsQuote, everyListBlockKeyword, everyListBlockKeywordSetting,
                     copy, highlight, sticky, posts, allowLabels, mustLabels,
                     sort,
                     viewers, viewersSync,
