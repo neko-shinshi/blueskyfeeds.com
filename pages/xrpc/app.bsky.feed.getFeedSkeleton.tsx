@@ -97,7 +97,6 @@ const getKeywordQuery = (feedObj) => {
 
 
     if (findKeywords.length > 0) {
-        console.log(findKeywords);
         let keywordSearch = [];
 
         if (keywordSetting.indexOf("alt") >= 0) {
@@ -122,7 +121,6 @@ const getKeywordQuery = (feedObj) => {
                 break;
             }
         }
-        console.log("dbQuery", dbQuery);
     }
     if (blockKeywords.length > 0) {
         if (keywordSetting.indexOf("alt") >= 0) {
@@ -230,7 +228,6 @@ const getKeywordQuery = (feedObj) => {
 export const liveFeedHandler = async ({db, feedObj, queryCursor, feedId, user, limit, now=0, customSort=""}) => {
     let feed=[], cursor="";
     const dbQuery = getKeywordQuery(feedObj);
-    console.log(JSON.stringify(dbQuery, null, 2));
 
     let { sort, sticky, hideLikeSticky, keywordsQuote} = feedObj;
 
