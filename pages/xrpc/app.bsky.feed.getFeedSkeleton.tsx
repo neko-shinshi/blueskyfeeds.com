@@ -97,6 +97,7 @@ const getKeywordQuery = (feedObj) => {
 
 
     if (findKeywords.length > 0) {
+        console.log(findKeywords);
         let keywordSearch = [];
 
         if (keywordSetting.indexOf("alt") >= 0) {
@@ -121,18 +122,31 @@ const getKeywordQuery = (feedObj) => {
                 break;
             }
         }
+        console.log("dbQuery", dbQuery);
     }
     if (blockKeywords.length > 0) {
         if (keywordSetting.indexOf("alt") >= 0) {
-            dbQuery.kwAlt = {$nin: blockKeywords};
+            if (dbQuery.kwAlt) {
+                dbQuery.kwAlt = {...dbQuery.kwAlt, $nin: blockKeywords};
+            } else {
+                dbQuery.kwAlt = {$nin: blockKeywords};
+            }
         }
 
         if (keywordSetting.indexOf("text") >= 0) {
-            dbQuery.kwText = {$nin: blockKeywords};
+            if (dbQuery.kwText) {
+                dbQuery.kwText = {...dbQuery.kwText, $nin: blockKeywords};
+            } else {
+                dbQuery.kwText = {$nin: blockKeywords};
+            }
         }
 
         if (keywordSetting.indexOf("link") >= 0) {
-            dbQuery.kwLink = {$nin: blockKeywords};
+            if (dbQuery.kwLink) {
+                dbQuery.kwLink = {...dbQuery.kwLink, $nin: blockKeywords};
+            } else {
+                dbQuery.kwLink = {$nin: blockKeywords};
+            }
         }
     }
 
@@ -216,6 +230,7 @@ const getKeywordQuery = (feedObj) => {
 export const liveFeedHandler = async ({db, feedObj, queryCursor, feedId, user, limit, now=0, customSort=""}) => {
     let feed=[], cursor="";
     const dbQuery = getKeywordQuery(feedObj);
+    console.log(JSON.stringify(dbQuery, null, 2));
 
     let { sort, sticky, hideLikeSticky, keywordsQuote} = feedObj;
 
