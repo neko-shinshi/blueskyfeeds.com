@@ -32,7 +32,7 @@ const listsToDids = (l) => {
 }
 
 const getKeywordQuery = (feedObj) => {
-    let {allowList, blockList, everyList, keywordSetting, mentionList, everyListBlockKeyword,
+    let {allowList, blockList, everyList, keywordSetting, mentionList, everyListBlockKeyword, everyListBlockKeywordSetting,
         keywords, keywordsQuote, languages, pics, postLevels, allowLabels, mustLabels} = feedObj;
 
     allowList = listsToDids(allowList);
@@ -142,8 +142,20 @@ const getKeywordQuery = (feedObj) => {
         if (dbQuery.hasOwnProperty('labels')) {
             authorQuery.labels = dbQuery.labels;
         }
+        
         if (Array.isArray(everyListBlockKeyword) && everyListBlockKeyword.length > 0) {
-            authorQuery.kwText = {$nin: everyListBlockKeyword.map(x => x.t)};
+            everyListBlockKeywordSetting = everyListBlockKeywordSetting || ["text"];
+            if (everyListBlockKeywordSetting.indexOf("alt") >= 0) {
+                authorQuery.kwAlt = {$nin: everyListBlockKeyword.map(x => x.t)};
+            }
+
+            if (everyListBlockKeywordSetting.indexOf("text") >= 0) {
+                authorQuery.kwText = {$nin: everyListBlockKeyword.map(x => x.t)};
+            }
+
+            if (everyListBlockKeywordSetting.indexOf("link") >= 0) {
+                authorQuery.kwLink = {$nin: everyListBlockKeyword.map(x => x.t)};
+            }
         }
 
         if (findKeywords.length + findKeywordsQuote.length === 0) {
