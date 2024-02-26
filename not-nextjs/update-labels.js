@@ -1,4 +1,5 @@
-const updateLabels = async (db, agent) => {
+const {BskyAgent} = require("@atproto/api");
+const updateLabels = async (db) => {
     const now = new Date();
     // 1 min ago
     now.setMinutes(now.getMinutes()-1);
@@ -20,6 +21,7 @@ const updateLabels = async (db, agent) => {
         for (let i = 0; i < postIds.length; i += MAX_QUERY) {
             const uris = postIds.slice(i, i + MAX_QUERY);
             try {
+                const agent = new BskyAgent({ service: "https://api.bsky.app/" });
                 const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris}));
                 if (posts && Array.isArray(posts) && posts.length > 0) {
                     posts.forEach(post => {

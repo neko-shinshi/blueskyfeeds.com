@@ -56,40 +56,6 @@ app.prepare().then(async () => {
         const db = await connectToDatabase();
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
 
-        const agents = [{
-            identifier: process.env.BLUESKY_USERNAME0,
-            password: process.env.BLUESKY_PASSWORD0
-        },{
-            identifier: process.env.BLUESKY_USERNAME,
-            password: process.env.BLUESKY_PASSWORD
-        }];
-        let currentAgentIndex = 0;
-        const getAgent = async () => {
-            const agent = new BskyAgent({ service: "https://bsky.social/" });
-            let currentAgent = agents[currentAgentIndex];
-            try {
-                await agent.login(currentAgent);
-                return agent;
-            } catch (e) {
-                console.log(`login switch from ${currentAgent.identifier}`);
-                console.log(e);
-
-                currentAgentIndex = (currentAgentIndex + 1)%2;
-                currentAgent = agents[currentAgentIndex];
-                console.log(`login switch to ${currentAgent.identifier}`);
-                try {
-                    await agent.login(currentAgent);
-                    return agent;
-                } catch (e) {
-                    console.error("login fail");
-                    console.error(e.status, e.error);
-                    return null;
-                }
-            }
-        }
-
-
-
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
             await updateScores(db);
             Cron('*/15 * * * *', async () => {
@@ -97,29 +63,18 @@ app.prepare().then(async () => {
                 await updateScores(db);
             });
 
-            const agent = await getAgent();
-            if (agent) {
-                await updateAllFeeds(db, agent);
-                Cron('*/9 * * * *', async () => {
-                    const agent = await getAgent();
-                    if (agent) {
-                        const db = await connectToDatabase();
-                        await updateAllFeeds(db, agent);
-                    } else {
-                        console.error("agent issue");
-                    }
-                });
-                await updateLabels(db, agent);
-                Cron('*/5 * * * *', async () => {
-                    const agent = await getAgent();
-                    if (agent) {
-                        const db = await connectToDatabase();
-                        await updateLabels(db, agent);
-                    } else {
-                        console.error("agent issue");
-                    }
-                });
-            }
+            const agent = new BskyAgent({ service: "https://api.bsky.app/" });
+            await updateAllFeeds(db, agent);
+            Cron('*/5 * * * *', async () => {
+                const db = await connectToDatabase();
+                await updateAllFeeds(db);
+            });
+            await updateLabels(db, agent);
+            Cron('*/3 * * * *', async () => {
+                const db = await connectToDatabase();
+                await updateLabels(db);
+            });
+
         }
     });
 });
