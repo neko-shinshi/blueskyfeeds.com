@@ -416,6 +416,7 @@ export default function Home({feed, updateSession, VIP}) {
                     if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
                         console.log(result.data[0]);
                         setValue("allowList", result.data);
+                        setLiveAllowList(true);
                         callback();
                     } else if (result.status === 400) {
                         callback("Invalid user or user not found");
@@ -595,6 +596,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 everyList:_everyList, everyListSync,
                                 viewers:_viewers, viewersSync,
                                 mustUrl, blockUrl, copy, highlight, sticky, posts, allowLabels, mustLabels, } = data;
+
                             const blockList = (_blockList || []).map(x => x.did);
                             const everyList = (_everyList || []).map(x => x.did);
                             const viewers = (_viewers || []).map(x => x.did);
@@ -1274,6 +1276,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                         handle: session.user.handle,
                                                         displayName: session.user.name
                                                     }]);
+                                                    setLiveAllowList(true);
                                                 }}
                                             >
                                                 <span>Set to Self</span>
