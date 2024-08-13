@@ -9,7 +9,7 @@ const updateLabels = async (db) => {
     const _10MinAgo = now.toISOString();
 
     const postIds = (await db.posts.find({
-        hasImage:true,
+        $or: [{hasImage:true}, {replyParent: {$ne:null}}],
         labelsFetched:{$ne: true},
         createdAt:{$gt: _10MinAgo, $lt: _1MinAgo}
     }).project({_id:1}).toArray()).map(x => x._id);
