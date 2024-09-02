@@ -23,7 +23,7 @@ import {getMyCustomFeedIds} from "features/utils/feedUtils";
 import {compressKeyword} from "features/utils/objectUtils";
 import {wLogger} from "features/utils/logger";
 import sharp from "sharp";
-import {liveFeedHandler} from "pages/xrpc/app.bsky.feed.getFeedSkeleton";
+import {handler as liveFeedHandler} from "features/algos/live-feed";
 import {checkHashtags, findKeywords, prepKeywords} from "features/utils/textAndKeywords";
 import {generateFeed} from "features/algos/user-feed";
 
@@ -298,7 +298,7 @@ export default async function handler(req, res) {
                     case "live": {
                         if (keywordsEdited || keywordsQuoteEdited) {
                             const updateKeywords = ({size, loop=false, customSort=""}) => {
-                                liveFeedHandler( {db, feedObj:o, queryCursor:"", feedId:_id, user:"", limit:size, customSort}).then(({feed}) => {
+                                liveFeedHandler( db, o, "", size,0, customSort).then(({feed}) => {
                                     if (feed.length === 0) {
                                         console.log(`no feed items ${_id}`);
                                         return;
