@@ -396,7 +396,7 @@ const getAndLogUser = async (req, db, feedId, now) => {
 export async function getServerSideProps({req, res, query}) {
     const stickyUri = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3l3524encpl2d";
     const cursor = "";
-    const feed = [{post: stickyUri}];
+    const feed = [];//[{post: stickyUri}];
     /*
 
 
