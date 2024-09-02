@@ -2,7 +2,7 @@ import {getAllPosts, getPostsInfo, getUserLikes} from "features/utils/bsky";
 import {connectToDatabase} from "../utils/dbUtils";
 import {preprocessKeywords, findKeywords} from "features/utils/textAndKeywords";
 
-export const handler = async (feedId, feedConfig, user, cursor, limit) => {
+export const handler = async (db, feedId, feedConfig, cursor, limit) => {
     let start = 0;
     if (cursor) {
         const v = parseInt(cursor);
@@ -10,8 +10,7 @@ export const handler = async (feedId, feedConfig, user, cursor, limit) => {
             start = v;
         }
     }
-    const db = await connectToDatabase();
-    if (!db) {return {feed: [], cursor:""};} // DB fail
+
     const {sort, sticky} = feedConfig;
     const _limit = start === 0 && sticky? limit - 1 : limit;
     let sortMethod:any = {indexedAt:-1};
