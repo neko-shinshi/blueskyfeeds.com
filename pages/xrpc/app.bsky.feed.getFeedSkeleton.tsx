@@ -394,6 +394,12 @@ const getAndLogUser = async (req, db, feedId, now) => {
 }
 
 export async function getServerSideProps({req, res, query}) {
+    const stickyUri = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3l3524encpl2d";
+    const cursor = "";
+    const feed = [{post: stickyUri}];
+    /*
+
+
     try {
         res.setHeader("Content-Type", "application/json");
     } catch {}
@@ -479,7 +485,7 @@ export async function getServerSideProps({req, res, query}) {
             feed = feedV;
             cursor = cursorV;
         }
-    }
+    }*/
 
     res.write(JSON.stringify({feed, cursor}));
     res.end();
