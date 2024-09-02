@@ -397,10 +397,6 @@ export async function getServerSideProps({req, res, query}) {
     try {
         res.setHeader("Content-Type", "application/json");
     } catch {}
-    const stickyUri = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3l3524encpl2d";
-    const cursor = "";
-    const feed = [{post: stickyUri}];
-    /*
 
 
     let {feed:feedId, cursor:queryCursor, limit:_limit=50, did} = query;
@@ -485,7 +481,7 @@ export async function getServerSideProps({req, res, query}) {
             feed = feedV;
             cursor = cursorV;
         }
-    }*/
+    }
 
     res.write(JSON.stringify({feed, cursor}));
     res.end();
