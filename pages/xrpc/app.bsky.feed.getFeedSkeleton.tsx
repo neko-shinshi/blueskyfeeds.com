@@ -7,13 +7,13 @@ import {SUPPORTED_CW_LABELS} from "features/utils/constants";
 
 export const getSortMethod = (sort) => {
     switch (sort) {
-        case "like": return {likes:-1, createdAt:-1};
-        case "ups": return {ups:-1, createdAt: -1};
-        case "sLike": return {likeV:-1, createdAt: -1};
-        case "sUps": return {upV:-1, createdAt:-1};
+        case "like": return {likes:-1, _id:-1};
+        case "ups": return {ups:-1, _id: -1};
+        case "sLike": return {likeV:-1, _id: -1};
+        case "sUps": return {upV:-1, _id:-1};
 
         // "new" also
-        default: return {createdAt: -1};
+        default: return {_id: -1};
     }
 }
 
