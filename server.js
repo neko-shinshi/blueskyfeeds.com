@@ -53,11 +53,11 @@ app.prepare().then(async () => {
 
     server.listen(port, async (err) => {
         if (err) throw err;
-      //  const db = await connectToDatabase();
+        const db = await connectToDatabase();
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
 
-        if (/*process.env.NEXT_PUBLIC_DEV !== "1"*/false) {
-       //     await updateScores(db);
+        if (process.env.NEXT_PUBLIC_DEV !== "1") {
+            await updateScores(db);
             Cron('*/15 * * * *', async () => {
                 const db = await connectToDatabase();
                 await updateScores(db);

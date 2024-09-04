@@ -113,12 +113,9 @@ export async function getServerSideProps({req, res, query}) {
             feed = posts.slice(skip, limit).map(x => {return {post: x};});
             cursor = `${feed.length+skip}`;
         } else {
-            /*const {feed: feedV, cursor: cursorV} = await liveFeedHandler (db, feedObj, queryCursor, limit, now);
+            const {feed: feedV, cursor: cursorV} = await liveFeedHandler (db, feedObj, queryCursor, limit, now);
             feed = feedV;
-            cursor = cursorV;*/
-            const stickyUri = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3l3524encpl2d";
-            cursor = "";
-            feed = [{post: stickyUri}];
+            cursor = cursorV;
         }
    // }
 
