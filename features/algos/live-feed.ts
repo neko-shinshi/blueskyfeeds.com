@@ -12,11 +12,12 @@ export const handler = async (db, feedObj, queryCursor, limit, now=0, customSort
     if (queryCursor) {
         if (sort === "new") {
             try {
+                console.log("A")
                 let [_postId, tss] = queryCursor.split("::");
                 const [userId, __postId] = _postId.split("/");
                 const postId = `at://${userId}/app.bsky.feed.post/${__postId}`
                 tss = parseInt(tss);
-                tss = new Date(tss).toISOString();
+                tss = new Date(tss);
                 dbQuery.indexedAt = {$lte: tss}
                 let projection:any = {indexedAt: 1};
                 result = await db.posts.find(dbQuery).sort(sortMethod).limit(limit+100).project(projection).toArray(); // don't bother querying beyond 500
