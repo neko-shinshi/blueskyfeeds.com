@@ -24,7 +24,9 @@ const connectToDatabase = async () => {
                 postsAlgoFeed: db.collection("postsAlgoFeed"),
                 allFeeds: db.collection("allFeeds"),
                 feeds: db.collection("feeds"),
-                feedViews: db.collection("feedViews")
+                feedViews: db.collection("feedViews"),
+                fetchFeeds: db.collection("fetchFeeds"),
+                fetchPosts: db.collection("fetchPosts"),
             };
             return global.cachedDb;
         })
