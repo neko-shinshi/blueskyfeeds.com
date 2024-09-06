@@ -4,7 +4,7 @@ const clearPosts = async (db) => {
 
     let date2 = new Date();
     date2.setHours(date2.getHours() - 96);
-    const result = await db.posts.deleteMany({$or: [{last:{$lt:date2.getTime()}}, {last:{$exists:false}}], createdAt: {$lte: date.toISOString()}});
+    const result = await db.posts.deleteMany({$or: [{last:{$lt:date2.getTime()}}, {last:{$exists:false}}], indexedAt: {$lte: date.toISOString()}});
     console.log(result);
 }
 

@@ -1,5 +1,5 @@
 const {BskyAgent} = require("@atproto/api");
-const updateLabels = async (db) => {
+const updatePosts = async (db) => {
     const now = new Date();
     // 1 min ago
     now.setMinutes(now.getMinutes()-1);
@@ -11,7 +11,7 @@ const updateLabels = async (db) => {
     const postIds = (await db.posts.find({
         $or: [{hasImage:true}, {replyParent: {$ne:null}}],
         labelsFetched:{$ne: true},
-        createdAt:{$gt: _10MinAgo, $lt: _1MinAgo}
+        indexedAt:{$gt: _10MinAgo, $lt: _1MinAgo}
     }).project({_id:1}).toArray()).map(x => x._id);
 
     if (postIds.length > 0) {
@@ -61,5 +61,5 @@ const updateLabels = async (db) => {
 }
 
 module.exports = {
-    updateLabels
+    updatePosts
 }

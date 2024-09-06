@@ -9,7 +9,7 @@ const splitByNonAlphaNumeric = (txt) => {
 }
 
 const splitIntoHashtags = (txt) => {
-    return txt.split(/[.,\s。、]/).filter(x => x.startsWith("#")).map(x => x.slice(1));
+    return txt.split(/[.,\s。、]/).filter(x => x.startsWith("#") || x.startsWith("＃")).map(x => x.slice(1));
 }
 
 const containsNumbers = (str) => {

@@ -11,7 +11,7 @@ const {updateScores} = require("./not-nextjs/scoring");
 const {updateAllFeeds} = require("./not-nextjs/update-all-feeds");
 const {connectToDatabase} = require("./features/utils/dbUtils");
 const { Cron } = require("croner");
-const {updateLabels} = require("./not-nextjs/update-labels")
+const {updatePosts} = require("./not-nextjs/update-posts")
 const {BskyAgent} = require("@atproto/api");
 
 const handleData = async (req, res) => {
@@ -56,7 +56,7 @@ app.prepare().then(async () => {
         const db = await connectToDatabase();
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
 
-        if (process.env.NEXT_PUBLIC_DEV !== "1") {
+        if (false /*process.env.NEXT_PUBLIC_DEV !== "1"*/) {
             await updateScores(db);
             Cron('*/15 * * * *', async () => {
                 const db = await connectToDatabase();
@@ -69,12 +69,11 @@ app.prepare().then(async () => {
                 const db = await connectToDatabase();
                 await updateAllFeeds(db);
             });
-            await updateLabels(db, agent);
+            await updatePosts(db, agent);
             Cron('*/3 * * * *', async () => {
                 const db = await connectToDatabase();
-                await updateLabels(db);
+                await updatePosts(db);
             });
-
         }
     });
 });

@@ -11,14 +11,10 @@ export const handler = async (db, feedId, feedConfig, cursor, limit) => {
         }
     }
 
-    const {sort, sticky} = feedConfig;
+    const {sticky} = feedConfig;
     const _limit = start === 0 && sticky? limit - 1 : limit;
-    let sortMethod:any = {indexedAt:-1};
-    if (sort === "like") {
-        sortMethod = {likeCount:-1, indexedAt: -1};
-    }
 
-    let feed = await db.postsAlgoFeed.find({feed: feedId}).sort(sortMethod).skip(start).limit(_limit).project({_id:0, post:1}).toArray();
+    let feed = await db.postsAlgoFeed.find({feed: feedId}).sort({indexedAt:-1}).skip(start).limit(_limit).project({_id:0, post:1}).toArray();
     //generate(feedId, feedConfig); // try regenerating the feed in the background
 
     if (feed.length === 0) {

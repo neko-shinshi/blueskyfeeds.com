@@ -890,43 +890,50 @@ export default function Home({feed, updateSession, VIP}) {
                                     </div>
                                     {
                                         !(mode === "user" && subMode === "likes") && <>
-                                            <div className="bg-lime-100 p-2 space-y-2">
-                                                <div className="font-semibold">Post Type Filter</div>
-                                                <div className="grid md:grid-cols-2 gap-2">
+                                            {
+                                                mode !== "responses" &&
+                                                <div className="bg-lime-100 p-2 space-y-2">
+                                                    <div className="font-semibold">Post Type Filter</div>
+                                                    <div className="grid md:grid-cols-2 gap-2">
+                                                        {
+                                                            POST_LEVELS.map(x =>
+                                                                <div key={x.id}
+                                                                     className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
+                                                                     onClick={() => {
+                                                                         if (postLevels.indexOf(x.id) >= 0) {
+                                                                             setPostLevels([...postLevels.filter(y => y !== x.id)]);
+                                                                         } else {
+                                                                             postLevels.push(x.id);
+                                                                             setPostLevels([...postLevels]);
+                                                                         }
+                                                                     }}>
+                                                                    <input type="checkbox"
+                                                                           onChange={() => {
+                                                                           }}
+                                                                           onClick={(e) => {
+                                                                               e.stopPropagation();
+                                                                               if (postLevels.indexOf(x.id) >= 0) {
+                                                                                   setPostLevels([...postLevels.filter(y => y !== x.id)]);
+                                                                               } else {
+                                                                                   postLevels.push(x.id);
+                                                                                   setPostLevels([...postLevels]);
+                                                                               }
+                                                                           }}
+                                                                           checked={postLevels.indexOf(x.id) >= 0}
+                                                                           className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
+                                                                    />
+                                                                    <div>{x.txt}</div>
+                                                                </div>)
+                                                        }
+                                                    </div>
                                                     {
-                                                        POST_LEVELS.map(x =>
-                                                            <div key={x.id}
-                                                                 className="flex place-items-center bg-orange-100 hover:bg-gray-50 gap-2 p-1"
-                                                                 onClick={() => {
-                                                                     if (postLevels.indexOf(x.id) >= 0) {
-                                                                         setPostLevels([...postLevels.filter(y => y !== x.id)]);
-                                                                     } else {
-                                                                         postLevels.push(x.id);
-                                                                         setPostLevels([...postLevels]);
-                                                                     }
-                                                                 }}>
-                                                                <input type="checkbox"
-                                                                       onChange={() => {}}
-                                                                       onClick={(e) => {
-                                                                           e.stopPropagation();
-                                                                           if (postLevels.indexOf(x.id) >= 0) {
-                                                                               setPostLevels([...postLevels.filter(y => y !== x.id)]);
-                                                                           } else {
-                                                                               postLevels.push(x.id);
-                                                                               setPostLevels([...postLevels]);
-                                                                           }
-                                                                       }}
-                                                                       checked={postLevels.indexOf(x.id) >= 0}
-                                                                       className={clsx("focus:ring-indigo-500 h-6 w-6 rounded-lg")}
-                                                                />
-                                                                <div>{x.txt}</div>
-                                                            </div>)
+                                                        postLevels.length === 0 &&
+                                                        <div className="text-red-700">Please select at least one post type
+                                                            above</div>
                                                     }
                                                 </div>
-                                                {
-                                                    postLevels.length === 0 && <div className="text-red-700">Please select at least one post type above</div>
-                                                }
-                                            </div>
+                                            }
+
 
                                             <div className="bg-sky-100 p-2 space-y-2">
                                                 <div className="font-semibold">Picture Posts Filter</div>
@@ -938,7 +945,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                                  onClick={() => {
                                                                      let newValue;
                                                                      if (pics.indexOf(x.id) >= 0) {
-                                                                         newValue =[...pics.filter(y => y !== x.id)];
+                                                                         newValue = [...pics.filter(y => y !== x.id)];
                                                                      } else {
                                                                          newValue = [...pics, x.id];
                                                                      }
@@ -948,7 +955,8 @@ export default function Home({feed, updateSession, VIP}) {
                                                                      }
                                                                  }}>
                                                                 <input type="checkbox"
-                                                                       onChange={() => {}}
+                                                                       onChange={() => {
+                                                                       }}
                                                                        onClick={(e) => {
                                                                            e.stopPropagation();
                                                                            if (pics.indexOf(x.id) >= 0) {

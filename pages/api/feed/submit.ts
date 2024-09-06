@@ -297,6 +297,7 @@ export default async function handler(req, res) {
                     }
                     case "live": {
                         if (keywordsEdited || keywordsQuoteEdited) {
+                            /*
                             const updateKeywords = ({size, loop=false, customSort=""}) => {
                                 liveFeedHandler( db, o, "", size,0, customSort).then(({feed}) => {
                                     if (feed.length === 0) {
@@ -434,7 +435,7 @@ export default async function handler(req, res) {
                                     });
                                 });
                             }
-                            updateKeywords({size:10000, loop:true});
+                            updateKeywords({size:10000, loop:true});*/
                         }
                         break;
                     }

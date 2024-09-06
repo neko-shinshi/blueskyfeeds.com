@@ -1,6 +1,7 @@
 const {BskyAgent} = require("@atproto/api");
 const FEED_BLACKLIST_DID = ["did:web:localhost", "did:web:example.com"];
 const updateAllFeeds = async (db) => {
+    /*
     const result = await db.allFeedsUpdate.find({}).toArray();
     const ids = result.map(x => x._id);
     const users = [...result.reduce((acc, x) => {
@@ -90,6 +91,8 @@ const updateAllFeeds = async (db) => {
     }
 
     console.log("feeds updated");
+
+     */
 }
 
 module.exports = {

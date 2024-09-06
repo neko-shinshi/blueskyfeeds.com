@@ -1,19 +1,17 @@
 import {connectToDatabase} from "features/utils/dbUtils";
 import {parseJwt} from "features/utils/jwtUtils";
 import {handler as userFeedHandler} from 'features/algos/user-feed';
-import {handler as responsesHandler} from 'features/algos/responses';
 import {handler as liveFeedHandler} from 'features/algos/live-feed';
-import {SUPPORTED_CW_LABELS} from "features/utils/constants";
 
 export const getSortMethod = (sort) => {
     switch (sort) {
-        case "like": return {likes:-1, _id:-1};
-        case "ups": return {ups:-1, _id: -1};
-        case "sLike": return {likeV:-1, _id: -1};
-        case "sUps": return {upV:-1, _id:-1};
+        case "like": return {likes:-1, indexedAt:-1};
+        case "ups": return {ups:-1, indexedAt: -1};
+        case "sLike": return {likeV:-1, indexedAt: -1};
+        case "sUps": return {upV:-1, indexedAt:-1};
 
         // "new" also
-        default: return {_id: -1};
+        default: return {indexedAt: -1};
     }
 }
 
@@ -99,11 +97,7 @@ export async function getServerSideProps({req, res, query}) {
         cursor = cursorV;
     } else {*/
         let {mode} = feedObj;
-        if (mode === "responses") {
-            const {feed: feedV, cursor: cursorV} = await responsesHandler(db, feedObj,queryCursor, limit, now);
-            feed = feedV;
-            cursor = cursorV;
-        } else if (mode === "user-likes" || mode === "user-posts") {
+        if (mode === "user-likes" || mode === "user-posts") {
             const {feed: feedV, cursor: cursorV} = await userFeedHandler(db, feedId, feedObj, queryCursor, limit);
             feed = feedV;
             cursor = cursorV;
