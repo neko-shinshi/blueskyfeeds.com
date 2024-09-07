@@ -1,9 +1,8 @@
 const {BskyAgent} = require("@atproto/api");
 const FEED_BLACKLIST_DID = ["did:web:localhost", "did:web:example.com"];
 const updateAllFeeds = async (db) => {
-    /*
-    const result = await db.allFeedsUpdate.find({}).toArray();
-    const ids = result.map(x => x._id);
+    const result = await db.fetchFeeds.find({}).project({_id:0, uid:1}).toArray();
+    const ids = result.map(x => x.uid);
     const users = [...result.reduce((acc, x) => {
         x.users.forEach(y => acc.add(y));
         return acc;
@@ -11,6 +10,8 @@ const updateAllFeeds = async (db) => {
     let feeds = new Map();
     let commands = [];
     let failed = [];
+    const agent = new BskyAgent({ service: "https://api.bsky.app/" });
+
     for (const actor of users) {
         console.log("actor", actor);
         let cursor = {};
@@ -18,7 +19,6 @@ const updateAllFeeds = async (db) => {
         do {
             const params = {actor, ...cursor};
             try {
-                const agent = new BskyAgent({ service: "https://api.bsky.app/" });
                 const {data} = await agent.api.app.bsky.feed.getActorFeeds(params);
                 const {cursor:newCursor, feeds:newFeeds} = data;
                 if (!!newCursor && newCursor === cursor?.cursor) {
@@ -84,15 +84,13 @@ const updateAllFeeds = async (db) => {
 
     if (commands.length > 0) {
         console.log("feeds updated", await db.allFeeds.bulkWrite(commands, {ordered:false}));
-        console.log("feed update ids cleared", await db.allFeedsUpdate.deleteMany({_id: {$in: ids}}));
+        console.log("feed update ids cleared", await db.fetchFeeds.deleteMany({_id: {$in: ids}}));
     }
     if (failed.length > 0) {
-        console.log("feed update fail", await db.allFeedsUpdate.insert({users: failed}));
+        console.log("feed update fail", await db.fetchFeeds.insert({users: failed}));
     }
 
     console.log("feeds updated");
-
-     */
 }
 
 module.exports = {
