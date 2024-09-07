@@ -57,12 +57,7 @@ app.prepare().then(async () => {
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
 
         if (process.env.NEXT_PUBLIC_DEV !== "1") {
-            const agent = new BskyAgent({ service: "https://api.bsky.app/" });
-            await updateAllFeeds(db, agent);
-            Cron('*/5 * * * *', async () => {
-                const db = await connectToDatabase();
-                await updateAllFeeds(db);
-            });
+            
         }
     });
 });
