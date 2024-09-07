@@ -12,7 +12,6 @@ export const handler = async (db, feedObj, queryCursor, limit, now=0, customSort
     if (queryCursor) {
         if (sort === "new") {
             try {
-                console.log("A")
                 let [_postId, tss] = queryCursor.split("::");
                 const [userId, __postId] = _postId.split("/");
                 const postId = `at://${userId}/app.bsky.feed.post/${__postId}`
@@ -55,12 +54,9 @@ export const handler = async (db, feedObj, queryCursor, limit, now=0, customSort
                 return {cursor, feed};
             } else {
                 db.posts.bulkWrite(result.map(x => {
-                    const parts = x._id.split("/");
-                    const author = parts[2];
-                    const hash = parts[4];
                     return {
                         updateOne: {
-                            filter: {author, hash},
+                            filter: {_id:x._id},
                             update: {$set: {last: now}}
                         }
                     }
@@ -79,12 +75,9 @@ export const handler = async (db, feedObj, queryCursor, limit, now=0, customSort
                 return {cursor, feed};
             } else {
                 db.posts.bulkWrite(result.map(x => {
-                    const parts = x._id.split("/");
-                    const author = parts[2];
-                    const hash = parts[4];
                     return {
                         updateOne: {
-                            filter: {author, hash},
+                            filter: {_id: x._id},
                             update: {$set: {last: now}}
                         }
                     }
