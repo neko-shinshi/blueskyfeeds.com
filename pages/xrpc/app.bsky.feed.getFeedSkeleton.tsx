@@ -80,7 +80,12 @@ export async function getServerSideProps({req, res, query}) {
     }
 
     if (Array.isArray(viewers) && viewers.length > 0 && !viewers.find(x => x.did === user)) {
-        res.write(JSON.stringify({feed:[], cursor:""}));
+        res.statusCode = 401;
+        res.write(JSON.stringify({
+            feed:[], cursor:"",
+            error: "Private Feed",
+            message:"The feed owner has restricted access to this feed, contact them to view it"
+        }));
         res.end();
         return {props: {}};
     }
