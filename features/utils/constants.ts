@@ -32,6 +32,7 @@ export const SORT_ORDERS = [
 export const PICS_SETTING = [
     {id:"text", txt: "Text-only posts"},
     {id:"pics", txt: "Posts with at least one picture"},
+    {id: "video", txt: "Posts with an embedded video"}
 ];
 
 export const KEYWORD_SETTING = [
