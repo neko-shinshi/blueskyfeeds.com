@@ -11,7 +11,7 @@ export const PRIVACY_MODES = [
     {id:"shared", txt:"This feed's contents should only be visible to a list of users and myself"},
 ]
 export const FEED_MODES = [
-    {id:"live", txt:"Listens for live posts. Only stores posts for 3 days."},
+    {id:"live", txt:"Listens for live posts. Only stores posts for 4 days."},
     {id:"user", txt:"Looks at a specific user's data."},
     {id:"posts", txt: "Shows a specific list of posts"},
     {id:"responses", txt: "See live responses to posts from a list of users"}
