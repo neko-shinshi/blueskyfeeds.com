@@ -531,6 +531,7 @@ export default function Home({feed, updateSession, VIP}) {
                        multiWordCallback={multiWordCallback}
                        shortNameLocked={shortNameLocked}
                        setPics={setPics}
+                       setLiveAllowList={setLiveAllowList}
                        watchEveryListSync={watchEveryListSync}/>
                 }
 

@@ -7,7 +7,7 @@ import {PICS_SETTING, POST_LEVELS} from "features/utils/constants";
 import BlueskyForm from "features/components/specific/BlueskyForm";
 import {useSession} from "next-auth/react";
 
-export default function EditFeedWizard({modal, setModal, setMode, setSubMode, setPostLevels, useFormReturn, recaptcha, setBusy, setKeywords, keywords, VIP, setPopupState, multiWordCallback, shortNameLocked, setPics, watchEveryListSync}) {
+export default function EditFeedWizard({modal, setModal, setMode, setSubMode, setPostLevels, useFormReturn, recaptcha, setBusy, setKeywords, keywords, VIP, setPopupState, multiWordCallback, shortNameLocked, setPics, watchEveryListSync, setLiveAllowList}) {
     const {
         setValue,
         getValues
@@ -43,6 +43,7 @@ export default function EditFeedWizard({modal, setModal, setMode, setSubMode, se
                                     displayName: session.user.name
                                 }]);
                                 setModal("wizard-keywords");
+                                setLiveAllowList(true);
                             }}>
                         <span className="font-bold">My Posts:</span> I want to create feed to show MY posts, with some filtering
                     </button>
@@ -50,6 +51,7 @@ export default function EditFeedWizard({modal, setModal, setMode, setSubMode, se
                             onClick={() => {
                                 setModal("wizard-posts");
                                 setMode("posts");
+                                setLiveAllowList(false);
                             }}>
                         <span className="font-bold">List of Posts:</span> I want to create feed to show a list of specific posts
                     </button>
