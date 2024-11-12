@@ -168,7 +168,7 @@ export default async function handler(req, res) {
                     switch (t) {
                         case "t":
                         case "s": {
-                            return Array.isArray(r) &&
+                            return Array.isArray(r) && w !== " " && w !== "\n" &&
                                 r.every(y => (typeof y.p === 'string' || y.p instanceof String || typeof y.s === 'string' || y.s instanceof String));
                         }
                         case "#": {

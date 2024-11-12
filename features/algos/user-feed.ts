@@ -99,10 +99,10 @@ export const generateFeed = async(db, agent, feedId, feedConfig) => {
             const likes = await getUserLikes(agent, allowList[0].did);
             posts = await getPostsInfo(agent, likes.map(x => x.post));
             posts = posts.reduce((acc, x) => {
-                const {uri, likeCount} = x;
+                const {uri} = x;
                 const found = likes.find(y => y.post === uri);
                 if (found) {
-                    acc.push({uri, likeCount, indexedAt: found.createdAt, likeUri: found.likeUri}); // Use timestamp from like action
+                    acc.push({uri, indexedAt: found.createdAt, likeUri: found.likeUri}); // Use timestamp from like action
                 }
                 return acc;
             }, []);

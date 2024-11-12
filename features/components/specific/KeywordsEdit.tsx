@@ -10,7 +10,7 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
     const [newKeywordMode, setNewKeywordMode] = useState<KeywordType>("token");
 
     const validateKeyword = (term, rejectWords, transform) => {
-        if (term.length === 0) {
+        if (term.length === 0 || term === " ") {
             return "Term is empty";
         }
         if (!VIP && keywords.length >= MAX_KEYWORDS_PER_LIVE_FEED) {
