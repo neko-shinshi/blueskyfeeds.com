@@ -145,7 +145,7 @@ export default function FormSignIn() {
 
                 <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        @Handle, Email, or `user` from `user`.bsky.social
+                        @Handle or Email (If @handle fails, try your email, some bug on Bsky side)
                     </label>
                     <div className="mt-1 relative">
                         <input ref={emailRef}
