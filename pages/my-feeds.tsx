@@ -121,7 +121,7 @@ export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
                     !canCreate && <div>You have reached the maximum number of feeds your account can create</div>
                 }
 
-                <div className="border border-2 border-black p-4 bg-white rounded-xl">
+                <div className="border-2 border-black p-4 bg-white rounded-xl">
                     <div>Feeds Editable here are in green</div>
                     {
                         myFeeds && myFeeds.map(x =>

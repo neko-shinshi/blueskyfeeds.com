@@ -31,7 +31,7 @@ import {getLoggedInData} from "features/network/session";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {APP_SESSION} from "features/auth/authUtils";
 import {isValidDomain} from "features/utils/validationUtils";
-import {expandUserLists, getPostInfo, isVIP} from "features/utils/bsky";
+import {expandUserLists, getPostInfo, isSuperAdmin, isVIP} from "features/utils/bsky";
 import PopupLoading from "features/components/PopupLoading";
 import Link from "next/link";
 import {IoArrowBackSharp} from "react-icons/io5";
@@ -637,7 +637,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 }
                             }
                             const modeText = mode === "user"? `${mode}-${subMode}` : mode;
-                            const result = {...imageObj, languages, postLevels, pics, keywordSetting,
+                            let result = {...imageObj, languages, postLevels, pics, keywordSetting,
                                 keywords, keywordsQuote,
                                 everyListBlockKeyword, everyListBlockKeywordSetting,
                                 copy, highlight, sticky, posts:posts? posts.map(x => x.uri) : [],
@@ -647,7 +647,8 @@ export default function Home({feed, updateSession, VIP}) {
                                 mentionList, mentionListSync,
                                 everyList, everyListSync,
                                 viewers, viewersSync,
-                                mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels, keywordsEdited, keywordsQuoteEdited};
+                                mustUrl, blockUrl, mode:modeText, allowLabels, mustLabels, keywordsEdited, keywordsQuoteEdited, _id: feed?._id};
+
                             console.log(result);
 
                             return result;

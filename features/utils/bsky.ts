@@ -206,6 +206,12 @@ export const isVIP = (agent) => {
     ].indexOf(agent.session.did) >= 0;
 }
 
+export const isSuperAdmin = (agent) => {
+    return ["did:plc:eubjsqnf5edgvcc6zuoyixhw",
+        "did:plc:tazrmeme4dzahimsykusrwrk"
+    ].indexOf(agent.session.did) >= 0;
+}
+
 export const getAllPosts = async (agent, target, filter= (post) => true) => {
     let cursor:any = {};
     let uris = new Set();

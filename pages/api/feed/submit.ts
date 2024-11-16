@@ -5,7 +5,7 @@ import {
     isVIP,
     rebuildAgentFromToken,
     getPostInfo,
-    expandUserLists
+    expandUserLists, isSuperAdmin
 } from "features/utils/bsky";
 import {serializeFile} from "features/utils/fileUtils";
 import {
@@ -47,13 +47,21 @@ export default async function handler(req, res) {
                 everyList, everyListSync,
                 mentionList, mentionListSync,
                 viewers, viewersSync,
-                keywordsEdited, keywordsQuoteEdited, everyListBlockKeyword,
+                keywordsEdited, keywordsQuoteEdited, everyListBlockKeyword, _id
             } = body;
 
             const did = agent.session.did;
-            const _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
-            wLogger.info(`submit ${_id}`);
-
+            wLogger.info(did, `submit ${_id}`);
+            const calcId =  `at://${did}/app.bsky.feed.generator/${shortName}`;
+            const otherId = _id.split("//")[2];
+            const isEditingOther = otherId !== did;
+            if (_id) {
+                if (isEditingOther && !isSuperAdmin(agent)) {
+                    res.status(500).send("Only superadmins"); return;
+                }
+            } else {
+                _id = calcId;
+            }
 
             everyListBlockKeyword = everyListBlockKeyword || [];
             everyListBlockKeyword = everyListBlockKeyword.filter(x => {
@@ -255,7 +263,9 @@ export default async function handler(req, res) {
 
             try {
                 // Update feed at Bluesky's side
-                await editFeed(agent, {img, shortName, displayName, description});
+                if (!isEditingOther) {
+                    await editFeed(agent, {img, shortName, displayName, description});
+                }
 
                 const o = {
                     languages,  postLevels, pics, keywordSetting,

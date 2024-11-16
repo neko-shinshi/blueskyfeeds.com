@@ -1,4 +1,4 @@
-import {getCustomFeeds, getSavedFeeds} from "features/utils/bsky";
+import {getCustomFeeds, getSavedFeeds, isSuperAdmin} from "features/utils/bsky";
 const MS_ONE_WEEK = 7*24*60*60*1000;
 const MS_ONE_DAY = 24*60*60*1000;
 export const getMyFeeds = async (agent, db) => {
@@ -58,13 +58,24 @@ export const getMyFeeds = async (agent, db) => {
 }
 
 export const getFeedDetails = async (agent, db, feedId) => {
-     const feeds = (await getCustomFeeds(agent)) as any[];
-     const foundFeed = feeds.find(x => x.uri.endsWith(feedId));
-     if (!foundFeed) { return false; }
-     const dbData = await db.feeds.findOne({_id: foundFeed.uri});
-     if (!dbData) { return false; }
-     delete dbData._id;
-     return {...foundFeed, ...dbData};
+    const superAdmin = feedId.includes("/") && isSuperAdmin(agent);
+    let feedData = {uri:feedId};
+    if (!superAdmin) {
+        const feeds = (await getCustomFeeds(agent)) as any[];
+        feedData = feeds.find(x => x.uri.endsWith(feedId));
+        if (!feedData && !superAdmin) { return false; }
+    } else {
+        const result = await agent.api.app.bsky.feed.getFeedGenerator({feed:feedId});
+        if (result) {
+            feedData = result.data.view;
+        }
+        console.log("superAdmin", JSON.stringify(result.data.view,null, 2));
+    }
+
+    const dbData = await db.feeds.findOne({_id: feedData.uri});
+    console.log(JSON.stringify(dbData, null, 2));
+    if (!dbData) { return false; }
+    return {...feedData, ...dbData};
 }
 
 export const getMyCustomFeedIds = async (agent, db) => {
