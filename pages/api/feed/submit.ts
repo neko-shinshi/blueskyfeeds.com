@@ -47,11 +47,20 @@ export default async function handler(req, res) {
                 everyList, everyListSync,
                 mentionList, mentionListSync,
                 viewers, viewersSync,
-                keywordsEdited, keywordsQuoteEdited, everyListBlockKeyword,// _id
+                keywordsEdited, keywordsQuoteEdited, everyListBlockKeyword, _id:overrideId
             } = body;
 
             const did = agent.session.did;
-            const _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
+            let _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
+            const isSuper = isSuperAdmin(agent);
+            let updateAtBsky = true;
+            if (isSuper && overrideId) {
+                if (overrideId !== _id) {
+                    updateAtBsky = false;
+                    _id = overrideId;
+                }
+            }
+
             wLogger.info(did, `submit ${_id}`);
 
             everyListBlockKeyword = everyListBlockKeyword || [];
@@ -254,9 +263,9 @@ export default async function handler(req, res) {
 
             try {
                 // Update feed at Bluesky's side
-               // if (!isEditingOther) {
+                if (updateAtBsky) {
                     await editFeed(agent, {img, shortName, displayName, description});
-               // }
+                }
 
                 const o = {
                     languages,  postLevels, pics, keywordSetting,

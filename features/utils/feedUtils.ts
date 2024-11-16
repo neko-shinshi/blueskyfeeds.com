@@ -69,11 +69,9 @@ export const getFeedDetails = async (agent, db, feedId) => {
         if (result) {
             feedData = result.data.view;
         }
-        console.log("superAdmin", JSON.stringify(result.data.view,null, 2));
     }
 
     const dbData = await db.feeds.findOne({_id: feedData.uri});
-    console.log(JSON.stringify(dbData, null, 2));
     if (!dbData) { return false; }
     return {...feedData, ...dbData};
 }
