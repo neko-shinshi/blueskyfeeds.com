@@ -92,7 +92,7 @@ export default function BlueskyForm({shortNameLocked, setPopupState, useFormRetu
                     }} />
                 <InputTextButton
                     maxLength={15} fieldName="shortName" disabled={shortNameLocked}
-                    fieldReadableName="Unique Short Name among all your feeds (CANNOT be changed once submitted)"
+                    fieldReadableName="Unique Short Name among all your feeds visible in the URL 'feed/short_name' (CANNOT be changed once submitted)"
                     subtext="(alphanumeric and dashes only, max 15 characters) [0-9a-zA-z-]"
                     options={
                         {
