@@ -192,15 +192,6 @@ export default function Home({feed, updateSession, VIP}) {
         }
     }, [status]);
 
-    return <a href="https://bsky.app/profile/did:plc:eubjsqnf5edgvcc6zuoyixhw/post/3lb5x46ygdk27"
-              className="bg-white p-8 text-black font-bold text-5xl rounded-lg">
-        <div>Sorry, fixing some crash issues</div>
-        <div className="text-3xl">Feed edits will be back in a few hours</div>
-        <div className="text-xl">Click to open thread with updates</div>
-    </a>
-
-    /*
-
 
     useEffect(() => {
         if (!feed) {
@@ -1549,8 +1540,49 @@ export default function Home({feed, updateSession, VIP}) {
                             </div>
                         }
 
-
-
+                        {
+                            /*
+                               <div className="bg-white p-2 space-y-2 hidden">
+                            <div className="text-lg font-bold">URL Filters</div>
+                            <div>Use *.domain.tld to get all subdomains for domain.tld</div>
+                            {
+                                [
+                                    {id:"mustUrl", t:"Posts must have links from one of these domains", c:"bg-yellow-100"},
+                                    {id:"blockUrl", t:"Block all post with links from these domains", c:"bg-pink-100"}
+                                ].map(({id, t, c}) =>
+                                    <InputMultiWord
+                                        key={id}
+                                        className={clsx("border border-2 border-yellow-700 p-2 rounded-xl", c)}
+                                        labelText={t}
+                                        placeHolder="skip http://... or https://..."
+                                        fieldName={id}
+                                        handleItem={(item, value, onChange) => {
+                                            value.push(item);
+                                            value.sort(); // sorting algo
+                                            onChange(value);
+                                        }}
+                                        useFormReturn={useFormReturn}
+                                        check={(val, callback) => {
+                                            if (val.startsWith("https://") || val.startsWith("http://")) {
+                                                setError(id, {type:'custom', message:`${val} must not start with https:// or http://`});
+                                            } else if (!isValidDomain(val)) {
+                                                setError(id, {type:'custom', message:`Invalid domain`});
+                                            } else {
+                                                const mustUrls = getValues("mustUrl") || [];
+                                                const blockUrls = getValues("blockUrl") || [];
+                                                if (mustUrls.indexOf(val) >= 0) {
+                                                    setError(id, {type:'custom', message:`${val} is already in required url list`});
+                                                } else if (blockUrls.indexOf(val) >= 0) {
+                                                    setError(id, {type:'custom', message:`${val} is already in blocked url list`});
+                                                } else {
+                                                    callback(val);
+                                                }
+                                            }
+                                        }}/>)
+                            }
+                        </div>
+                             */
+                        }
 
                         <div className="p-2 bg-white">
                             <div className="font-bold text-lg">File Backup</div>
@@ -1850,5 +1882,5 @@ export default function Home({feed, updateSession, VIP}) {
                 <PageFooter/>
             </div>
         }
-    </>*/
+    </>
 }
