@@ -294,7 +294,10 @@ export default async function handler(req, res) {
                         }
                     };
                 });
-                await db.allFeeds.bulkWrite(commands);
+                if (commands.length > 0) {
+                    await db.allFeeds.bulkWrite(commands);
+                }
+
 
                 switch (mode) {
                     case "user-likes":
