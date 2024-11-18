@@ -68,7 +68,7 @@ export default function BlueskyForm({shortNameLocked, setPopupState, useFormRetu
                         acceptedTypes={{'image/jpeg': [".jpg", ".jpeg"], 'image/png':[".png"]}}
                         acceptedTypesLabel="jpg or png"/>
                     {
-                        watchFile && <Image ref={imageRef} className="object-cover hover:blur-sm" unoptimized fill src={watchFile.url} alt="feed-avatar" />
+                        watchFile && <Image ref={imageRef} className="object-cover hover:blur-sm" unoptimized fill src={watchFile.url} alt="feed-avatar" onError={() => { /* DO NOTHING */}}/>
                     }
                 </div>
             </div>

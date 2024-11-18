@@ -31,7 +31,7 @@ export default function NavButtonUserAvatar({navPosition}) {
                         {
                             session.user.image ?
                                 <div className="h-8 w-8">
-                                    <Image width={50} height={50} src={session.user.image} alt="user-avatar"/></div> :
+                                    <Image width={50} height={50} src={session.user.image} alt="user-avatar" onError={() => { /* DO NOTHING */}}/></div> :
                                 <span className="text-sm font-medium leading-none text-white select-none">
                                     {session.user.name.charAt(0)}
                                 </span>
