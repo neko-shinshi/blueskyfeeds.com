@@ -17,6 +17,7 @@ import {toJson} from "really-relaxed-json";
 import {compressedToJsonString, unEscapeRelaxed} from "features/utils/textAndKeywords";
 import {removeUndefined} from "features/utils/validationUtils";
 import PageFooter from "features/components/PageFooter";
+import {AtpAgent} from "@atproto/api";
 
 export async function getServerSideProps({req, res, query}) {
     const {feed} = query;
@@ -50,19 +51,12 @@ export async function getServerSideProps({req, res, query}) {
         localFeed = {};
     }
 
-    if (agent) {
-        const {data} = await agent.api.app.bsky.feed.getFeed({feed, limit:10});
-        // The return value is a non-serializable JSON for some reason
-        feedItems = data.feed.map(x =>  JSON.parse(JSON.stringify(x.post)));
-        feedDescription = (await agent.api.app.bsky.feed.getFeedGenerators({feeds:[feed]}))?.data?.feeds[0] || {};
-    } else {
-        feedDescription = await db.allFeeds.findOne({_id: feed});
-        if (feedDescription) {
-            const {_id:uri, did, creator, avatar, displayName, description, likeCount, indexedAt} = feedDescription as any;
-            feedDescription = {uri, did, creator, avatar, displayName, description, likeCount, indexedAt};
-            removeUndefined(feedDescription);
-        }
-    }
+
+    const newAgent = new AtpAgent({service: "https://api.bsky.app/"});
+    const {data} = await newAgent.api.app.bsky.feed.getFeed({feed, limit:10});
+    // The return value is a non-serializable JSON for some reason
+    feedItems = data.feed.map(x =>  JSON.parse(JSON.stringify(x.post)));
+    feedDescription = (await newAgent.api.app.bsky.feed.getFeedGenerators({feeds:[feed]}))?.data?.feeds[0] || {};
 
     return {props: {feedItems, feedDescription: {...feedDescription, ...localFeed}, updateSession, session}};
 }
@@ -106,7 +100,7 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
                         {
                             feedDescription.pinned && <BsPinFill className="w-4 h-4" />
                         }
-                        <a href={`https://bsky.app/profile/${feedDescription.uri.slice(5).replace("app.bsky.feed.generator", "feed")}`}>
+                        <a href={`https://bsky.app/profile/${feedDescription.uri?.slice(5).replace("app.bsky.feed.generator", "feed")}`}>
                             <div className="text-blue-500 hover:text-blue-800 underline hover:bg-orange-200 ">{feedDescription.displayName}</div>
                         </a>
 
@@ -196,34 +190,24 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
                     }
                 </div>
             </div>
-            {
-                !session && <div className="w-full flex justify-center">
-                    <div className="bg-gray-100 w-fit p-8">
-                        <div className="text-center font-bold text-xl">Login to see posts</div>
-                        <div className="flex place-items-center justify-center">
-                            <FormSignIn/>
-                        </div>
-                     </div>
-                </div>
-            }
 
-            {
-                session && <div className="p-4 space-y-2 bg-white border border-black border-2 rounded-xl">
-                    {
-                        feedItems && feedItems.map(x =>
-                            <div key={x.uri}
-                                 className="border border-gray-700 border-2 border-dashed w-full inline-flex p-1 gap-1">
-                                <BlueskyAvatar type="user" avatar={x.author.avatar} uri={x.author.handle}/>
 
-                                <div>
-                                    <div><a className="hover:bg-orange-200" href={`https://bsky.app/profile/${x.author.handle}`}><span className="font-semibold">{x.author.displayName}</span> <span>@{x.author.handle}</span></a> · <span>{timeText(x.indexedAt)}</span></div>
-                                    <div>{x.record.text}</div>
-                                    <div className="flex place-items-center"><BiMessage className="w-4 h-4" />{x.replyCount} <BiRepost className="w-4 h-4" />{x.repostCount}<AiOutlineHeart className="w-4 h-4"/>{x.likeCount} </div>
-                                </div>
-                            </div>)
-                    }
-                </div>
-            }
+            <div className="p-4 space-y-2 bg-white border border-black border-2 rounded-xl">
+                {
+                    feedItems && feedItems.map(x =>
+                        <div key={x.uri}
+                             className="border border-gray-700 border-2 border-dashed w-full inline-flex p-1 gap-1">
+                            <BlueskyAvatar type="user" avatar={x.author.avatar} uri={x.author.handle}/>
+
+                            <div>
+                                <div><a className="hover:bg-orange-200" href={`https://bsky.app/profile/${x.author.handle}`}><span className="font-semibold">{x.author.displayName}</span> <span>@{x.author.handle}</span></a> · <span>{timeText(x.indexedAt)}</span></div>
+                                <div>{x.record.text}</div>
+                                <div className="flex place-items-center"><BiMessage className="w-4 h-4" />{x.replyCount} <BiRepost className="w-4 h-4" />{x.repostCount}<AiOutlineHeart className="w-4 h-4"/>{x.likeCount} </div>
+                            </div>
+                        </div>)
+                }
+            </div>
+
             <PageFooter/>
         </div>
 
