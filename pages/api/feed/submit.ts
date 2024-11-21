@@ -144,11 +144,13 @@ export default async function handler(req, res) {
 
 
             if (!isVIP(agent)) {
-                const feedIds = await getMyCustomFeedIds(agent, db);
-                if (feedIds.indexOf(_id) < 0 && feedIds.length >= MAX_FEEDS_PER_USER && !isVIP(agent)) {
-                    console.log("too many feeds");
-                    res.status(400).send("too many feeds"); return;
-                }
+                try {
+                    const feedIds = await getMyCustomFeedIds(agent, db);
+                    if (feedIds.indexOf(_id) < 0 && feedIds.length >= MAX_FEEDS_PER_USER && !isVIP(agent)) {
+                        console.log("too many feeds");
+                        res.status(400).send("too many feeds"); return;
+                    }
+                } catch (e) {}
             }
 
             keywordSetting = keywordSetting.filter(x => KEYWORD_SETTING.find(y => y.id === x));
@@ -284,28 +286,31 @@ export default async function handler(req, res) {
                     {$set: o, $setOnInsert:{created:new Date().toISOString()}},
                     {upsert:true});
                 // Reload all current user's feeds
-                const commands = (await getCustomFeeds(agent) as any[]).map(x => {
-                    const {uri, ...y} = x;
-                    return {
-                        updateOne: {
-                            filter: {_id: uri},
-                            update: {$set: y},
-                            upsert: true
-                        }
-                    };
-                });
-                if (commands.length > 0) {
-                    await db.allFeeds.bulkWrite(commands);
-                }
+                try {
+                    const commands = (await getCustomFeeds(agent) as any[]).map(x => {
+                        const {uri, ...y} = x;
+                        return {
+                            updateOne: {
+                                filter: {_id: uri},
+                                update: {$set: y},
+                                upsert: true
+                            }
+                        };
+                    });
+                    if (commands.length > 0) {
+                        await db.allFeeds.bulkWrite(commands);
+                    }
+                } catch (e) {}
+
 
 
                 switch (mode) {
                     case "user-likes":
                     case "user-posts": {
-                        generateFeed(db, agent, _id, o).then(r => {
+                        /*generateFeed(db, agent, _id, o).then(r => {
                             wLogger.info(`generate ${_id}`);
                             // Nothing
-                        });
+                        });*/
                         break;
                     }
                     case "live": {
