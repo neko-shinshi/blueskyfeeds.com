@@ -90,6 +90,7 @@ export default function KeywordsEdit({keywords, setKeywords, VIP, bg="bg-lime-10
                         <li ><span className="font-bold">Does not work for non-latin languages</span> like Korean, Mandarin or Japanese, use <span className="font-bold underline">Segment</span> Mode</li>
                         <li>In token mode, posts and search terms are set to lowercase, then split into individual words (tokens) by splitting them by non latin characters (i.e. spaces, symbols, 言,  ل) e.g. `this is un-funny.jpg` becomes `this` `is` `un `funny` `jpg`</li>
                         <li>The search term is searched both separately e.g. `quickdraw` and `quick draw` will also find `#quickdraw`</li>
+                        <li>`quick draw` will not find `quick` or `draw` alone. If you want that, add `quick` and `draw` as separate keywords</li>
                         <li>Works for terms with accents like `bon appétit`</li>
                         <li>Might not work well if the term is combined with other terms, e.g. searching for `cat` will not find `caturday`, search for `caturday` separately or use Segment mode</li>
                         <li>A desired token might often appear with undesired terms, like `one piece swimsuit` when looking for the anime `one piece`</li>
