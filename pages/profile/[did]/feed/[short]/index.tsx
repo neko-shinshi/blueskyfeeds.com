@@ -18,13 +18,20 @@ import {compressedToJsonString, unEscapeRelaxed} from "features/utils/textAndKey
 import {removeUndefined} from "features/utils/validationUtils";
 import PageFooter from "features/components/PageFooter";
 import {AtpAgent} from "@atproto/api";
+import {getActorsInfo} from "features/utils/bsky";
 
-export async function getServerSideProps({req, res, query}) {
-    const {feed} = query;
-    if (!feed) {return { redirect: { destination: '/', permanent: false } };}
-    const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
+export async function getServerSideProps({req, res, params}) {
+    const {did:_did, short} = params;
+    if (!_did || !short) {return { redirect: { destination: '/', permanent: false } };}
+
+    const {updateSession, session, redirect, db} = await getLoggedInData(req, res);
     if (redirect) {return {redirect};}
-    let feedItems = [], feedDescription={};
+    const newAgent = new AtpAgent({service: "https://api.bsky.app/"});
+
+    const result = await getActorsInfo(newAgent, [_did]);
+    if (result.length === 0) { return { redirect: { destination: '/404', permanent: false } }; }
+    const {did} = result[0];
+    const feed = `at://${did}/app.bsky.feed.generator/${short}`;
 
     let localFeed:any = await db.feeds.findOne({_id: feed});
     if (localFeed) {
@@ -52,11 +59,11 @@ export async function getServerSideProps({req, res, query}) {
     }
 
 
-    const newAgent = new AtpAgent({service: "https://api.bsky.app/"});
+
     const {data} = await newAgent.api.app.bsky.feed.getFeed({feed, limit:10});
     // The return value is a non-serializable JSON for some reason
-    feedItems = data.feed.map(x =>  JSON.parse(JSON.stringify(x.post)));
-    feedDescription = (await newAgent.api.app.bsky.feed.getFeedGenerators({feeds:[feed]}))?.data?.feeds[0] || {};
+    const feedItems = data.feed.map(x =>  JSON.parse(JSON.stringify(x.post)));
+    const feedDescription = (await newAgent.api.app.bsky.feed.getFeedGenerators({feeds:[feed]}))?.data?.feeds[0] || {};
 
     return {props: {feedItems, feedDescription: {...feedDescription, ...localFeed}, updateSession, session}};
 }
@@ -187,6 +194,9 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
                                 <div className="text-lg font-medium">Download JSON</div>
                             </button>
                         </>
+                    }
+                    {
+                        !feedDescription.mode && <div className="bg-red-200 font-semibold p-2 rounded-2xl">This feed is not build with blueskyfeeds.com, and uses another engine</div>
                     }
                 </div>
             </div>

@@ -29,6 +29,10 @@ const nextConfig = {
     {
       source: '/.well-known/did.json',
       destination: '/api/well-known'
+    },
+    {
+      source: '/preview',
+      destination: '/'
     }
   ]
 }

@@ -22,7 +22,22 @@ export async function getServerSideProps({req, res, query}) {
     if (redirect) {return {redirect};}
 
     const PAGE_SIZE = 20;
-    let {t, q, p} = query;
+    let {t, q, p, feed} = query;
+    if (feed) {
+        const feedParts = feed.split("|");
+        if (feedParts[0] === "feedgen") {
+            const feedObj = await db.feeds.findOne({_id: feedParts[1]});
+            const parts = feedParts[1].split("/");
+            if (feedObj) { return {redirect: {destination: `/profile/${parts[2]}/feed/${parts[4]}`, permanent: false} };}
+            else {return { redirect: { destination: '/', permanent: false } };}
+        } else if (feedParts.length === 1) {
+            const feedObj = await db.feeds.findOne({_id: feedParts[0]});
+            const parts = feedParts[0].split("/");
+            if (feedObj) { return {redirect: {destination: `/profile/${parts[2]}/feed/${parts[4]}`, permanent: false} };}
+            else {return { redirect: { destination: '/', permanent: false } };}
+        }
+    }
+
     let $search, $skip;
     if (p) {
         $skip = Math.max(0,parseInt(p)-1) * PAGE_SIZE;
