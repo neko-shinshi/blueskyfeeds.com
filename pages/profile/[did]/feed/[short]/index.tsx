@@ -24,7 +24,7 @@ export async function getServerSideProps({req, res, params}) {
     const {did:_did, short} = params;
     if (!_did || !short) {return { redirect: { destination: '/', permanent: false } };}
 
-    const {updateSession, session, redirect, db} = await getLoggedInData(req, res);
+    const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
     if (redirect) {return {redirect};}
     const newAgent = new AtpAgent({service: "https://api.bsky.app/"});
 
@@ -37,7 +37,7 @@ export async function getServerSideProps({req, res, params}) {
 
     let localFeed:any = await db.feeds.findOne({_id: feed});
     if (localFeed) {
-        let {keywords:storedKeywords, mode, subMode, keywordSetting,languages, pics,postLevels, sort} = localFeed;
+        let {keywords:storedKeywords, mode, subMode, keywordSetting,languages, pics,postLevels, sort, viewers} = localFeed;
         mode = mode === "user"? `${mode}-${subMode}` : mode;
         const keywords = storedKeywords?.map(x => {
             const {t, a} = x;
@@ -55,7 +55,16 @@ export async function getServerSideProps({req, res, params}) {
             return o;
         }) || [];
 
-        localFeed = {keywords, storedKeywords, mode, keywordSetting, languages, pics, postLevels, sort};
+        if (Array.isArray(viewers) && viewers.length > 0) {
+            if (viewers.includes(agent.session.did)) {
+                localFeed = {keywords, storedKeywords, mode, keywordSetting, languages, pics, postLevels, sort};
+            } else {
+                // Private feeds don't show config data
+                localFeed = {};
+            }
+        } else {
+            localFeed = {keywords, storedKeywords, mode, keywordSetting, languages, pics, postLevels, sort};
+        }
     } else {
         localFeed = {};
     }
