@@ -28,6 +28,8 @@ export async function getServerSideProps({req, res, params}) {
     if (redirect) {return {redirect};}
     const newAgent = new AtpAgent({service: "https://api.bsky.app/"});
 
+    console.log(`preview: at://${_did}/app.bsky.feed.generator/${short}`);
+
     const result = await getActorsInfo(newAgent, [_did]);
     if (result.length === 0) { return { redirect: { destination: '/404', permanent: false } }; }
     const {did} = result[0];
