@@ -126,6 +126,7 @@ export const editFeed = async (agent, {img, shortName, displayName, description}
 }
 
 export const getPostInfo = async (agent, postUris) => {
+
     let users = new Set();
     postUris.forEach(postUri => {
         if (!postUri.startsWith("at://did:plc:")) {
@@ -165,15 +166,19 @@ export const getPostInfo = async (agent, postUris) => {
     let result = [];
     for (let i = 0; i < uris.length; i += MAX_QUERY) {
         const chunk = uris.slice(i, i + MAX_QUERY);
-        const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris:chunk}));
-        if (posts && Array.isArray(posts) && posts.length > 0) {
-            posts.forEach(x => {
-                const {record, uri}  = x;
-                if (uri) {
-                    const {text} = record;
-                    result.push({text: text || "", uri, record});
-                }
-            });
+        try {
+            const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris:chunk}));
+            if (posts && Array.isArray(posts) && posts.length > 0) {
+                posts.forEach(x => {
+                    const {record, uri}  = x;
+                    if (uri) {
+                        const {text} = record;
+                        result.push({text: text || "", uri, record});
+                    }
+                });
+            }
+        } catch (e) {
+            console.error("bsky.feed.getPosts fail", chunk, e);
         }
     }
 
@@ -186,8 +191,12 @@ export const getActorsInfo = async (agent, actors) => {
         let allProfiles = [];
         for (let i = 0; i < actors.length; i += MAX_QUERY) {
             const chunk = actors.slice(i, i + MAX_QUERY);
-            const {data:{profiles}} = (await agent.api.app.bsky.actor.getProfiles({actors: chunk}));
-            profiles.forEach(x => allProfiles.push(x));
+            try {
+                const {data:{profiles}} = (await agent.api.app.bsky.actor.getProfiles({actors: chunk}));
+                profiles.forEach(x => allProfiles.push(x));
+            } catch (e) {
+                console.error("bsky.actor.getProfiles fail", chunk, e);
+            }
         }
         return allProfiles.map(x => {
             const {did, handle, displayName} = x;
