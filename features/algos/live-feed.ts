@@ -9,9 +9,9 @@ export const handler = async (db, feedObj, queryCursor, limit, now=0, customSort
 
     let result:any[] = [];
     const sortMethod = getSortMethod(customSort || sort);
-    if (queryCursor) {
-        if (sort === "new") {
-            try {
+    try {
+        if (queryCursor) {
+            if (sort === "new") {
                 let [_postId, tss] = queryCursor.split("::");
                 const [userId, __postId] = _postId.split("/");
                 const postId = `at://${userId}/app.bsky.feed.post/${__postId}`
@@ -45,76 +45,79 @@ export const handler = async (db, feedObj, queryCursor, limit, now=0, customSort
                         cursor = "";
                     }
                 }
-            } catch (e) {}
-        } else {
-            const skip = parseInt(queryCursor) || 0;
-            let projection:any = {_id: 1};
-            result =  await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project(projection).toArray();
-            if (result.length === 0) {
-                return {cursor, feed};
             } else {
-                db.posts.bulkWrite(result.map(x => {
-                    return {
-                        updateOne: {
-                            filter: {_id:x._id},
-                            update: {$set: {last: now}}
+                const skip = parseInt(queryCursor) || 0;
+                let projection:any = {_id: 1};
+                result =  await db.posts.find(dbQuery).sort(sortMethod).skip(skip).limit(limit).project(projection).toArray();
+                if (result.length === 0) {
+                    return {cursor, feed};
+                } else {
+                    db.posts.bulkWrite(result.map(x => {
+                        return {
+                            updateOne: {
+                                filter: {_id:x._id},
+                                update: {$set: {last: now}}
+                            }
                         }
-                    }
-                }), {ordered: false});
-            }
-            cursor = `${result.length+skip}`;
-        }
-    } else {
-        if (sort === "new") {
-            if (sticky) {limit = limit -1;}
-
-            let projection:any = {indexedAt: 1};
-            result = await db.posts.find(dbQuery).sort(sortMethod).project(projection).limit(limit).toArray();
-            if (result.length === 0) {
-                feed = sticky? [{post:sticky}] : [];
-                return {cursor, feed};
-            } else {
-                db.posts.bulkWrite(result.map(x => {
-                    return {
-                        updateOne: {
-                            filter: {_id: x._id},
-                            update: {$set: {last: now}}
-                        }
-                    }
-                }), {ordered: false});
-            }
-
-            if (sticky) {
-                result = result.filter(x => x._id !== sticky);
-                result.splice(1,0, {_id: sticky});
-            }
-            // return last item + timestamp
-            const last = result.at(-1);
-            if (last) {
-                const ts = new Date(last.indexedAt).getTime();
-                const parts = last._id.split("/");
-                const id = `${parts[2]}/${parts[4]}`;
-                cursor = `${id}::${ts}`;
+                    }), {ordered: false});
+                }
+                cursor = `${result.length+skip}`;
             }
         } else {
-            if (sticky) {limit = limit -1;}
-            let projection:any = {_id: 1};
-            result = await db.posts.find(dbQuery).sort(sortMethod).project(projection).limit(limit).toArray();
-            if (result.length === 0) {
-                feed = sticky? [{post:sticky}] : [];
-                return {cursor, feed};
+            if (sort === "new") {
+                if (sticky) {limit = limit -1;}
+
+                let projection:any = {indexedAt: 1};
+                result = await db.posts.find(dbQuery).sort(sortMethod).project(projection).limit(limit).toArray();
+                if (result.length === 0) {
+                    feed = sticky? [{post:sticky}] : [];
+                    return {cursor, feed};
+                } else {
+                    db.posts.bulkWrite(result.map(x => {
+                        return {
+                            updateOne: {
+                                filter: {_id: x._id},
+                                update: {$set: {last: now}}
+                            }
+                        }
+                    }), {ordered: false});
+                }
+
+                if (sticky) {
+                    result = result.filter(x => x._id !== sticky);
+                    result.splice(1,0, {_id: sticky});
+                }
+                // return last item + timestamp
+                const last = result.at(-1);
+                if (last) {
+                    const ts = new Date(last.indexedAt).getTime();
+                    const parts = last._id.split("/");
+                    const id = `${parts[2]}/${parts[4]}`;
+                    cursor = `${id}::${ts}`;
+                }
             } else {
-                db.posts.updateMany({_id: {$in: result.map(x => x._id)}}, {$set: {last: now }});
-            }
+                if (sticky) {limit = limit -1;}
+                let projection:any = {_id: 1};
+                result = await db.posts.find(dbQuery).sort(sortMethod).project(projection).limit(limit).toArray();
+                if (result.length === 0) {
+                    feed = sticky? [{post:sticky}] : [];
+                    return {cursor, feed};
+                } else {
+                    db.posts.updateMany({_id: {$in: result.map(x => x._id)}}, {$set: {last: now }});
+                }
 
 
-            if (sticky) {
-                result = result.filter(x => x._id !== sticky);
-                result.splice(randomInt(0, 2),0, {_id: sticky});
+                if (sticky) {
+                    result = result.filter(x => x._id !== sticky);
+                    result.splice(randomInt(0, 2),0, {_id: sticky});
+                }
+                cursor = `${limit}`;
             }
-            cursor = `${limit}`;
         }
+    } catch (e) {
+        console.error(_id, e);
     }
+
     feed = result.map(x => {return {post: x._id};});
     return {feed, cursor};
 }
