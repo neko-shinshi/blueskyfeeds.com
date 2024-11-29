@@ -103,6 +103,15 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
                     </div>
                 </div>
                 <div>
+                    {
+                        !feedDescription.mode && <a href={`https://bsky.app/profile/${feedDescription.creator.handle}`}>
+                            <div className="bg-red-200 border-2 font-semibold p-2 rounded-2xl">This feed is not managed here
+                                at blueskyfeeds.com<br/><span>Contact the feed owner for more info</span>
+                            </div>
+                        </a>
+                    }
+
+
                     <div className="inline-flex place-items-center gap-1">
                         {
                             feedDescription.pinned && <BsPinFill className="w-4 h-4" />
@@ -194,9 +203,6 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
                                 <div className="text-lg font-medium">Download JSON</div>
                             </button>
                         </>
-                    }
-                    {
-                        !feedDescription.mode && <div className="bg-red-200 font-semibold p-2 rounded-2xl">This feed is not build with blueskyfeeds.com, and uses another engine</div>
                     }
                 </div>
             </div>
