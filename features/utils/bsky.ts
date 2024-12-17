@@ -1,4 +1,4 @@
-import { BskyAgent }  from "@atproto/api";
+import {AtpAgent, BskyAgent} from "@atproto/api";
 import {SIGNATURE} from "features/utils/signature";
 import {processQ} from "features/utils/queue";
 
@@ -23,7 +23,7 @@ export const getAgent = async (service, identifier, password) => {
 export const rebuildAgentFromToken = async (token) => {
     const {sub:_did, did:__did, refreshJwt, accessJwt, service} = token;
     try {
-        const agent = new BskyAgent({ service: `https://${service}/` });
+        const agent = new AtpAgent({ service: `https://${service}/` });
         await agent.resumeSession({did: __did || _did, refreshJwt, accessJwt, handle:"", email:""});
         return agent;
     } catch (e) {

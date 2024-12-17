@@ -1,5 +1,7 @@
 import {setCookie, getCookie} from "cookies-next";
 
+export const SUPPORTED_CW_LABELS = ["nudity", "sexual", "porn", "graphic-media"];
+
 const COOKIE_PREF_NAVBAR = "COOKIE_PREF_NAVBAR"
 
 

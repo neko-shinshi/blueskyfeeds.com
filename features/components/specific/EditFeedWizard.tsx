@@ -150,7 +150,7 @@ export default function EditFeedWizard({modal, setModal, setMode, setSubMode, se
                 <div className="font-bold text-xl">Which users` posts do you want to show?</div>
 
                 <InputMultiWord
-                    className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
+                    className={clsx("border-2 border-black p-2 rounded-xl bg-lime-100")}
                     labelText={`Every List: Show all posts from these users (${getValues("everyList")?.length || 0})`}
                     placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                     fieldName="everyList"

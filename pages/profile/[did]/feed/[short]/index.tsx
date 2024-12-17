@@ -8,7 +8,7 @@ import {BsPinFill} from "react-icons/bs";
 import FormSignIn from "features/login/FormSignIn";
 import {signIn, useSession} from "next-auth/react";
 import BlueskyAvatar from "features/components/specific/BlueskyAvatar";
-import {getLoggedInData} from "features/network/session";
+import {getLoggedInData, getLoggedInInfo} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
 import Image from "next/image";
 import {HiDownload, HiTrash} from "react-icons/hi";
@@ -24,21 +24,27 @@ export async function getServerSideProps({req, res, params}) {
     const {did:_did, short} = params;
     if (!_did || !short) {return { redirect: { destination: '/', permanent: false } };}
 
-    const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
+    const {updateSession, session, privateAgent, redirect, db:{db, helpers}} = await getLoggedInInfo(req, res);
     if (redirect) {return {redirect};}
-    const newAgent = new AtpAgent({service: "https://api.bsky.app/"});
+    const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
 
     console.log(`preview: at://${_did}/app.bsky.feed.generator/${short}`);
 
-    const result = await getActorsInfo(newAgent, [_did]);
+    const result = await getActorsInfo(publicAgent, [_did]);
     if (result.length === 0) { return { redirect: { destination: '/404', permanent: false } }; }
     const {did} = result[0];
     const feed = `at://${did}/app.bsky.feed.generator/${short}`;
 
-    let localFeed:any = await db.feeds.findOne({_id: feed});
+    let [localFeed, viewers]:[localFeed:any, viewers:any[]] = await Promise.all([
+        db.oneOrNone("SELECT keywords, mode, keywords_cfg, lang_cfg, post_level_cfg, media_cfg, sort, label_cfg FROM feed WHERE id = $1", [feed]),
+        db.manyOrNone("WITH lists AS (SELECT id, list_uri FROM feed_user_list WHERE feed_id = $1 AND type = 'v') SELECT did FROM feed_user_list_item, lists WHERE list_id = id UNION SELECT did FROM feed_user_list_sync, lists WHERE list_uri = parent_uri", [feed])
+    ]);
     if (localFeed) {
-        let {keywords:storedKeywords, mode, subMode, keywordSetting,languages, pics,postLevels, sort, viewers} = localFeed;
-        mode = mode === "user"? `${mode}-${subMode}` : mode;
+        let {keywords, mode, keywords_cfg:keywordSetting, lang_cfg:languages, media_cfg:pics, post_level_cfg:postLevels, sort, label_cfg} = localFeed;
+        /*keywords = keywords.map(x => {
+            JSON.parse(x);
+        });*/
+        /*
         const keywords = storedKeywords?.map(x => {
             const {t, a} = x;
             let o:any;
@@ -53,33 +59,49 @@ export async function getServerSideProps({req, res, params}) {
                 o.r = [];
             }
             return o;
-        }) || [];
+        }) || [];*/
 
-        if (Array.isArray(viewers) && viewers.length > 0) {
-            if (viewers.includes(agent.session.did)) {
-                localFeed = {keywords, storedKeywords, mode, keywordSetting, languages, pics, postLevels, sort};
+        const agentId = privateAgent?.session.did;
+
+        if (agentId && viewers.length > 0) {
+            if (viewers.find(x => x.did === agentId)) {
+                localFeed = {keywords, mode, keywordSetting, languages, pics, postLevels, sort};
             } else {
                 // Private feeds don't show config data
                 localFeed = {};
             }
         } else {
-            localFeed = {keywords, storedKeywords, mode, keywordSetting, languages, pics, postLevels, sort};
+            localFeed = {keywords, mode, keywordSetting, languages, pics, postLevels, sort};
         }
     } else {
         localFeed = {};
     }
 
+    console.log(JSON.stringify(localFeed, null, 2));
 
 
-    const {data} = await newAgent.api.app.bsky.feed.getFeed({feed, limit:10});
-    // The return value is a non-serializable JSON for some reason
-    const feedItems = data.feed.map(x =>  JSON.parse(JSON.stringify(x.post)));
-    const feedDescription = (await newAgent.api.app.bsky.feed.getFeedGenerators({feeds:[feed]}))?.data?.feeds[0] || {};
+    let errorMessage:any = {};
+    const feedItems:any[] = [];
+    try {
+        const {data} = await publicAgent.app.bsky.feed.getFeed({feed, limit:10});
+        // The return value is a non-serializable JSON for some reason
+        data.feed.forEach(x =>  feedItems.push(JSON.parse(JSON.stringify(x.post))));
+    } catch (e) {
+       if (e.error === "Private Feed") {
+           errorMessage.error = e.error;
+           errorMessage.message = e.message;
+       } else {
+           console.error("Feed Preview", feed, e);
+       }
+    }
+   
+    
+    const feedDescription = (await publicAgent.app.bsky.feed.getFeedGenerators({feeds:[feed]}))?.data?.feeds[0] || {};
 
-    return {props: {feedItems, feedDescription: {...feedDescription, ...localFeed}, updateSession, session}};
+    return {props: {feedItems, feedDescription: {...feedDescription, ...localFeed}, updateSession, session , errorMessage}};
 }
 
-export default function Home({feedItems:_feedItems, feedDescription, updateSession}) {
+export default function Home({feedItems:_feedItems, feedDescription, updateSession, errorMessage}) {
     const title = "Preview Feed";
     const description = "See what appears in this feed for you";
     const [feedItems, setFeedItems] = useState<any>();
@@ -105,7 +127,7 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
         <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
             <PageHeader title={title} description={description}/>
 
-            <div className="bg-white border border-black border-2 p-4 inline-flex gap-1 rounded-xl">
+            <div className="bg-white border-black border-2 p-4 inline-flex gap-1 rounded-xl">
                 <div>
                     <BlueskyAvatar type="feed" avatar={feedDescription.avatar} uri={feedDescription.uri}/>
                     <div className="flex place-items-center">
@@ -219,11 +241,11 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
             </div>
 
 
-            <div className="p-4 space-y-2 bg-white border border-black border-2 rounded-xl">
+            <div className="p-4 space-y-2 bg-white border-black border-2 rounded-xl">
                 {
                     feedItems && feedItems.map(x =>
                         <div key={x.uri}
-                             className="border border-gray-700 border-2 border-dashed w-full inline-flex p-1 gap-1">
+                             className="border-gray-700 border-2 border-dashed w-full inline-flex p-1 gap-1">
                             <BlueskyAvatar type="user" avatar={x.author.avatar} uri={x.author.handle}/>
 
                             <div>
@@ -233,6 +255,13 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
                             </div>
                         </div>)
                 }
+                {
+                    (!feedItems || feedItems.length === 0) && errorMessage?.error && <div>
+                        <div className="text-2xl font-bold">{errorMessage.error}</div>
+                        <div>{errorMessage.message}</div>
+                    </div>
+                }
+
             </div>
 
             <PageFooter/>

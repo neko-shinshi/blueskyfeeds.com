@@ -716,7 +716,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 {
                                     privacy === "shared" &&
                                     <InputMultiWord
-                                        className={clsx("border border-2 border-black p-2 rounded-xl bg-lime-100")}
+                                        className={clsx("border-2 border-black p-2 rounded-xl bg-lime-100")}
                                         labelText="Viewers: Show feed ONLY to these users"
                                         placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                                         fieldName="viewers"
@@ -879,7 +879,7 @@ export default function Home({feed, updateSession, VIP}) {
                                         {
                                             watchSticky &&
                                             <a href={`https://bsky.app/profile/${watchSticky.slice(5).replace("app.bsky.feed.post", "post")}`} target="_blank" rel="noreferrer">
-                                                <div className="mt-2 p-2 border border-2 border-transparent hover:bg-yellow-100 hover:border-black rounded-xl">
+                                                <div className="mt-2 p-2 border-2 border-transparent hover:bg-yellow-100 hover:border-black rounded-xl">
                                                     <div className="text-sm">Preview</div>
                                                     <InputTextBasic fieldName="sticky" disabled={true} fieldReadableName="" useFormReturn={useFormReturn} options={{}}/>
                                                     <div className="bg-gray-50 p-2">{stickyText}</div>
@@ -1104,7 +1104,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                 }
                                             ].map(({id, t, c, sync, watch:watchSync}) => <div key={id}>
                                                 <InputMultiWord
-                                                    className={clsx("border border-2 border-black p-2 rounded-xl", c)}
+                                                    className={clsx("border-2 border-black p-2 rounded-xl", c)}
                                                     labelText={t}
                                                     placeHolder="handle.domain or did:plc:xxxxxxxxxxxxxxxxxxxxxxxx or list bsky.app/profile/.../lists/..."
                                                     fieldName={id}
@@ -1552,7 +1552,7 @@ export default function Home({feed, updateSession, VIP}) {
                                 ].map(({id, t, c}) =>
                                     <InputMultiWord
                                         key={id}
-                                        className={clsx("border border-2 border-yellow-700 p-2 rounded-xl", c)}
+                                        className={clsx("border-2 border-yellow-700 p-2 rounded-xl", c)}
                                         labelText={t}
                                         placeHolder="skip http://... or https://..."
                                         fieldName={id}

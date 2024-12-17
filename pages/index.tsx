@@ -9,164 +9,103 @@ import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
 import {signIn, useSession} from "next-auth/react";
-import {getLoggedInData} from "features/network/session";
+import {getLoggedInData, getLoggedInInfo} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
 import PopupLoading from "features/components/PopupLoading";
 import BackAndForwardButtons from "features/components/BackAndForwardButtons";
 import {removeUndefined} from "features/utils/validationUtils";
 import PageFooter from "features/components/PageFooter";
+import {buildRegExp, choiceOf} from "ts-regex-builder";
+import {getSearchConfig} from "features/utils/getSearchConfig";
+import {AtpAgent} from "@atproto/api";
+import {extractLabels} from "features/utils/parseLabels";
+import SearchBox from "features/components/SearchBox";
 
 export async function getServerSideProps({req, res, query}) {
     // TODO if no query, show most popular feeds made here
-    const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
+    const {updateSession, session, privateAgent, redirect, db:{db, helpers}} = await getLoggedInInfo(req, res);
     if (redirect) {return {redirect};}
 
     const PAGE_SIZE = 20;
-    let {t, q, p, feed} = query;
+    let {q, p, feed, l} = query;
     if (feed) {
         const feedParts = feed.split("|");
         if (feedParts[0] === "feedgen") {
-            const feedObj = await db.feeds.findOne({_id: feedParts[1]});
-            const parts = feedParts[1].split("/");
-            if (feedObj) { return {redirect: {destination: `/profile/${parts[2]}/feed/${parts[4]}`, permanent: false} };}
-            else {return { redirect: { destination: '/', permanent: false } };}
+            const isValid = await db.one("SELECT EXISTS (SELECT 1 FROM feed WHERE id = $1)", feedParts[1]);
+            if (isValid) {
+                const parts = feedParts[1].split("/");
+                return {redirect: {destination: `/profile/${parts[2]}/feed/${parts[4]}`, permanent: false} };
+            } else {return { redirect: { destination: '/', permanent: false } };}
         } else if (feedParts.length === 1) {
-            const feedObj = await db.feeds.findOne({_id: feedParts[0]});
-            const parts = feedParts[0].split("/");
-            if (feedObj) { return {redirect: {destination: `/profile/${parts[2]}/feed/${parts[4]}`, permanent: false} };}
-            else {return { redirect: { destination: '/', permanent: false } };}
+            const isValid = await db.one("SELECT EXISTS (SELECT 1 FROM feed WHERE id = $1)", feedParts[0]);
+            if (isValid) {
+                const parts = feedParts[0].split("/");
+                return {redirect: {destination: `/profile/${parts[2]}/feed/${parts[4]}`, permanent: false} };
+            } else {return { redirect: { destination: '/', permanent: false } };}
         }
     }
 
-    let $search, $skip;
+    let offset = 0;
     if (p) {
-        $skip = Math.max(0,parseInt(p)-1) * PAGE_SIZE;
-        if (isNaN($skip)) {
+        offset = Math.max(0,parseInt(p)-1) * PAGE_SIZE;
+        if (isNaN(offset)) {
             return { redirect: { destination: '/400', permanent: false } };
         }
     }
 
-    if (q) {
-        let path = ["description", "displayName"];
-        if (t === "name") {
-            path = ["creator.handle", "creator.displayName"];
-        }
-        q = q.split("");
-        q = q.reduce((acc, x) => {
-            switch (x) {
-                case " ": {
-                    if (acc.carry.indexOf("\"") >= 0) {
-                        acc.carry.push(x);
-                    } else {
-                        const carry = acc.carry.filter(x => x !== "\"");
-                        acc.arr.push(carry);
-                        acc.carry = [];
-                    }
-                    break;
-                }
-                case "\"": {
-                    if ((acc.carry.length === 1 && acc.carry[0] === "-") || acc.carry.length === 0) {
-                        acc.carry.push(x);
-                    } else if (acc.carry.indexOf("\"") >= 0) {
-                        // break carry
-                        const carry = acc.carry.filter(x => x !== "\"");
-                        acc.arr.push(carry);
-                        acc.carry = [];
-                    } else {
-                        // break carry & push ""
-                        const carry = acc.carry.filter(x => x !== "\"");
-                        acc.arr.push(carry);
-                        acc.carry = ["\""];
-                    }
-                    break;
-                }
-                default: {
-                    acc.carry.push(x);
-                    break;
-                }
-            }
-            return acc;
-        }, {arr:[], carry:[]});
-        q = [...q.arr, q.carry].filter(x => x.length > 0).map(x => x.join(""));
-        let {o, x} = q.reduce((acc, y) => {
-            if (y.startsWith("-")) {
-                acc.x.push(y.slice(1));
-            } else {
-                acc.o.push(y);
-            }
-            return acc;
-        }, {o:[], x:[]});
-        $search = {
-            index: "all-feed-search",
-            compound: {
-                must: o.map(query => {
-                    return {phrase: {query, path}};
-                }),
-                mustNot: x.map(query => {
-                    return {phrase: {query, path}};
-                })
-            }
-        };
+
+    let everyFeedQuery:any = {query:"SELECT id FROM every_feed ORDER BY likes DESC, t_indexed ASC LIMIT $1 OFFSET $2", values: [PAGE_SIZE, offset]};
+    let popularMadeHereQuery:any = false;
+    const qTrim = q && q.trim();
+    const lInt = parseInt(l);
+    if (qTrim) {
+        const searchConfig = getSearchConfig(qTrim, lInt);
+        everyFeedQuery = {query:"SELECT id FROM every_feed WHERE id @@@ $1::JSONB ORDER BY likes DESC LIMIT $2 OFFSET $3", values:[searchConfig, PAGE_SIZE, offset]};
+    } else if (lInt && !isNaN(lInt) && lInt > 0) {
+        // Limit by likes
+        everyFeedQuery = {query:"SELECT id FROM every_feed WHERE likes > $1 ORDER BY likes DESC, t_indexed ASC LIMIT $2 OFFSET $3", values: [lInt, PAGE_SIZE, offset]};
+    } else if (!p || parseInt(p) === 1) {
+        // Default, show popular here
+        popularMadeHereQuery= "SELECT feed.id AS id FROM feed, every_feed WHERE feed.id = every_feed.id AND highlight = TRUE ORDER BY likes DESC LIMIT 6";
     }
 
-    const projection = {
-        _id: 0, uri: "$_id",
-        did:1, creator:1, avatar:1,
-        displayName:1, description:1, likeCount:1, indexedAt:1
-    };
-
-    const agg = [
-        $search && {$search},
-        { $sort : { likeCount:-1, indexedAt:1 } },
-        $skip && { $skip },
-        { $limit: PAGE_SIZE },
-        {
-            $project: projection,
-        },
-    ].filter(x => x);
-    let [feeds, feedsHere] = await Promise.all([
-        db.allFeeds.aggregate(agg).toArray(),
-        db.feeds.find({highlight:'yes'}).project({_id:1}).toArray()
+    const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
+    let popularMadeHere:any[] = [];
+    let feeds:any[] = [];
+    console.log(helpers.concat([everyFeedQuery]));
+    const [mainIds, feedsHere] = await Promise.all([
+        db.manyOrNone(helpers.concat([everyFeedQuery])),
+        popularMadeHereQuery && db.manyOrNone(helpers.concat([popularMadeHereQuery]))
     ]);
 
-    let popularMadeHere = [];
-    if (!q && (!p || p === "1")) {
-        popularMadeHere = await db.allFeeds.find({_id: {$in: feedsHere.map(x => x._id)}, likeCount: {$gte: 2}})
-            .sort({likeCount:-1}).limit(6).project(projection).toArray();
+    const feedIds = mainIds.map(x => x.id);
+    if (feedsHere) {
+        feedsHere.forEach(x => feedIds.push(x.id));
     }
-    if (agent) {
-        const feedIds = [...feeds, ...popularMadeHere].map(x => x.uri);
-        if (feedIds.length > 0) {
-            let {data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feedIds});
-            const ts = Math.floor(new Date().getTime()/1000);
 
-            db.allFeeds.bulkWrite(data.feeds.map(x => {
-                const {uri: _id, ...o} = x;
-                return {
-                    replaceOne: {
-                        filter: {_id},
-                        replacement: {...o, ts},
-                        upsert: true
-                    }
-                }
-            }));
+    if (feedIds.length > 0) {
+        // MAX IS 150
+        const {data} = await publicAgent.app.bsky.feed.getFeedGenerators({feeds: feedIds});
+        const updatedFeeds = data.feeds.map(x => {
+            const {uri, did, creator, avatar,
+                displayName, description, likeCount, indexedAt, labels:_labels} = x;
+            const labels = Array.isArray(_labels)? extractLabels(_labels) : [];
+            return removeUndefined({uri, did, creator, avatar: avatar || null,
+                displayName, description, likeCount, indexedAt, labels}, true);
+        });
 
-            // Project
-            const updatedFeeds = data.feeds.map(x => {
-                const {uri, did, creator, avatar,
-                    displayName, description, likeCount, indexedAt} = x;
-                return removeUndefined({uri, did, creator, avatar: avatar || null,
-                    displayName, description, likeCount, indexedAt}, true);
-            });
-            feeds = feeds.map(x => {
-                const temp = updatedFeeds.find(y => y.uri === x.uri);
-                return temp || removeUndefined(x, true);
-            });
-            popularMadeHere = popularMadeHere.map(x => {
-                const temp = updatedFeeds.find(y => y.uri === x.uri);
-                return temp || removeUndefined(x, true);
+        mainIds.forEach(x => {
+            const item = updatedFeeds.find(y => y.uri === x.id);
+            if (item) { feeds.push(item); }
+        });
+
+        if (feedsHere) {
+            feedsHere.forEach(x => {
+                const item = updatedFeeds.find(y => y.uri === x.id);
+                if (item) { popularMadeHere.push(item); }
             });
         }
+
     }
 
     return {props: {updateSession, session, feeds, popularMadeHere}};
@@ -180,30 +119,10 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
-    const [searchUser, setSearchUser] = useState(false);
     const recaptcha = useRecaptcha();
     const router = useRouter();
     const {data:session, status} = useSession();
-    const searchTextRef = useRef(null);
-    const startSearch = async () => {
-        const q = searchTextRef.current.value;
-        if (!q.trim()) { await router.push("/"); return;}
-        let params:any = {q};
-        if (searchUser) {
-            params.t = "name";
-        }
-        await router.push(urlWithParams("/", params));
-    }
 
-    useEffect(() => {
-        const {t, q} = router.query;
-        if (t) {
-            setSearchUser(t === "name");
-        }
-        if (q) {
-            searchTextRef.current.value = q;
-        }
-    }, [router]);
 
     useEffect(() => {
         if (session && status === "authenticated" && updateSession) {
@@ -243,32 +162,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
             <div className="bg-sky-200 w-full max-w-7xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} description2="*This site is not affiliated with Bluesky or the ATProtocol, both of which are still in Beta. Feeds here are not guaranteed to work 100% of the time as it is maintained by only 1 person, and may be impacted by changes in Bluesky." />
 
-                <div className="bg-white border border-2 border-black p-2 rounded-xl">
-                    <div className="font-bold">Search Feed Directory</div>
-                    <div className="flex place-items-center gap-2 bg-sky-200 w-fit p-2 rounded-xl">
-                        <div className="flex">
-                            <input ref={searchTextRef} className="rounded-l-md p-1" type="text" onKeyDown={async (event)  => {
-                                if (event.key === "Enter") {
-                                    setBusy(true);
-                                    await startSearch();
-                                }
-                            }} />
-                            <button
-                                type="button"
-                                className={"relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"}
-                                onClick={async () => {
-                                    setBusy(true);
-                                    await startSearch();
-                                }}
-                            >
-                                <span>Search</span>
-                            </button>
-                        </div>
-                        <div className="flex place-items-center gap-1 p-1 hover:bg-orange-100 select-none" onClick={()=> setSearchUser(!searchUser)}>
-                            <input type="checkbox" checked={searchUser} onChange={() => {}} onKeyDown={async e => {if (e.key === "Enter") {await startSearch()}}}/>Select to Search User Instead
-                        </div>
-                    </div>
-                </div>
+                <SearchBox path="/" title="Search All Feeds" setBusy={setBusy} />
 
 
                 <Link href="/my-feeds">
@@ -282,7 +176,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
 
                 {
                     popularMadeHere && popularMadeHere.length > 0 &&
-                    <div className="bg-lime-100 border border-black border-2 p-4 rounded-xl space-y-2">
+                    <div className="bg-lime-100 border-black border-2 p-4 rounded-xl space-y-2">
                         <div className="inline-flex justify-between w-full place-items-center">
                             <div className="text-lg font-medium">Highlights of Feeds made here</div>
                             <Link href="/local-feeds">
@@ -303,20 +197,27 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                 }
 
 
-                <div className="bg-white border border-black border-2 p-4 rounded-xl space-y-2">
-                    <div className="text-lg font-medium">Existing Feeds (Updated Irregularly)</div>
-                    <BackAndForwardButtons  basePath={`${BASE_URL}`} params={router.query}/>
+                <div className="bg-white border-black border-2 p-4 rounded-xl space-y-2">
+                    <div className="text-lg font-medium">Existing Feeds</div>
+                    {
+                        feeds.length > 0 && <BackAndForwardButtons basePath={`${BASE_URL}`} params={router.query}/>
+                    }
 
                     {
                         feeds.map(x =>
-                            <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />
+                            <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem}
+                                      setPopupState={setPopupState}/>
                         )
                     }
 
                     {
-                        feeds.length > 0 && <BackAndForwardButtons  basePath={`${BASE_URL}`} params={router.query}/>
+                        feeds.length > 0 && <BackAndForwardButtons basePath={`${BASE_URL}`} params={router.query}/>
+                    }
+                    {
+                        feeds.length === 0 && <div className="text-center font-bold text-xl"> No More Relevant Feeds </div>
                     }
                 </div>
+
                 <PageFooter/>
             </div>
         </>
