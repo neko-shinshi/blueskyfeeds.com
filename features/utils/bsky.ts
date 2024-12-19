@@ -1,45 +1,23 @@
-import {AtpAgent, BskyAgent} from "@atproto/api";
+import {AtpAgent, UnicodeString} from "@atproto/api";
 import {SIGNATURE} from "features/utils/signature";
 import {processQ} from "features/utils/queue";
+import {callApiInChunks, queryWithCursor} from "features/utils/utils";
+import {ListItemView} from "@atproto/api/src/client/types/app/bsky/graph/defs";
+import {detectFacets} from "@atproto/api/dist/rich-text/detection";
+import {SavedFeedsPrefV2} from "@atproto/api/src/client/types/app/bsky/actor/defs";
+import {GeneratorView} from "@atproto/api/src/client/types/app/bsky/feed/defs";
 
-export const getAgent = async (service, identifier, password) => {
-    const agent = new BskyAgent({ service: `https://${service}/` });
-    try {
-        await agent.login({identifier, password});
-        return agent;
-    } catch (e) {
-        console.log("login fail", identifier);
-        if (identifier === process.env.BLUESKY_USERNAME) {
-            if (e.status === 429) {
-                console.log("MAIN RATE LIMITED");
-            } else {
-                console.log(e);
-            }
-        }
-        return null;
-    }
+
+export const getCustomFeeds = async (agent:AtpAgent):Promise<GeneratorView[]> => {
+    const actor = agent.session.did;
+    return await queryWithCursor((o) => agent.app.bsky.feed.getActorFeeds(o), {actor},
+        ({feeds}) => { return feeds; });
 }
 
+const getSavedFeedIds = async (agent:AtpAgent) => {
 
-export const getCustomFeeds = async (agent) => {
-    let cursor = {};
-    let results = [];
-    do {
-        const params = {actor: agent.session.did, ...cursor};
-        const {data} = await agent.api.app.bsky.feed.getActorFeeds(params);
-        const {cursor:newCursor, feeds} = data;
-        feeds.forEach(x => results.push(x));
-        if (!newCursor) {
-            cursor = null;
-        } else {
-            cursor = {cursor: newCursor};
-        }
-    } while (cursor);
-    return results;
-}
 
-const getSavedFeedIds = async (agent) => {
-    let { data} = await agent.api.app.bsky.actor.getPreferences();
+
     const feeds = data.preferences.find(x =>  x["$type"] === "app.bsky.actor.defs#savedFeedsPref");
     if (feeds) {
         const {$type, ...rest} = feeds;
@@ -50,10 +28,10 @@ const getSavedFeedIds = async (agent) => {
 }
 
 
-export const getSavedFeeds = async (agent) => {
+export const getSavedFeeds = async (agent:AtpAgent) => {
     const feeds = await getSavedFeedIds(agent);
     if (feeds && feeds.saved && feeds.saved.length > 0) {
-        let {data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feeds.saved});
+        let {data} = await agent.app.bsky.feed.getFeedGenerators({feeds: feeds.saved});
         return data.feeds.map(x => {
             if (feeds.pinned.indexOf(x.uri) >= 0) {
                 return {...x, pinned:true};
@@ -64,7 +42,7 @@ export const getSavedFeeds = async (agent) => {
     return [];
 }
 
-export const deleteFeed = async (agent, rkey) => {
+export const deleteFeed = async (agent:AtpAgent, rkey:string) => {
     const record = {
         repo: agent.session.did,
         collection: 'app.bsky.feed.generator',
@@ -72,7 +50,7 @@ export const deleteFeed = async (agent, rkey) => {
     };
 
     try {
-        const result = await agent.api.com.atproto.repo.deleteRecord(record);
+        const result = await agent.com.atproto.repo.deleteRecord(record);
         if (result.success) {
             return true;
         }
@@ -82,7 +60,7 @@ export const deleteFeed = async (agent, rkey) => {
     return false;
 }
 
-export const editFeed = async (agent, {img, shortName, displayName, description}) => {
+export const editFeed = async (agent:AtpAgent, {img, shortName, displayName, description}) => {
     /*try {
         await agent.api.app.bsky.feed.describeFeedGenerator()
     } catch (err) {
@@ -90,32 +68,67 @@ export const editFeed = async (agent, {img, shortName, displayName, description}
             'The bluesky server is not ready to accept published custom feeds yet',
         )
     }*/
+    const myDid = agent.session!.did;
     const {imageBlob, encoding} = img;
     let avatar = {};
     if (imageBlob) {
-        const blobRes = await agent.api.com.atproto.repo.uploadBlob(imageBlob, {encoding});
+        const blobRes = await agent.com.atproto.repo.uploadBlob(imageBlob, {encoding});
         avatar = {avatar:blobRes.data.blob};
     }
 
+    const appendedDescription = `${description}${SIGNATURE}`;
+    const initialFacets = detectFacets(new UnicodeString(appendedDescription));
+    const descriptionFacets = [];
+
+    for (const facet of initialFacets) {
+        for (const feature of facet.features) {
+            switch (feature.$type) {
+                case "app.bsky.richtext.facet#link": {
+                    if (feature.uri === "https://BlueskyFeeds.com") {
+                        feature.uri = `https://blueskyfeeds.com/profile/${myDid}/feed/${shortName}`;
+                    }
+                    descriptionFacets.push(facet);
+                    break;
+                }
+                case "app.bsky.richtext.facet#mention": {
+                    const actor = feature.did as string;
+                    try {
+                        const {data:{did}} = await agent.getProfile({actor});
+                        feature.did = did;
+                        descriptionFacets.push(facet);
+                    } catch (e) {
+                        console.error(`Update ${myDid}/${shortName} skip`, actor, e);
+                    }
+                    break;
+                }
+                case "app.bsky.richtext.facet#tag" : {
+                    descriptionFacets.push(facet);
+                    break;
+                }
+            }
+        }
+    }
+
+
     const record = {
-        repo: agent.session?.did ?? '',
+        repo: myDid,
         collection: 'app.bsky.feed.generator',
         rkey:shortName,
         record: {
             did: `did:web:blueskyfeeds.com`,
             displayName,
-            description: `${description}${SIGNATURE}`,
+            description: appendedDescription,
+            descriptionFacets,
             ...avatar,
             createdAt: new Date().toISOString(),
         },
     };
 
-    return await agent.api.com.atproto.repo.putRecord(record);
+    return await agent.com.atproto.repo.putRecord(record);
 }
 
-export const getPostInfo = async (agent, postUris) => {
-
-    let users = new Set();
+export const getPostInfo = async (agent:AtpAgent, postUris:string[]) => {
+    let users:Set<string> = new Set();
     postUris.forEach(postUri => {
         if (!postUri.startsWith("at://did:plc:")) {
             if (postUri.startsWith("https://bsky.app/profile/")) {
@@ -134,7 +147,7 @@ export const getPostInfo = async (agent, postUris) => {
         handleToDid.set(handle, did);
     });
 
-    const uris = [...postUris.reduce((acc, postUri) => {
+    const uris = Array.from(postUris.reduce((acc, postUri) => {
         let uri = postUri;
         if (!postUri.startsWith("at://did:plc:")) {
             if (postUri.startsWith("https://bsky.app/profile/")) {
@@ -147,52 +160,30 @@ export const getPostInfo = async (agent, postUris) => {
         }
         acc.add(uri);
         return acc;
-    }, new Set())];
+    }, new Set()));
 
 
     const MAX_QUERY = 25;
-    let result = [];
-    for (let i = 0; i < uris.length; i += MAX_QUERY) {
-        const chunk = uris.slice(i, i + MAX_QUERY);
-        try {
-            const {data:{posts}} = (await agent.api.app.bsky.feed.getPosts({uris:chunk}));
-            if (posts && Array.isArray(posts) && posts.length > 0) {
-                posts.forEach(x => {
-                    const {record, uri}  = x;
-                    if (uri) {
-                        const {text} = record;
-                        result.push({text: text || "", uri, record});
-                    }
-                });
+    return await callApiInChunks(uris, MAX_QUERY, (o) => agent.app.bsky.feed.getPosts({uris:o}), ({posts}) => {
+        return posts.reduce((acc,x) => {
+            const {record, uri}  = x;
+            if (uri) {
+                const {text} = record;
+                acc.push({text: text || "", uri, record});
             }
-        } catch (e) {
-            console.error("bsky.feed.getPosts fail", chunk, e);
-        }
-    }
-
-    return result;
+            return acc;
+        }, []);
+    });
 }
 
-export const getActorsInfo = async (agent, actors) => {
-    if (Array.isArray(actors) && actors.length > 0) {
-        const MAX_QUERY = 25;
-        let allProfiles = [];
-        for (let i = 0; i < actors.length; i += MAX_QUERY) {
-            const chunk = actors.slice(i, i + MAX_QUERY);
-            try {
-                const {data:{profiles}} = (await agent.api.app.bsky.actor.getProfiles({actors: chunk}));
-                profiles.forEach(x => allProfiles.push(x));
-            } catch (e) {
-                console.error("bsky.actor.getProfiles fail", chunk, e);
-            }
-        }
-        return allProfiles.map(x => {
+export const getActorsInfo = async (agent:AtpAgent, actors:string[]) => {
+    const MAX_QUERY = 25;
+    return await callApiInChunks(actors, MAX_QUERY, (o) => agent.getProfiles({actors:o}), ({profiles}) => {
+        return profiles.map(x => {
             const {did, handle, displayName} = x;
             return {did, handle, displayName: displayName || ""};
         });
-    } else {
-        return [];
-    }
+    });
 }
 
 export const isVIP = (agent) => {
@@ -213,40 +204,21 @@ export const getAllPosts = async (agent, target, filter= (post) => true) => {
     let cursor:any = {};
     let uris = new Set();
     let posts = [];
-    let found = 0;
-    try {
-        do {
-            const params = {actor: target, ...cursor, limit:100};
-            const {data} = await agent.getAuthorFeed(params);
-            const {cursor:newCursor, feed} = data;
-            if (newCursor === cursor?.cursor) {
-                return posts;
-            }
-            const oldSize = uris.size;
-            feed.forEach(item => {
-                const {post} = item;
-                const {uri} = post;
-                if (!uris.has(uri)) {
-                    uris.add(uri);
-                    const {author:{did}} = post;
-                    if (did === target && filter(post)) {
-                        const {post:{indexedAt, likeCount}} = item;
-                        posts.push({uri, indexedAt, likeCount});
-                    }
-                }
-            });
-            found += feed.length;
-            const diff = uris.size - oldSize;
-            if (!newCursor || diff === 0) {
-                cursor = null;
-            } else {
-                cursor = {cursor: newCursor};
-            }
-        } while (cursor);
-    } catch (e) {
-        console.log(e);
-    }
 
+    await queryWithCursor((o) => agent.getAuthorFeed(o), {actor:target, limit:100}, ({feed}) => {
+        feed.forEach(item => {
+            const {post} = item;
+            const {uri} = post;
+            if (!uris.has(uri)) {
+                uris.add(uri);
+                const {author:{did}} = post;
+                if (did === target && filter(post)) {
+                    const {post:{indexedAt, likeCount}} = item;
+                    posts.push({uri, indexedAt, likeCount});
+                }
+            }
+        });
+    });
 
     return posts;
 }
@@ -416,28 +388,17 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
     }
 
     for (const lyst of listMap.keys()) {
-        let cursor:any = {};
         let users = new Map();
         try {
             const list = `at://${lyst.replace("/lists/", "/app.bsky.graph.list/")}`
-            do {
-                const params = {list, ...cursor};
-                const {data:{items, cursor:newCursor}} = await agent.api.app.bsky.graph.getList(params);
-                if (newCursor &&  newCursor === cursor?.cursor) {
-                    break;
-                }
-
-                items.forEach(x => {
-                    const {subject:{did, handle, displayName}, uri} = x;
-                    const key = `${list}_${did}`;
-                    users.set(did, {did, handle, displayName: displayName || "", uri});
+            await queryWithCursor((o) => agent.app.bsky.graph.getList(o), {list},
+                ({items}:{items:ListItemView[]})=> {
+                    items.forEach(x => {
+                        const {subject:{did, handle, displayName}, uri} = x;
+                        const key = `${list}_${did}`;
+                        users.set(did, {did, handle, displayName: displayName || "", uri});
+                    });
                 });
-                if (!newCursor) {
-                    cursor = null;
-                } else {
-                    cursor = {cursor: newCursor};
-                }
-            } while (cursor);
             listMap.set(lyst, [...users.values()]);
         } catch (e) {
             console.error("repo not found?");
@@ -553,7 +514,7 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
         }
     }
 
-    let actors = [..._actors];
+    const actors = Array.from(_actors) as string[];
     if (actors.length > 0) {
         const profiles = await getActorsInfo(agent, actors);
         const convert = (container) => {

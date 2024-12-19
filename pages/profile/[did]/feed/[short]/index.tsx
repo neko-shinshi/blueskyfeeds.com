@@ -8,13 +8,14 @@ import {BsPinFill} from "react-icons/bs";
 import BlueskyAvatar from "features/components/specific/BlueskyAvatar";
 import {getLoggedInInfo} from "features/network/session";
 import Image from "next/image";
-import {HiDownload, HiTrash} from "react-icons/hi";
+import {HiDownload} from "react-icons/hi";
 import SortableWordBubbles from "features/components/SortableWordBubbles";
 import PageFooter from "features/components/PageFooter";
 import {AtpAgent} from "@atproto/api";
-import {getActorsInfo} from "features/utils/bsky";
 import {MainWrapper} from "features/layout/MainWrapper";
 import {getDbClient} from "features/utils/db";
+import Link from "next/link";
+import {SiBuzzfeed} from "react-icons/si";
 
 export async function getServerSideProps({req, res, params}) {
     const {did:_did, short} = params;
@@ -30,9 +31,9 @@ export async function getServerSideProps({req, res, params}) {
 
 
 
-    const result = await getActorsInfo(publicAgent, [_did]);
-    if (result.length === 0) { return { redirect: { destination: '/404', permanent: false } }; }
-    const {did} = result[0];
+    const result = await publicAgent.getProfile({actor:_did});
+    if (!result) { return { redirect: { destination: '/404', permanent: false } }; }
+    const {did} = result.data;
     const feedId = `at://${did}/app.bsky.feed.generator/${short}`;
     console.log(`preview: ${feedId}`);
 
@@ -112,7 +113,7 @@ export async function getServerSideProps({req, res, params}) {
 
 export default function Home({feedItems:_feedItems, feedDescription, userData, errorMessage}) {
     const title = "Preview Feed";
-    const description = "See what appears in this feed for you";
+    const description = "See feed configuration and preview some posts";
     const [feedItems, setFeedItems] = useState<any>();
 
     useEffect(() => {
@@ -126,6 +127,15 @@ export default function Home({feedItems:_feedItems, feedDescription, userData, e
 
         <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
             <PageHeader title={title} description={description}/>
+
+            <Link href="/my-feeds">
+                <button type="button"
+                        className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border-2 border-black  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <SiBuzzfeed className="w-6 h-6"/>
+                    <div className="text-lg font-medium">{userData? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
+                    <SiBuzzfeed className="w-6 h-6"/>
+                </button>
+            </Link>
 
             <div className="bg-white border-black border-2 p-4 inline-flex gap-1 rounded-xl">
                 <div>

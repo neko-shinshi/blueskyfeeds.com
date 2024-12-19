@@ -1,8 +1,11 @@
 import {getCustomFeeds, getSavedFeeds, isSuperAdmin} from "features/utils/bsky";
+import {SavedFeedsPrefV2} from "@atproto/api/src/client/types/app/bsky/actor/defs";
+import {AtpAgent} from "@atproto/api";
+import {IDatabase} from "pg-promise";
 const MS_ONE_WEEK = 7*24*60*60*1000;
 const MS_ONE_DAY = 24*60*60*1000;
-export const getMyFeeds = async (agent, db) => {
-    let my = (await getCustomFeeds(agent)) as any[];
+export const getMyFeeds = async (agent:AtpAgent, db:IDatabase<any>) => {
+    let my = await getCustomFeeds(agent); // including from other 3rd parties
     const did = agent.session.did;
 
     const query = "SELECT * FROM "
@@ -28,6 +31,23 @@ export const getMyFeeds = async (agent, db) => {
         }, 0);
         return {_id, week, day};
     });
+
+    let { data: preferences } = await agent.app.bsky.actor.getPreferences();
+    const prefV2:SavedFeedsPrefV2 = preferences.find(x => x["$type"] === "app.bsky.actor.defs#savedFeedsPrefV2") as SavedFeedsPrefV2;
+    if (prefV2) {
+        const {items} = prefV2;
+        for (const item of items) {
+            const {type, value, pinned} = item;
+            if (type === "feed") {
+
+            }
+        }
+    } else {
+        const pref = preferences.find(x =>  x["$type"] === "app.bsky.actor.defs#savedFeedsPref");
+        if (pref) {
+            const {pinned, saved} = pref;
+        }
+    }
 
     let saved = await getSavedFeeds(agent);
     my = my.reduce((acc, x) => {

@@ -35,21 +35,35 @@ export async function getServerSideProps({req, res, query}) {
         }
     }
 
-    let feedsHereQuery:any = {query:"SELECT feed.id AS id FROM feed, every_feed WHERE feed.id = every_feed.id AND highlight = TRUE ORDER BY likes DESC, t_indexed ASC LIMIT $1 OFFSET $2", values: [PAGE_SIZE, offset]};
+    const userDid = userData?.did || "";
+    let feedsHereQuery:any = {
+        query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
+            + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
+            + "LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+            + "ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
+        values: [userDid, PAGE_SIZE, offset]};
     const qTrim = q && q.trim();
     const lInt = parseInt(l);
     if (qTrim) {
         const searchConfig = getSearchConfig(qTrim, lInt);
-        feedsHereQuery = {query:"SELECT feed.id AS id FROM feed, every_feed WHERE feed.id = every_feed.id AND highlight = TRUE AND every_feed.id @@@ $1::JSONB ORDER BY likes DESC LIMIT $2 OFFSET $3", values:[searchConfig, PAGE_SIZE, offset]};
+        feedsHereQuery = {
+            query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
+                + "JOIN every_feed AS e WHERE f.id = e.id AND f.highlight = TRUE "
+                + "LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+                + "WHERE e.id @@@ $2::JSONB ORDER BY likes DESC LIMIT $3 OFFSET $4",
+            values: [userDid, searchConfig, PAGE_SIZE, offset]};
     } else if (lInt && !isNaN(lInt) && lInt > 0) {
         // Limit by likes
-        feedsHereQuery = {query:"SELECT feed.id AS id FROM feed, every_feed WHERE feed.id = every_feed.id AND highlight = TRUE AND likes > $1 ORDER BY likes DESC, t_indexed ASC LIMIT $2 OFFSET $3", values: [lInt, PAGE_SIZE, offset]};
+        feedsHereQuery = {
+            query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
+                + "JOIN every_feed AS e WHERE f.id = e.id AND f.highlight = TRUE "
+                + "LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+                + "WHERE likes > $2 ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
+            values: [userDid, lInt, PAGE_SIZE, offset]};
     }
     const feedsHere = await db.manyOrNone(helpers.concat([feedsHereQuery]));
 
-    let feeds:any[] = [];
     const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
-
     const {data} = await publicAgent.app.bsky.feed.getFeedGenerators({feeds: feedsHere.map(x => x.id)});
     const updatedFeeds = data.feeds.map(x => {
         const {uri, did, creator, avatar,
@@ -58,10 +72,10 @@ export async function getServerSideProps({req, res, query}) {
             displayName, description, likeCount, indexedAt};
     });
 
-    feeds = feedsHere.reduce((acc,x) => {
-        const {id} = x;
+    const feeds = feedsHere.reduce((acc,x) => {
+        const {id, edit} = x;
         const temp = updatedFeeds.find(y => y.uri === id);
-        if (temp) { acc.push(temp); }
+        if (temp) { acc.push({...temp, edit}); }
         return acc;
     }, []);
 
