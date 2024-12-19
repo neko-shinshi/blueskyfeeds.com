@@ -20,18 +20,6 @@ export const getAgent = async (service, identifier, password) => {
     }
 }
 
-export const rebuildAgentFromToken = async (token) => {
-    const {sub:_did, did:__did, refreshJwt, accessJwt, service} = token;
-    try {
-        const agent = new AtpAgent({ service: `https://${service}/` });
-        await agent.resumeSession({did: __did || _did, refreshJwt, accessJwt, handle:"", email:""});
-        return agent;
-    } catch (e) {
-        console.log(e);
-        return false;
-    }
-}
-
 
 export const getCustomFeeds = async (agent) => {
     let cursor = {};

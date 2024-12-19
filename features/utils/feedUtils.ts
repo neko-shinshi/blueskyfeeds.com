@@ -4,6 +4,9 @@ const MS_ONE_DAY = 24*60*60*1000;
 export const getMyFeeds = async (agent, db) => {
     let my = (await getCustomFeeds(agent)) as any[];
     const did = agent.session.did;
+
+    const query = "SELECT * FROM "
+
     const regex = new RegExp(`^at://${did}`);
     let [editableFeeds, feedViews] = await Promise.all([
         db.feeds.find({_id: regex}).project({_id:1}).toArray(),

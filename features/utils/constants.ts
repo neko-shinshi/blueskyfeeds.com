@@ -67,3 +67,6 @@ export type FeedKeyword = {
     w:string
     a:boolean
 }
+
+export const SESSION_KEY_DURATION = 30 * 24 * 60 * 60; // 30 days
+export const SESSION_KEY_ID = "sk";

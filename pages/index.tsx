@@ -1,30 +1,33 @@
 import HeadExtended from "features/layout/HeadExtended";
-import {useEffect, useRef, useState} from "react";
+import {useState} from "react";
 import Link from "next/link";
 import {SiBuzzfeed} from "react-icons/si";
 import PageHeader from "features/components/PageHeader";
-import {localDelete, urlWithParams} from "features/network/network";
+import {localDelete} from "features/network/network";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
-import {signIn, useSession} from "next-auth/react";
-import {getLoggedInData, getLoggedInInfo} from "features/network/session";
-import {APP_SESSION} from "features/auth/authUtils";
+import {getLoggedInInfo} from "features/network/session";
 import PopupLoading from "features/components/PopupLoading";
 import BackAndForwardButtons from "features/components/BackAndForwardButtons";
 import {removeUndefined} from "features/utils/validationUtils";
 import PageFooter from "features/components/PageFooter";
-import {buildRegExp, choiceOf} from "ts-regex-builder";
 import {getSearchConfig} from "features/utils/getSearchConfig";
 import {AtpAgent} from "@atproto/api";
 import {extractLabels} from "features/utils/parseLabels";
 import SearchBox from "features/components/SearchBox";
+import {getDbClient} from "features/utils/db";
+import {MainWrapper} from "features/layout/MainWrapper";
 
 export async function getServerSideProps({req, res, query}) {
-    // TODO if no query, show most popular feeds made here
-    const {updateSession, session, privateAgent, redirect, db:{db, helpers}} = await getLoggedInInfo(req, res);
-    if (redirect) {return {redirect};}
+    const [{ error, userData}, dbUtils] = await Promise.all([
+        getLoggedInInfo(req, res),
+        getDbClient()
+    ]);
+    if (error) { return {redirect: `/${error}`, permanent:false}; }
+    if (!dbUtils) {return {redirect:"/500", permanent:false};}
+    const {db, helpers} = dbUtils;
 
     const PAGE_SIZE = 20;
     let {q, p, feed, l} = query;
@@ -53,26 +56,42 @@ export async function getServerSideProps({req, res, query}) {
         }
     }
 
-
-    let everyFeedQuery:any = {query:"SELECT id FROM every_feed ORDER BY likes DESC, t_indexed ASC LIMIT $1 OFFSET $2", values: [PAGE_SIZE, offset]};
+    const userDid = userData?.did || "";
+    let everyFeedQuery:any = {
+        query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
+            +"LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+            +"ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
+        values: [userDid, PAGE_SIZE, offset]};
     let popularMadeHereQuery:any = false;
     const qTrim = q && q.trim();
     const lInt = parseInt(l);
     if (qTrim) {
         const searchConfig = getSearchConfig(qTrim, lInt);
-        everyFeedQuery = {query:"SELECT id FROM every_feed WHERE id @@@ $1::JSONB ORDER BY likes DESC LIMIT $2 OFFSET $3", values:[searchConfig, PAGE_SIZE, offset]};
+        everyFeedQuery = {
+            query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
+                +"LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+                +"WHERE e.id @@@ $2::JSONB ORDER BY e.likes DESC LIMIT $3 OFFSET $4",
+            values:[userDid, searchConfig, PAGE_SIZE, offset]};
     } else if (lInt && !isNaN(lInt) && lInt > 0) {
         // Limit by likes
-        everyFeedQuery = {query:"SELECT id FROM every_feed WHERE likes > $1 ORDER BY likes DESC, t_indexed ASC LIMIT $2 OFFSET $3", values: [lInt, PAGE_SIZE, offset]};
+        everyFeedQuery = {
+            query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
+                +"LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+                +"WHERE e.likes > $2 ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $3 OFFSET $4",
+            values: [userDid, lInt, PAGE_SIZE, offset]};
     } else if (!p || parseInt(p) === 1) {
         // Default, show popular here
-        popularMadeHereQuery= "SELECT feed.id AS id FROM feed, every_feed WHERE feed.id = every_feed.id AND highlight = TRUE ORDER BY likes DESC LIMIT 6";
+        popularMadeHereQuery= {
+            query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
+                +"JOIN every_feed AS e ON e.id = f.id AND f.highlight = TRUE "
+                +"LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1"
+                +"ORDER BY likes DESC LIMIT 6",
+            values:[userDid]};
     }
 
     const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
     let popularMadeHere:any[] = [];
     let feeds:any[] = [];
-    console.log(helpers.concat([everyFeedQuery]));
     const [mainIds, feedsHere] = await Promise.all([
         db.manyOrNone(helpers.concat([everyFeedQuery])),
         popularMadeHereQuery && db.manyOrNone(helpers.concat([popularMadeHereQuery]))
@@ -94,25 +113,25 @@ export async function getServerSideProps({req, res, query}) {
                 displayName, description, likeCount, indexedAt, labels}, true);
         });
 
-        mainIds.forEach(x => {
-            const item = updatedFeeds.find(y => y.uri === x.id);
-            if (item) { feeds.push(item); }
+        mainIds.forEach(({id, edit}) => {
+            const item = updatedFeeds.find(y => y.uri === id);
+            if (item) { feeds.push({...item, edit}); }
         });
 
         if (feedsHere) {
-            feedsHere.forEach(x => {
-                const item = updatedFeeds.find(y => y.uri === x.id);
-                if (item) { popularMadeHere.push(item); }
+            feedsHere.forEach(({id, edit}) => {
+                const item = updatedFeeds.find(y => y.uri === id);
+                if (item) { popularMadeHere.push({...item, edit}); }
             });
         }
 
     }
 
-    return {props: {updateSession, session, feeds, popularMadeHere}};
+    return {props: {feeds, popularMadeHere, userData}};
 }
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
-export default function Home({updateSession, feeds, popularMadeHere}) {
+export default function Home({userData, feeds, popularMadeHere}) {
     const title = "Bluesky Social Feeds @ BlueskyFeeds.com";
     const description = "Find your perfect feed algorithm for Bluesky Social App, or build one yourself";
     const longDescription = "Search Bluesky feeds, browse the Bluesky feed directory, or use our no-code Bluesky feed builder to make your own custom feed for yourself or your community here."
@@ -121,19 +140,9 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
     const [busy, setBusy] = useState(false);
     const recaptcha = useRecaptcha();
     const router = useRouter();
-    const {data:session, status} = useSession();
-
-
-    useEffect(() => {
-        if (session && status === "authenticated" && updateSession) {
-            signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
-                console.log(r);
-            });
-        }
-    }, [status]);
 
     return (
-        <>
+        <MainWrapper userData={userData}>
             <HeadExtended title={title}
                           description={longDescription}/>
             <PopupLoading isOpen={busy} setOpen={setBusy}/>
@@ -169,7 +178,7 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                     <button type="button"
                             className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         <SiBuzzfeed className="w-6 h-6"/>
-                        <div className="text-lg font-medium">{session? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
+                        <div className="text-lg font-medium">{false? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
                         <SiBuzzfeed className="w-6 h-6"/>
                     </button>
                 </Link>
@@ -220,6 +229,6 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
 
                 <PageFooter/>
             </div>
-        </>
+        </MainWrapper>
     )
 }

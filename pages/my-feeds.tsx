@@ -1,6 +1,4 @@
 import HeadExtended from "features/layout/HeadExtended";
-import {signIn, useSession} from "next-auth/react";
-import FormSignIn from "features/login/FormSignIn";
 import {RiTestTubeLine} from "react-icons/ri";
 import Link from "next/link";
 import {useEffect, useState} from "react";
@@ -11,36 +9,41 @@ import {localDelete} from "features/network/network"
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
-import {getLoggedInData} from "features/network/session";
-import {APP_SESSION} from "features/auth/authUtils";
 import {isVIP} from "features/utils/bsky";
 import {MAX_FEEDS_PER_USER} from "features/utils/constants";
 import PageFooter from "features/components/PageFooter";
+import {getLoggedInInfo} from "features/network/session";
+import {MainWrapper} from "features/layout/MainWrapper";
+import {getDbClient} from "features/utils/db";
 
 export async function getServerSideProps({req, res}) {
-    const {updateSession, session, agent, redirect, db} = await getLoggedInData(req, res);
-    if (redirect) {return {redirect};}
+    const [{ error, userData, privateAgent}, dbUtils] = await Promise.all([
+        getLoggedInInfo(req, res),
+        getDbClient()
+    ]);
+    if (error) { return {redirect: `/${error}`, permanent:false}; }
+    if (!dbUtils) {return {redirect:"/500", permanent:false};}
+    const {db, helpers} = dbUtils;
+
     let myFeeds = [];
     let canCreate = true;
-    if (agent) {
-        myFeeds = await getMyFeeds(agent, db);
-        if (!isVIP(agent)) {
-            const countCustomFeeds = myFeeds.reduce((acc, x) => {
-                if (x.edit) {acc++;}
-                return acc;
-            }, 0);
-            canCreate = countCustomFeeds < MAX_FEEDS_PER_USER;
-        }
+    myFeeds = await getMyFeeds(privateAgent, db);
+    if (!isVIP(privateAgent)) {
+        const countCustomFeeds = myFeeds.reduce((acc, x) => {
+            if (x.edit) {acc++;}
+            return acc;
+        }, 0);
+        canCreate = countCustomFeeds < MAX_FEEDS_PER_USER;
     }
 
-    return {props: {updateSession, session, myFeeds, canCreate}};
+
+    return {props: {userData, myFeeds, canCreate}};
 }
 
 
-export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
+export default function Home({userData, myFeeds:_myFeeds, canCreate}) {
     const title = "My BlueSky Custom Feeds";
     const description = "";
-    const { data: session, status } = useSession();
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
@@ -64,16 +67,9 @@ export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
         }
     }, [_myFeeds])
 
-    useEffect(() => {
-        console.log("status", status);
-        if (session && status === "authenticated" && updateSession) {
-            signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
-                console.log(r);
-            });
-        }
-    }, [status]);
 
-    return <>
+
+    return <MainWrapper userData={userData}>
         <PopupConfirmation
             isOpen={popupState === "delete"}
             setOpen={setPopupState}
@@ -97,16 +93,9 @@ export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
             }
         }/>
         <HeadExtended title={title} description={description}/>
-        {
-            !session && <div className="flex flex-col place-items-center gap-4">
-                <PageHeader title={title} description={description} />
-                <FormSignIn/>
-                <PageFooter/>
-            </div>
-        }
 
         {
-            session && <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
+            userData && <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} />
 
                 {
@@ -132,5 +121,5 @@ export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
                 <PageFooter/>
             </div>
         }
-    </>
+    </MainWrapper>
 }

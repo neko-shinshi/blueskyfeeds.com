@@ -5,27 +5,27 @@ import {timeText} from "features/utils/timeUtils";
 import { BiMessage, BiRepost} from "react-icons/bi";
 import {AiFillHeart, AiOutlineHeart} from "react-icons/ai";
 import {BsPinFill} from "react-icons/bs";
-import FormSignIn from "features/login/FormSignIn";
-import {signIn, useSession} from "next-auth/react";
 import BlueskyAvatar from "features/components/specific/BlueskyAvatar";
-import {getLoggedInData, getLoggedInInfo} from "features/network/session";
-import {APP_SESSION} from "features/auth/authUtils";
+import {getLoggedInInfo} from "features/network/session";
 import Image from "next/image";
 import {HiDownload, HiTrash} from "react-icons/hi";
 import SortableWordBubbles from "features/components/SortableWordBubbles";
-import {toJson} from "really-relaxed-json";
-import {compressedToJsonString, unEscapeRelaxed} from "features/utils/textAndKeywords";
-import {removeUndefined} from "features/utils/validationUtils";
 import PageFooter from "features/components/PageFooter";
 import {AtpAgent} from "@atproto/api";
 import {getActorsInfo} from "features/utils/bsky";
+import {MainWrapper} from "features/layout/MainWrapper";
+import {getDbClient} from "features/utils/db";
 
 export async function getServerSideProps({req, res, params}) {
     const {did:_did, short} = params;
     if (!_did || !short) {return { redirect: { destination: '/', permanent: false } };}
-
-    const {updateSession, session, privateAgent, redirect, db:{db, helpers}} = await getLoggedInInfo(req, res);
-    if (redirect) {return {redirect};}
+    const [{ error, userData}, dbUtils] = await Promise.all([
+        getLoggedInInfo(req, res),
+        getDbClient()
+    ]);
+    if (error) { return {redirect: `/${error}`, permanent:false}; }
+    if (!dbUtils) {return {redirect:"/500", permanent:false};}
+    const {db, helpers} = dbUtils;
     const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
 
     console.log(`preview: at://${_did}/app.bsky.feed.generator/${short}`);
@@ -57,7 +57,7 @@ export async function getServerSideProps({req, res, params}) {
         keywords = keywords.sort((x, y) => x.w.localeCompare(y.w)? 1 : -1);
         
         if (viewers.length > 0) {
-            const agentId = privateAgent?.session.did;
+            const agentId = userData.did;
             if (agentId && viewers.find(x => x.did === agentId)) {
                 localFeed = {keywords, mode, keywordSetting, languages, pics, postLevels, sort};
             } else {
@@ -89,29 +89,20 @@ export async function getServerSideProps({req, res, params}) {
     
     let feedDescription:any = (await publicAgent.app.bsky.feed.getFeedGenerators({feeds:[feed]}))?.data?.feeds[0] || {};
     feedDescription = {...feedDescription, ...localFeed};
-    return {props: {feedItems, feedDescription, updateSession, session , errorMessage}};
+    return {props: {feedItems, feedDescription, userData , errorMessage}};
 }
 
-export default function Home({feedItems:_feedItems, feedDescription, updateSession, errorMessage}) {
+export default function Home({feedItems:_feedItems, feedDescription, userData, errorMessage}) {
     const title = "Preview Feed";
     const description = "See what appears in this feed for you";
     const [feedItems, setFeedItems] = useState<any>();
-    const { data: session, status} = useSession();
 
     useEffect(() => {
         setFeedItems(_feedItems);
     }, [_feedItems]);
 
-    useEffect(() => {
-        console.log("status", status);
-        if (session && status === "authenticated" && updateSession) {
-            signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
-                console.log(r);
-            });
-        }
-    }, [status]);
 
-    return <>
+    return <MainWrapper userData={userData}>
         <HeadExtended title={title}
                       description={description}/>
 
@@ -259,5 +250,5 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
         </div>
 
 
-    </>
+    </MainWrapper>
 }

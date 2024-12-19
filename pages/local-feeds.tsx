@@ -1,28 +1,29 @@
 import HeadExtended from "features/layout/HeadExtended";
-import {signIn, useSession} from "next-auth/react";
-import FormSignIn from "features/login/FormSignIn";
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useState} from "react";
 import PageHeader from "features/components/PageHeader";
 import PopupConfirmation from "features/components/PopupConfirmation";
-import {localDelete, urlWithParams} from "features/network/network"
+import {localDelete} from "features/network/network"
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
-import {getLoggedInData, getLoggedInInfo} from "features/network/session";
+import {getLoggedInInfo} from "features/network/session";
 import {APP_SESSION} from "features/auth/authUtils";
-import {removeUndefined} from "features/utils/validationUtils";
 import PageFooter from "features/components/PageFooter";
 import {AtpAgent} from "@atproto/api";
-import {callApiInChunks} from "features/utils/utils";
 import SearchBox from "features/components/SearchBox";
 import {getSearchConfig} from "features/utils/getSearchConfig";
 import BackAndForwardButtons from "features/components/BackAndForwardButtons";
+import {getDbClient} from "features/utils/db";
+import {MainWrapper} from "features/layout/MainWrapper";
 
 export async function getServerSideProps({req, res, query}) {
-    const {updateSession, session, privateAgent, redirect, db:{db, helpers}} = await getLoggedInInfo(req, res);
-    if (redirect) {return {redirect};}
-
-    const {all} = query;
+    const [{ error, userData}, dbUtils] = await Promise.all([
+        getLoggedInInfo(req, res),
+        getDbClient()
+    ]);
+    if (error) { return {redirect: `/${error}`, permanent:false}; }
+    if (!dbUtils) {return {redirect:"/500", permanent:false};}
+    const {db, helpers} = dbUtils;
 
     const PAGE_SIZE = 50;
     let {q, p, l} = query;
@@ -66,30 +67,20 @@ export async function getServerSideProps({req, res, query}) {
         return acc;
     }, []);
 
-    return {props: {updateSession, session, feeds}};
+    return {props: {feeds, userData}};
 }
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
-export default function Home({updateSession, feeds}) {
+export default function Home({userData, feeds}) {
     const title = "Feeds made at BlueskyFeeds.com";
     const description = "Opt out of being listed here by setting `Highlight this feed` to `no`.";
-    const { data: session, status } = useSession();
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
     const recaptcha = useRecaptcha();
     const router = useRouter();
 
-    useEffect(() => {
-        console.log("status", status);
-        if (session && status === "authenticated" && updateSession) {
-            signIn(APP_SESSION, {redirect: false, id: session.user.sk}).then(r => {
-                console.log(r);
-            });
-        }
-    }, [status]);
-
-    return <>
+    return <MainWrapper userData={userData}>
         <PopupConfirmation
             isOpen={popupState === "delete"}
             setOpen={setPopupState}
@@ -137,5 +128,5 @@ export default function Home({updateSession, feeds}) {
             <PageFooter/>
         </div>
 
-    </>
+    </MainWrapper>
 }

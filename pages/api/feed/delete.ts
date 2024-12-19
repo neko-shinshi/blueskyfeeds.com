@@ -1,9 +1,14 @@
-import {userPromise} from "features/utils/apiUtils";
 import {feedRKeyToUri} from "features/utils/feedUtils";
-import {deleteFeed, rebuildAgentFromToken} from "features/utils/bsky";
+import {deleteFeed} from "features/utils/bsky";
 import {wLogger} from "features/utils/logger";
 
 export default async function handler(req, res) {
+    if (req.method !== "DELETE") { res.status(400).send(); return; }
+    const {rKey} = req.body;
+    if (!rKey) { res.status(400).send(); return;}
+
+
+
     return userPromise(req, res, "DELETE", true, true,
         ({rkey}) => !!rkey,
         async ({db, token}) => {

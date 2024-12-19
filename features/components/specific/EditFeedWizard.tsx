@@ -5,14 +5,12 @@ import InputMultiWord from "features/input/InputMultiWord";
 import clsx from "clsx";
 import {PICS_SETTING, POST_LEVELS} from "features/utils/constants";
 import BlueskyForm from "features/components/specific/BlueskyForm";
-import {useSession} from "next-auth/react";
 
-export default function EditFeedWizard({modal, setModal, setMode, setSubMode, setPostLevels, useFormReturn, recaptcha, setBusy, setKeywords, keywords, VIP, setPopupState, multiWordCallback, shortNameLocked, setPics, watchEveryListSync, setLiveAllowList}) {
+export default function EditFeedWizard({modal, setModal, setMode, setSubMode, setPostLevels, useFormReturn, recaptcha, setBusy, setKeywords, keywords, VIP, setPopupState, multiWordCallback, shortNameLocked, setPics, watchEveryListSync, setLiveAllowList, userData}) {
     const {
         setValue,
         getValues
     } = useFormReturn;
-    const { data: session, status } = useSession();
 
 
     const showInstructionAlert = () => {
@@ -38,9 +36,9 @@ export default function EditFeedWizard({modal, setModal, setMode, setSubMode, se
                                 setSubMode("posts");
                                 setPostLevels(["top"]);
                                 setValue("allowList", [{
-                                    did: session.user.did,
-                                    handle: session.user.handle,
-                                    displayName: session.user.name
+                                    did: userData.did,
+                                    handle: userData.handle,
+                                    displayName: userData.name
                                 }]);
                                 setModal("wizard-keywords");
                                 setLiveAllowList(true);

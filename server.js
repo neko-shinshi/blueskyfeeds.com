@@ -7,12 +7,6 @@ const hostname = '0.0.0.0';
 const port = 9123;
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
-const {updateScores} = require("./not-nextjs/scoring");
-const {updateAllFeeds} = require("./not-nextjs/update-all-feeds");
-const {connectToDatabase} = require("./features/utils/dbUtils");
-const { Cron } = require("croner");
-const {updatePosts} = require("./not-nextjs/update-posts")
-const {BskyAgent} = require("@atproto/api");
 
 const handleData = async (req, res) => {
     try {
@@ -53,7 +47,6 @@ app.prepare().then(async () => {
 
     server.listen(port, async (err) => {
         if (err) throw err;
-        const db = await connectToDatabase();
         console.log(`> Ready on http${secure? "s":""}://${hostname}:${port}`);
 
         if (process.env.NEXT_PUBLIC_DEV !== "1") {

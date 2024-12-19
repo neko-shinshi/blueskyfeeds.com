@@ -1,12 +1,13 @@
-import {signIn} from "next-auth/react";
 import {useEffect, useRef, useState} from "react";
 import clsx from "clsx";
 import {clearRememberEmail, getRememberEmail, setRememberEmail} from "features/utils/localStorageUtils";
-import {APP_PASSWORD} from "features/auth/authUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {HiAtSymbol} from "react-icons/hi";
 import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import Link from "next/link";
+import {AtpAgent, AtpSessionData, AtpSessionEvent} from "@atproto/api";
+import {localPost} from "features/network/network";
+import {useRouter} from "next/router";
 
 export default function FormSignIn() {
     const [password, setPassword] = useState("");
@@ -18,6 +19,7 @@ export default function FormSignIn() {
     const rememberMeRef = useRef(null);
     const [error, setError] = useState<{msg?:string, part?:string}[]>([]);
     const recaptcha = useRecaptcha();
+    const router = useRouter();
 
     useEffect(() => {
         // Run Once, remembered email/username is from localStorage, never from server
@@ -76,16 +78,44 @@ export default function FormSignIn() {
                     let usernameOrEmail = emailRef.current.value;
                     usernameOrEmail = usernameOrEmail.startsWith("@")? usernameOrEmail.slice(1) : usernameOrEmail;
                     usernameOrEmail = usernameOrEmail.indexOf(".") < 0? `${usernameOrEmail}.${domain}` : usernameOrEmail;
-                    const result = await signIn(APP_PASSWORD, {redirect:false, service:domain, usernameOrEmail, password, captcha});
-                    if (result.status === 200) { // If signin successful
-                        location.reload();
-                    } else if (result.status === 401) {
-                        console.log(result);
-                        setError([{msg:"Authentication Failed", part:"password"}]);
-                    } else {
-                        console.log(result);
-                        setError([{msg:"Unknown Error, try again later or contact @blueskyfeeds.com", part:"all"}]);
-                    }
+                    const service = `https://${domain}`;
+
+                    const agent = new AtpAgent({service,
+                        persistSession: async (evt: AtpSessionEvent, sess?: AtpSessionData) => {
+                           switch (evt) {
+                               case "create":
+                               case "update": {
+                                   const {status} = await localPost("/signin", {service, token:sess});
+                                   switch (status) {
+                                       case 200: {
+                                           router.reload();
+                                           break;
+                                       }
+                                       case 401: {
+                                           setError([{msg:"Authentication Failed", part:"password"}]);
+                                           break;
+                                       }
+                                       case 500: {
+                                           setError([{msg:"Unknown Error, try again later or contact @blueskyfeeds.com", part:"all"}]);
+                                           break;
+                                       }
+                                   }
+
+                                   break;
+                               }
+                               case "create-failed": {
+                                   setError([{msg:"Authentication Failed", part:"password"}]);
+                                   break;
+                               }
+                               case "expired":
+                               case "network-error": {
+                                   setError([{msg:"Unknown Error, try again later or contact @blueskyfeeds.com", part:"all"}]);
+                                   break;
+                               }
+                           }
+                        }
+                    });
+                    await agent.login({identifier: usernameOrEmail, password});
                 });
             }
         } catch (e) {

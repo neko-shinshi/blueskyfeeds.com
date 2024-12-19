@@ -82,17 +82,9 @@ export default function FeedItem ({item, setSelectedItem, setPopupState}) {
                 >
                     <FaRegCopy className="w-6 h-6 p-0.5" title="Copy Feed URL"/>
                 </button>
-                {
-                    item.custom && <Link href={`/personalize-feed?feed=${item.uri.split("/").at(-1)}`}>
-                        <button type="button"
-                                className="text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-xl p-1">
-                            <FaUserGear className="w-6 h-6" title="Personalize Feed"/>
-                        </button>
-                    </Link>
-                }
 
                 {
-                    item.edit && <Link href={`/edit-feed?feed=${item.uri.split("/").at(-1)}`}>
+                    item.edit && <Link href={`/edit-feed?feed=${item.uri}`}>
                         <button type="button"
                                 className="text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-xl p-1">
                             <HiPencil className="w-6 h-6" title="Edit My Feed"/>

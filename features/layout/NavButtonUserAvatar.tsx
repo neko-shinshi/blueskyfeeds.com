@@ -2,38 +2,36 @@ import { Menu, Transition } from "@headlessui/react";
 import clsx from "clsx";
 import {HiLogout, HiPlus} from "react-icons/hi";
 import {useRouter} from "next/router";
-import {signOut, useSession} from "next-auth/react";
 import {Fragment, useEffect, useState} from "react";
-import PopupSignIn from "features/login/PopupSignIn";
 import Image from "next/image";
 import {HiListBullet} from "react-icons/hi2";
 import Link from "next/link";
+import FormSignIn from "features/login/FormSignIn";
+import Popup from "features/components/Popup";
+import {UserProfileView} from "features/utils/types";
 
-export default function NavButtonUserAvatar({navPosition}) {
+export default function NavButtonUserAvatar({navPosition, userData}:{navPosition:"top"|"bottom", userData: UserProfileView}) {
     const router = useRouter();
-    const { data: session } = useSession();
     const [isOpen, setOpen] = useState(false);
-    const logout = async () => {
-        await signOut();
-    }
+
 
     useEffect(() => {
         setOpen(false);
-    }, [session, router]);
+    }, [router]);
 
     return (
         <>
             {
-                session &&
+                userData &&
                 <Menu as="div" className="relative inline-block text-left">
                     <Menu.Button
                         className="inline-block justify-center h-8 w-8 rounded-full overflow-hidden bg-gray-500 shadow-inner ring-1 ring-white">
                         {
-                            session.user.image ?
+                            userData.avatar ?
                                 <div className="h-8 w-8">
-                                    <Image width={50} height={50} src={session.user.image} alt="user-avatar" onError={() => { /* DO NOTHING */}}/></div> :
+                                    <Image width={50} height={50} src={userData.avatar} alt="user-avatar" onError={() => { /* DO NOTHING */}}/></div> :
                                 <span className="text-sm font-medium leading-none text-white select-none">
-                                    {session.user.name.charAt(0)}
+                                    {(userData.displayName || userData.handle).charAt(0)}
                                 </span>
                         }
                     </Menu.Button>
@@ -58,12 +56,12 @@ export default function NavButtonUserAvatar({navPosition}) {
                                         )}
                                     >
                                         {
-                                            session.user.name && <p className="text-sm font-medium text-gray-900 truncate">{
-                                                session.user.name
+                                            userData.displayName && <p className="text-sm font-medium text-gray-900 truncate">{
+                                                userData.displayName
                                             }</p>
                                         }
                                         <p className="text-sm font-medium text-gray-900 truncate">@{
-                                            session.user.handle
+                                            userData.handle
                                         }</p>
                                     </button>
                                 )}
@@ -109,8 +107,8 @@ export default function NavButtonUserAvatar({navPosition}) {
                             <div className="py-1">
                                 <Menu.Item>
                                     {({active}) => (
-                                        <button
-                                            onClick={logout}
+                                        <Link
+                                            href="/signout"
                                             type="button"
                                             className={clsx(
                                                 active ? 'bg-gray-100 text-gray-900' : 'text-gray-700',
@@ -118,7 +116,7 @@ export default function NavButtonUserAvatar({navPosition}) {
                                             )}
                                         >
                                             <HiLogout className="h-4 w-4 inline-block mr-2"/> <span>Logout</span>
-                                        </button>
+                                        </Link>
                                     )}
                                 </Menu.Item>
                             </div>
@@ -127,9 +125,11 @@ export default function NavButtonUserAvatar({navPosition}) {
                 </Menu>
             }
             {
-                !session &&
+                !userData &&
                 <>
-                    <PopupSignIn isOpen={isOpen} setOpen={setOpen}/>
+                    <Popup isOpen={isOpen} setOpen={setOpen}>
+                        <FormSignIn />
+                    </Popup>
                     <button className={clsx("inline-block h-8 w-8 rounded-full overflow-hidden bg-gray-100 ",
                         "ring-offset-1 ring-2 ring-blue-200 hover:brightness-75" )}
                             onClick={() => {

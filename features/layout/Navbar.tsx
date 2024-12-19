@@ -1,9 +1,6 @@
 import { Disclosure } from '@headlessui/react'
 import NavButtonUserAvatar from "./NavButtonUserAvatar";
 import clsx from "clsx";
-import {HiMenu, HiX} from "react-icons/hi";
-
-import {useSession} from "next-auth/react";
 import {useEffect, useRef, useState} from "react";
 import NavLogo from "features/layout/NavLogo";
 import NavButtonNavReposition from "features/layout/NavButtonNavReposition";
@@ -15,9 +12,8 @@ import {useWidth} from "features/layout/WidthProvider";
 
 
 
-export default function Navbar({hide}) {
+export default function Navbar({hide, userData}) {
     const [navPosition, setNavPosition] = useState<"top" | "bottom">("top");
-    const { data: session, status } = useSession();
     const router = useRouter();
     let scrollTs = 0;
     const [isScrolling, setIsScrolling] = useState(false);
@@ -49,11 +45,6 @@ export default function Navbar({hide}) {
             router.events.off('routeChangeStart', closeDisclosurePanel)
         }
     }, []);
-    useEffect(() => {
-        if (session?.error === "RefreshAccessTokenError") {
-            router.push("/user/sign-in");
-        }
-    }, [session]);
 
     return (
         <>
@@ -86,7 +77,7 @@ export default function Navbar({hide}) {
 
                                     <NavButtonNavReposition position={navPosition}
                                                             setPosition={setNavPosition}/>
-                                    <NavButtonUserAvatar navPosition={navPosition}/>
+                                    <NavButtonUserAvatar navPosition={navPosition} userData={userData}/>
                                 </div>
 
                                 <div className="hidden md:flex-1 md:flex md:items-center md:justify-between">
@@ -99,7 +90,7 @@ export default function Navbar({hide}) {
                                     {/* Desktop Right */}
                                     <div className="flex items-center md:ml-12 space-x-4">
                                         <NavButtonNavReposition position={navPosition} setPosition={setNavPosition}/>
-                                        <NavButtonUserAvatar navPosition={navPosition}/>
+                                        <NavButtonUserAvatar navPosition={navPosition} userData={userData}/>
                                     </div>
                                 </div>
                             </div>
