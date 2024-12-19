@@ -28,17 +28,36 @@ export async function getServerSideProps({req, res, params}) {
     const {db, helpers} = dbUtils;
     const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
 
-    console.log(`preview: at://${_did}/app.bsky.feed.generator/${short}`);
+
 
     const result = await getActorsInfo(publicAgent, [_did]);
     if (result.length === 0) { return { redirect: { destination: '/404', permanent: false } }; }
     const {did} = result[0];
-    const feed = `at://${did}/app.bsky.feed.generator/${short}`;
+    const feedId = `at://${did}/app.bsky.feed.generator/${short}`;
+    console.log(`preview: ${feedId}`);
 
-    let [localFeed, viewers]:[localFeed:any, viewers:any[]] = await Promise.all([
-        db.oneOrNone("SELECT keywords, mode, keywords_cfg, lang_cfg, post_level_cfg, media_cfg, sort, label_cfg FROM feed WHERE id = $1", [feed]),
-        db.manyOrNone("WITH lists AS (SELECT id, list_uri FROM feed_user_list WHERE feed_id = $1 AND type = 'v') SELECT did FROM feed_user_list_item, lists WHERE list_id = id UNION SELECT did FROM feed_user_list_sync, lists WHERE list_uri = parent_uri", [feed])
-    ]);
+    let localFeed:any, viewers:any[]=[];
+
+
+    const REF1 = "ref1", REF2 = "ref2";
+    await db.tx(async t => {
+        await t.query("SELECT * FROM get_feed_preview($1, $2, $3)", [feedId, REF1, REF2]);
+        let [feedBody, lists] = await Promise.all([
+            t.oneOrNone(`FETCH ALL IN ${REF1}`),
+            t.manyOrNone(`FETCH ALL IN ${REF2}`)
+        ]);
+
+        localFeed = feedBody;
+
+        for (const list of lists) {
+            const {ids} = list;
+            for (const id of ids.split(",")) {
+                viewers.push(id);
+            }
+        }
+    });
+
+
     if (localFeed) {
         let {keywords:_keywords, mode, keywords_cfg:keywordSetting, lang_cfg:languages, media_cfg:pics, post_level_cfg:postLevels, sort, label_cfg} = localFeed;
         let keywords:any[] = [];
@@ -52,13 +71,12 @@ export async function getServerSideProps({req, res, params}) {
                 }
                 keywords.push(o);
             }
-
         });
         keywords = keywords.sort((x, y) => x.w.localeCompare(y.w)? 1 : -1);
         
         if (viewers.length > 0) {
             const agentId = userData.did;
-            if (agentId && viewers.find(x => x.did === agentId)) {
+            if (agentId && viewers.find(x => x === agentId)) {
                 localFeed = {keywords, mode, keywordSetting, languages, pics, postLevels, sort};
             } else {
                 // Private feeds don't show config data
@@ -74,7 +92,7 @@ export async function getServerSideProps({req, res, params}) {
     let errorMessage:any = {};
     const feedItems:any[] = [];
     try {
-        const {data} = await publicAgent.app.bsky.feed.getFeed({feed, limit:10});
+        const {data} = await publicAgent.app.bsky.feed.getFeed({feed:feedId, limit:10});
         // The return value is a non-serializable JSON for some reason
         data.feed.forEach(x =>  feedItems.push(JSON.parse(JSON.stringify(x.post))));
     } catch (e) {
@@ -82,12 +100,12 @@ export async function getServerSideProps({req, res, params}) {
            errorMessage.error = e.error;
            errorMessage.message = e.message;
        } else {
-           console.error("Feed Preview", feed, e);
+           console.error("Feed Preview", feedId, e);
        }
     }
    
     
-    let feedDescription:any = (await publicAgent.app.bsky.feed.getFeedGenerators({feeds:[feed]}))?.data?.feeds[0] || {};
+    let feedDescription:any = (await publicAgent.app.bsky.feed.getFeedGenerators({feeds:[feedId]}))?.data?.feeds[0] || {};
     feedDescription = {...feedDescription, ...localFeed};
     return {props: {feedItems, feedDescription, userData , errorMessage}};
 }

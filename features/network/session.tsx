@@ -11,7 +11,6 @@ export async function getLoggedInInfo (req, res) {
         const sessionKey = req.cookies[SESSION_KEY_ID];
         if (sessionKey) {
             const {token, service} = JSON.parse(sessionKey);
-            console.log(sessionKey);
             try {
                 const gate = new EventEmitter();
                 const privateAgent = new AtpAgent({ service ,

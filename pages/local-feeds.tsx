@@ -45,10 +45,8 @@ export async function getServerSideProps({req, res, query}) {
         // Limit by likes
         feedsHereQuery = {query:"SELECT feed.id AS id FROM feed, every_feed WHERE feed.id = every_feed.id AND highlight = TRUE AND likes > $1 ORDER BY likes DESC, t_indexed ASC LIMIT $2 OFFSET $3", values: [lInt, PAGE_SIZE, offset]};
     }
-    console.log(helpers.concat([feedsHereQuery]));
     const feedsHere = await db.manyOrNone(helpers.concat([feedsHereQuery]));
 
-    console.log("TOTAL FEEDS", feedsHere.length)
     let feeds:any[] = [];
     const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
 
