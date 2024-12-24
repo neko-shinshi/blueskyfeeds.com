@@ -1,27 +1,24 @@
 import {getLoggedInInfo} from "features/network/session";
 import {testRecaptcha} from "features/utils/recaptchaUtils";
-import {AtpAgent} from "@atproto/api";
 import {queryWithCursor} from "features/utils/utils";
 import {ListItemView} from "@atproto/api/src/client/types/app/bsky/graph/defs";
+import {getPublicAgent} from "features/utils/bsky";
+import {respondApiErrors} from "features/utils/api";
 
 export default async function handler(req, res) {
-    if (req.method !== "GET") { res.status(400).send(); return; }
-    let {list, captcha} = req.query;
-    if (!list || !captcha) { res.status(400).send(); return; }
-    const [{ error}, captchaPass] = await Promise.all([
-        getLoggedInInfo(req, res),
-        testRecaptcha(captcha)
+    let {list, captcha} = req.body;
+    if (req.method !== "POST" || !list || !captcha) { res.status(400).send(); return; }
+    const [{ error, privateAgent}, captchaPass] = await Promise.all([
+        getLoggedInInfo(req, res), testRecaptcha(captcha)
     ]);
-    if (error) { res.status(error).send(); return; }
-    if (!captchaPass) { res.status(529).send(); return; }
-
+    if (respondApiErrors(res, [{val:error, code:error}, {val:!privateAgent, code:401}, {val:!captchaPass, code:529}])) { return; }
 
     if (list.startsWith("at://")) {
         list = list.slice(5);
     } else if (list.startsWith("https://bsky.app/profile/")) {
         list = list.slice(25);
     }
-    const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
+    const publicAgent = getPublicAgent();
 
     if (!list.startsWith("did:plc:")) {
         const [actor, ...rest] = list.split("/");

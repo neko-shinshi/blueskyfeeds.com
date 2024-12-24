@@ -70,7 +70,7 @@ export default function NavButtonUserAvatar({navPosition, userData}:{navPosition
                             <div className="py-1">
                                 <Menu.Item>
                                     {({active}) => (
-                                        <Link href="/my-feeds">
+                                        <Link href="/feed/my">
                                             <button
                                                 type="button"
                                                 className={clsx(
@@ -88,7 +88,7 @@ export default function NavButtonUserAvatar({navPosition, userData}:{navPosition
                             <div className="py-1">
                                 <Menu.Item>
                                     {({active}) => (
-                                        <Link href="/edit-feed">
+                                        <Link href="/feed/new">
                                             <button
                                                 type="button"
                                                 className={clsx(

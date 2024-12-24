@@ -1,28 +1,29 @@
 import HeadExtended from "features/layout/HeadExtended";
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import PageHeader from "features/components/PageHeader";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {localDelete} from "features/network/network"
-import {useRecaptcha} from "features/auth/RecaptchaProvider";
+import {useRecaptcha} from "features/utils/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
 import {getLoggedInInfo} from "features/network/session";
-import {APP_SESSION} from "features/auth/authUtils";
 import PageFooter from "features/components/PageFooter";
-import {AtpAgent} from "@atproto/api";
 import SearchBox from "features/components/SearchBox";
 import {getSearchConfig} from "features/utils/getSearchConfig";
 import BackAndForwardButtons from "features/components/BackAndForwardButtons";
 import {getDbClient} from "features/utils/db";
 import {MainWrapper} from "features/layout/MainWrapper";
+import {getPublicAgent} from "features/utils/bsky";
+import {respondPageErrors} from "features/utils/page";
 
 export async function getServerSideProps({req, res, query}) {
     const [{ error, userData}, dbUtils] = await Promise.all([
         getLoggedInInfo(req, res),
         getDbClient()
     ]);
-    if (error) { return {redirect: `/${error}`, permanent:false}; }
-    if (!dbUtils) {return {redirect:"/500", permanent:false};}
+    const redirect = respondPageErrors([{val:error, code:error}, {val:!dbUtils, code:500}]);
+    if (redirect) { return redirect; }
+
     const {db, helpers} = dbUtils;
 
     const PAGE_SIZE = 50;
@@ -39,7 +40,7 @@ export async function getServerSideProps({req, res, query}) {
     let feedsHereQuery:any = {
         query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
             + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
-            + "LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+            + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
             + "ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
         values: [userDid, PAGE_SIZE, offset]};
     const qTrim = q && q.trim();
@@ -49,7 +50,7 @@ export async function getServerSideProps({req, res, query}) {
         feedsHereQuery = {
             query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
                 + "JOIN every_feed AS e WHERE f.id = e.id AND f.highlight = TRUE "
-                + "LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+                + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
                 + "WHERE e.id @@@ $2::JSONB ORDER BY likes DESC LIMIT $3 OFFSET $4",
             values: [userDid, searchConfig, PAGE_SIZE, offset]};
     } else if (lInt && !isNaN(lInt) && lInt > 0) {
@@ -57,13 +58,13 @@ export async function getServerSideProps({req, res, query}) {
         feedsHereQuery = {
             query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
                 + "JOIN every_feed AS e WHERE f.id = e.id AND f.highlight = TRUE "
-                + "LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+                + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
                 + "WHERE likes > $2 ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
             values: [userDid, lInt, PAGE_SIZE, offset]};
     }
     const feedsHere = await db.manyOrNone(helpers.concat([feedsHereQuery]));
 
-    const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
+    const publicAgent = getPublicAgent();
     const {data} = await publicAgent.app.bsky.feed.getFeedGenerators({feeds: feedsHere.map(x => x.id)});
     const updatedFeeds = data.feeds.map(x => {
         const {uri, did, creator, avatar,
@@ -119,13 +120,13 @@ export default function Home({userData, feeds}) {
 
         <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
             <PageHeader title={title} description={description}/>
-            <SearchBox path="/local-feeds" title="Search Feeds made here" setBusy={setBusy} />
+            <SearchBox path="/feed/local" title="Search Feeds made here" setBusy={setBusy} />
 
             <div className="bg-white border-black border-2 p-4 rounded-xl space-y-2">
                 <div className="text-lg font-medium">Feeds Made Here</div>
                 {
                     feeds.length > 0 &&
-                    <BackAndForwardButtons basePath={`${BASE_URL}/local-feeds`} params={router.query}/>
+                    <BackAndForwardButtons basePath={`${BASE_URL}/feed/local`} params={router.query}/>
                 }
                 {
                     feeds && feeds.map(x =>
@@ -134,7 +135,7 @@ export default function Home({userData, feeds}) {
                 }
                 {
                     feeds.length > 0 &&
-                    <BackAndForwardButtons basePath={`${BASE_URL}/local-feeds`} params={router.query}/>
+                    <BackAndForwardButtons basePath={`${BASE_URL}/feed/local`} params={router.query}/>
                 }
             </div>
             <PageFooter/>

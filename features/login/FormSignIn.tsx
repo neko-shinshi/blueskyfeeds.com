@@ -3,7 +3,7 @@ import clsx from "clsx";
 import {clearRememberEmail, getRememberEmail, setRememberEmail} from "features/utils/localStorageUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {HiAtSymbol} from "react-icons/hi";
-import {useRecaptcha} from "features/auth/RecaptchaProvider";
+import {useRecaptcha} from "features/utils/RecaptchaProvider";
 import Link from "next/link";
 import {AtpAgent, AtpSessionData, AtpSessionEvent} from "@atproto/api";
 import {localPost} from "features/network/network";

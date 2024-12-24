@@ -5,7 +5,7 @@ import {SiBuzzfeed} from "react-icons/si";
 import PageHeader from "features/components/PageHeader";
 import {localDelete} from "features/network/network";
 import PopupConfirmation from "features/components/PopupConfirmation";
-import {useRecaptcha} from "features/auth/RecaptchaProvider";
+import {useRecaptcha} from "features/utils/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
 import {getLoggedInInfo} from "features/network/session";
@@ -14,19 +14,21 @@ import BackAndForwardButtons from "features/components/BackAndForwardButtons";
 import {removeUndefined} from "features/utils/validationUtils";
 import PageFooter from "features/components/PageFooter";
 import {getSearchConfig} from "features/utils/getSearchConfig";
-import {AtpAgent} from "@atproto/api";
 import {extractLabels} from "features/utils/parseLabels";
 import SearchBox from "features/components/SearchBox";
 import {getDbClient} from "features/utils/db";
 import {MainWrapper} from "features/layout/MainWrapper";
+import {getPublicAgent} from "features/utils/bsky";
+import {respondPageErrors} from "features/utils/page";
 
 export async function getServerSideProps({req, res, query}) {
     const [{ error, userData}, dbUtils] = await Promise.all([
         getLoggedInInfo(req, res),
         getDbClient()
     ]);
-    if (error) { return {redirect: `/${error}`, permanent:false}; }
-    if (!dbUtils) {return {redirect:"/500", permanent:false};}
+    const redirect = respondPageErrors([{val:error, code:error}, {val:!dbUtils, code:500}]);
+    if (redirect) { return redirect; }
+
     const {db, helpers} = dbUtils;
 
     const PAGE_SIZE = 20;
@@ -59,7 +61,7 @@ export async function getServerSideProps({req, res, query}) {
     const userDid = userData?.did || "";
     let everyFeedQuery:any = {
         query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
-            +"LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+            +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
             +"ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
         values: [userDid, PAGE_SIZE, offset]};
     let popularMadeHereQuery:any = false;
@@ -69,14 +71,14 @@ export async function getServerSideProps({req, res, query}) {
         const searchConfig = getSearchConfig(qTrim, lInt);
         everyFeedQuery = {
             query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
-                +"LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+                +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
                 +"WHERE e.id @@@ $2::JSONB ORDER BY e.likes DESC LIMIT $3 OFFSET $4",
             values:[userDid, searchConfig, PAGE_SIZE, offset]};
     } else if (lInt && !isNaN(lInt) && lInt > 0) {
         // Limit by likes
         everyFeedQuery = {
             query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
-                +"LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1 "
+                +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
                 +"WHERE e.likes > $2 ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $3 OFFSET $4",
             values: [userDid, lInt, PAGE_SIZE, offset]};
     } else if (!p || parseInt(p) === 1) {
@@ -84,12 +86,12 @@ export async function getServerSideProps({req, res, query}) {
         popularMadeHereQuery= {
             query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
                 +"JOIN every_feed AS e ON e.id = f.id AND f.highlight = TRUE "
-                +"LEFT JOIN feed_admins AS a ON a.feed_id = e.id AND admin_id = $1"
+                +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1"
                 +"ORDER BY likes DESC LIMIT 6",
             values:[userDid]};
     }
 
-    const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
+    const publicAgent = getPublicAgent();
     let popularMadeHere:any[] = [];
     let feeds:any[] = [];
     const [mainIds, feedsHere] = await Promise.all([
@@ -174,7 +176,7 @@ export default function Home({userData, feeds, popularMadeHere}) {
                 <SearchBox path="/" title="Search All Feeds" setBusy={setBusy} />
 
 
-                <Link href="/my-feeds">
+                <Link href="/feed/my">
                     <button type="button"
                             className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         <SiBuzzfeed className="w-6 h-6"/>
@@ -188,7 +190,7 @@ export default function Home({userData, feeds, popularMadeHere}) {
                     <div className="bg-lime-100 border-black border-2 p-4 rounded-xl space-y-2">
                         <div className="inline-flex justify-between w-full place-items-center">
                             <div className="text-lg font-medium">Highlights of Feeds made here</div>
-                            <Link href="/local-feeds">
+                            <Link href="/feed/local">
                                 <button type="button"
                                         className="w-full inline-flex justify-center items-center p-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     <div className="text-lg font-medium">See More</div>

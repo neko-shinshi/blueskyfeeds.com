@@ -4,9 +4,12 @@ import {processQ} from "features/utils/queue";
 import {callApiInChunks, queryWithCursor} from "features/utils/utils";
 import {ListItemView} from "@atproto/api/src/client/types/app/bsky/graph/defs";
 import {detectFacets} from "@atproto/api/dist/rich-text/detection";
-import {SavedFeedsPrefV2} from "@atproto/api/src/client/types/app/bsky/actor/defs";
 import {GeneratorView} from "@atproto/api/src/client/types/app/bsky/feed/defs";
 
+
+export function getPublicAgent () {
+    return new AtpAgent({ service: "https://api.bsky.app/" });
+}
 
 export const getCustomFeeds = async (agent:AtpAgent):Promise<GeneratorView[]> => {
     const actor = agent.session.did;
@@ -14,33 +17,6 @@ export const getCustomFeeds = async (agent:AtpAgent):Promise<GeneratorView[]> =>
         ({feeds}) => { return feeds; });
 }
 
-const getSavedFeedIds = async (agent:AtpAgent) => {
-
-
-
-    const feeds = data.preferences.find(x =>  x["$type"] === "app.bsky.actor.defs#savedFeedsPref");
-    if (feeds) {
-        const {$type, ...rest} = feeds;
-        return rest;
-    }
-
-    return {};
-}
-
-
-export const getSavedFeeds = async (agent:AtpAgent) => {
-    const feeds = await getSavedFeedIds(agent);
-    if (feeds && feeds.saved && feeds.saved.length > 0) {
-        let {data} = await agent.app.bsky.feed.getFeedGenerators({feeds: feeds.saved});
-        return data.feeds.map(x => {
-            if (feeds.pinned.indexOf(x.uri) >= 0) {
-                return {...x, pinned:true};
-            }
-            return x;
-        });
-    }
-    return [];
-}
 
 export const deleteFeed = async (agent:AtpAgent, rkey:string) => {
     const record = {
@@ -127,6 +103,39 @@ export const editFeed = async (agent:AtpAgent, {img, shortName, displayName, des
     return await agent.com.atproto.repo.putRecord(record);
 }
 
+const MAX_GET_POST_ATTEMPTS = 3;
+
+async function tryGetPosts(agent:AtpAgent, uris:string[], attempt = 1):Promise<any[]> {
+    try {
+        console.log("Sending uris", {uris});
+        const {data:{posts}} = await agent.getPosts({uris});
+        return posts;
+    } catch (e) {
+        if (e.error === "InternalServerError") {
+            if (uris.length <= 1) { // This is the buggy post
+                console.error("damaged uri", uris);
+                return [];
+            }
+            // Use binary search to find the error
+            const half = Math.ceil(uris.length / 2);
+            const [x, y] = await Promise.all([
+                tryGetPosts(agent, uris.slice(0, half), 1),
+                tryGetPosts(agent, uris.slice(half), 1)
+            ]);
+
+            return x.concat(y);
+        }
+
+        if (attempt <= MAX_GET_POST_ATTEMPTS) {
+            console.log(e);
+            return await tryGetPosts(agent, uris, attempt + 1);
+        } else {
+            throw e;
+        }
+    }
+}
+
+
 export const getPostInfo = async (agent:AtpAgent, postUris:string[]) => {
     let users:Set<string> = new Set();
     postUris.forEach(postUri => {
@@ -139,6 +148,7 @@ export const getPostInfo = async (agent:AtpAgent, postUris:string[]) => {
             users.add(user);
         }
     });
+    console.log(users);
 
     let handleToDid = new Map();
     (await getActorsInfo(agent, [...users])).forEach(actor => {
@@ -162,9 +172,11 @@ export const getPostInfo = async (agent:AtpAgent, postUris:string[]) => {
         return acc;
     }, new Set()));
 
+    console.log(uris);
+
 
     const MAX_QUERY = 25;
-    return await callApiInChunks(uris, MAX_QUERY, (o) => agent.app.bsky.feed.getPosts({uris:o}), ({posts}) => {
+    const result = await callApiInChunks(uris, MAX_QUERY, (o) => tryGetPosts(agent, o), (posts) => {
         return posts.reduce((acc,x) => {
             const {record, uri}  = x;
             if (uri) {
@@ -173,7 +185,9 @@ export const getPostInfo = async (agent:AtpAgent, postUris:string[]) => {
             }
             return acc;
         }, []);
-    });
+    }, 0, false); // Retry internally, so 0 retries here
+    console.log("RESULT", result);
+    return result;
 }
 
 export const getActorsInfo = async (agent:AtpAgent, actors:string[]) => {
@@ -186,22 +200,21 @@ export const getActorsInfo = async (agent:AtpAgent, actors:string[]) => {
     });
 }
 
-export const isVIP = (agent) => {
+export const isVIP = (privateAgent:AtpAgent) => {
     return ["did:plc:eubjsqnf5edgvcc6zuoyixhw",
         "did:plc:tazrmeme4dzahimsykusrwrk",
         "did:plc:2dozc4lhicvbmpsbxnicvdpj",
         "did:plc:be5wkrivorcuc6db22drsc6z",
-    ].indexOf(agent.session.did) >= 0;
+    ].indexOf(privateAgent.session.did) >= 0;
 }
 
-export const isSuperAdmin = (agent) => {
+export const isSuperAdmin = (privateAgent:AtpAgent) => {
     return ["did:plc:eubjsqnf5edgvcc6zuoyixhw",
         "did:plc:tazrmeme4dzahimsykusrwrk"
-    ].indexOf(agent.session.did) >= 0;
+    ].indexOf(privateAgent.session.did) >= 0;
 }
 
 export const getAllPosts = async (agent, target, filter= (post) => true) => {
-    let cursor:any = {};
     let uris = new Set();
     let posts = [];
 
@@ -362,7 +375,7 @@ export const feedHasUserLike = async (agent, feedId, userId) => {
     return false;
 }
 
-export const expandUserLists = async (feedData, agent, compress=false) => {
+export const expandUserLists = async (feedData:any, agent:AtpAgent, compress=false) => {
     let {
         allowList, allowListSync,
         blockList, blockListSync,
@@ -542,7 +555,6 @@ export const expandUserLists = async (feedData, agent, compress=false) => {
     }
 
     return {
-        ...feedData,
         allowList:allowList||[],
         blockList:blockList||[],
         mentionList:mentionList||[],

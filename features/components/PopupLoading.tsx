@@ -1,21 +1,21 @@
 import React from "react";
-import { Dialog } from '@headlessui/react'
+import {DialogTitle} from '@headlessui/react'
 import Popup from "features/components/Popup";
 
 export default function PopupLoading(
     {
         isOpen,
-        setOpen,
+       // setOpen,
     }: {
         isOpen:boolean
-        setOpen:(boolean) => void,
+      //  setOpen:(boolean) => void,
     }) {
 
     return (
         <Popup className="w-full max-w-xs"
                isOpen={isOpen}
                setOpen={open => {
-                   setOpen(open);
+             //      setOpen(open);
                }}
                preventManualEscape={true}
                onCloseCallback={undefined}>
@@ -35,10 +35,10 @@ export default function PopupLoading(
                         <span className="sr-only">Loading...</span>
                     </div>
                     <div className="flex items-center justify-center space-x-4">
-                        <Dialog.Title as="h3" className="text-lg leading-6 font-medium text-gray-900">
+                        <h3 className="text-lg leading-6 font-medium text-gray-900 select-none">
                             Loading...
-                        </Dialog.Title>
-                        <p className="text-sm text-gray-500">
+                        </h3>
+                        <p className="text-sm text-gray-500 select-none">
                             Please Wait
                         </p>
                     </div>

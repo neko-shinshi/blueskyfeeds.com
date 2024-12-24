@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@atproto/api": "^0.13.20",
-    "@headlessui/react": "^1.7.4",
+    "@headlessui/react": "^2.2.0",
     "@tailwindcss/forms": "^0.5.3",
     "add": "^2.0.6",
     "async": "^3.2.4",

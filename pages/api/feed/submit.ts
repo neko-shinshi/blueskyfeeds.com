@@ -3,7 +3,7 @@ import {
     getCustomFeeds,
     isVIP,
     getPostInfo,
-    expandUserLists, isSuperAdmin
+    expandUserLists, isSuperAdmin, getPublicAgent
 } from "features/utils/bsky";
 import {serializeFile} from "features/utils/fileUtils";
 import {
@@ -21,33 +21,52 @@ import {getMyCustomFeedIds} from "features/utils/feedUtils";
 import {compressKeyword} from "features/utils/objectUtils";
 import {wLogger} from "features/utils/logger";
 import sharp from "sharp";
+import {getLoggedInInfo} from "features/network/session";
+import {getDbClient} from "features/utils/db";
+import {testRecaptcha} from "features/utils/recaptchaUtils";
+import {respondApiErrors} from "features/utils/api";
 
 // Regular users are restricted to MAX_FEEDS_PER_USER feeds and MAX_KEYWORDS_PER_FEED keywords
 
 export default async function handler(req, res) {
-    return userPromise(req, res, "POST", true, true,
-        ({shortName}) => !!shortName,
-        async ({db, token}) => {
-            const agent = await rebuildAgentFromToken(token);
-            if (!agent) {res.status(401).send(); return;}
+    const {uri, captcha} = req.body;
+    if (req.method !== "POST" || !uri || !captcha) { res.status(400).send(); return; }
+    const [{ error, privateAgent, userData}, {db, helpers}, captchaPass] = await Promise.all([
+        getLoggedInInfo(req, res), getDbClient(), testRecaptcha(captcha)
+    ]);
+    if (respondApiErrors(res, [{val:error, code:error}, {val:!privateAgent, code:401}, {val:!captchaPass, code:529}])) { return; }
 
-            let body = await expandUserLists(req.body, agent, true);
-            let {
-                image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, everyListBlockKeywordSetting,
-                keywords:_keywords, keywordsQuote:_keywordsQuote, keywordsLink:_keywordsLink, // TODO handle keywords in links
-                mode, posts:_posts,
-                sort, displayName, shortName, description, mustUrl, blockUrl, copy, highlight, sticky, mustLabels, allowLabels,
-                allowList, allowListSync,
-                blockList, blockListSync,
-                everyList, everyListSync,
-                mentionList, mentionListSync,
-                viewers, viewersSync,
-                keywordsEdited, keywordsQuoteEdited, everyListBlockKeyword, _id:overrideId
-            } = body;
+    let canEdit = isSuperAdmin(privateAgent);
+    if (!canEdit) {
+        const query = helpers.concat([
+            {query:"SELECT EXISTS (SELECT 1 FROM feed_admin WHERE feed_id = $1 AND admin_id = $2", values:[uri, userData.did]},
+            {query:"SELECT COUNT(*) FROM feed WHERE author = $1", values:[userData.did]}
+        ]);
+
+        const [isAdmin, numFeeds] = await db.multi(query);
+        if (!isAdmin[0] || numFeeds[0] >= MAX_FEEDS_PER_USER) {
+            res.status(401).send(); return;
+        }
+    }
+
+    const publicAgent = getPublicAgent();
+    let body = await expandUserLists(req.body, publicAgent, true);
+    let {
+        image, imageUrl, encoding, languages:_languages,  postLevels:_postLevels, pics:_pics, keywordSetting, everyListBlockKeywordSetting,
+        keywords:_keywords, keywordsQuote:_keywordsQuote, keywordsLink:_keywordsLink, // TODO handle keywords in links
+        mode, posts:_posts,
+        sort, displayName, description, mustUrl, blockUrl, copy, highlight, sticky, mustLabels, allowLabels,
+        allowList, allowListSync,
+        blockList, blockListSync,
+        everyList, everyListSync,
+        mentionList, mentionListSync,
+        viewers, viewersSync,
+        keywordsEdited, keywordsQuoteEdited, everyListBlockKeyword, _id:overrideId
+    } = body;
 
             const did = agent.session.did;
             let _id = `at://${did}/app.bsky.feed.generator/${shortName}`;
-            const isSuper = isSuperAdmin(agent);
+
             let updateAtBsky = true;
             if (isSuper && overrideId) {
                 if (overrideId !== _id) {

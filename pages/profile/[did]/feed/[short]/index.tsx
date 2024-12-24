@@ -11,11 +11,11 @@ import Image from "next/image";
 import {HiDownload} from "react-icons/hi";
 import SortableWordBubbles from "features/components/SortableWordBubbles";
 import PageFooter from "features/components/PageFooter";
-import {AtpAgent} from "@atproto/api";
 import {MainWrapper} from "features/layout/MainWrapper";
 import {getDbClient} from "features/utils/db";
 import Link from "next/link";
 import {SiBuzzfeed} from "react-icons/si";
+import {getPublicAgent} from "features/utils/bsky";
 
 export async function getServerSideProps({req, res, params}) {
     const {did:_did, short} = params;
@@ -27,34 +27,27 @@ export async function getServerSideProps({req, res, params}) {
     if (error) { return {redirect: `/${error}`, permanent:false}; }
     if (!dbUtils) {return {redirect:"/500", permanent:false};}
     const {db, helpers} = dbUtils;
-    const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
-
-
+    const publicAgent = getPublicAgent();
 
     const result = await publicAgent.getProfile({actor:_did});
     if (!result) { return { redirect: { destination: '/404', permanent: false } }; }
     const {did} = result.data;
     const feedId = `at://${did}/app.bsky.feed.generator/${short}`;
-    console.log(`preview: ${feedId}`);
 
-    let localFeed:any, viewers:any[]=[];
-
+    let localFeed:any, viewers:Set<string>= new Set();
 
     const REF1 = "ref1", REF2 = "ref2";
     await db.tx(async t => {
         await t.query("SELECT * FROM get_feed_preview($1, $2, $3)", [feedId, REF1, REF2]);
-        let [feedBody, lists] = await Promise.all([
+        const [feedBody, lists] = await Promise.all([
             t.oneOrNone(`FETCH ALL IN ${REF1}`),
             t.manyOrNone(`FETCH ALL IN ${REF2}`)
         ]);
 
         localFeed = feedBody;
 
-        for (const list of lists) {
-            const {ids} = list;
-            for (const id of ids.split(",")) {
-                viewers.push(id);
-            }
+        for (const {ids} of lists) {
+            ids.split(",").forEach(x => viewers.add(x));
         }
     });
 
@@ -75,9 +68,8 @@ export async function getServerSideProps({req, res, params}) {
         });
         keywords = keywords.sort((x, y) => x.w.localeCompare(y.w)? 1 : -1);
         
-        if (viewers.length > 0) {
-            const agentId = userData.did;
-            if (agentId && viewers.find(x => x === agentId)) {
+        if (viewers.size > 0) {
+            if (viewers.has(userData?.did)) {
                 localFeed = {keywords, mode, keywordSetting, languages, pics, postLevels, sort};
             } else {
                 // Private feeds don't show config data
@@ -128,7 +120,7 @@ export default function Home({feedItems:_feedItems, feedDescription, userData, e
         <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
             <PageHeader title={title} description={description}/>
 
-            <Link href="/my-feeds">
+            <Link href="/feed/my">
                 <button type="button"
                         className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border-2 border-black  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     <SiBuzzfeed className="w-6 h-6"/>

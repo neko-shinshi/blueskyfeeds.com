@@ -1,6 +1,7 @@
-import {Dialog, Transition} from "@headlessui/react";
-import {Fragment, useEffect} from 'react'
+import {Dialog, DialogBackdrop, DialogPanel} from "@headlessui/react";
+import {useEffect} from 'react'
 import {useRouter} from "next/router";
+import clsx from "clsx";
 export default function Popup(
     {
         children,
@@ -9,7 +10,6 @@ export default function Popup(
         setOpen,
         preventManualEscape=false,
         onCloseCallback,
-        initialFocus
     }:{
         children:any,
         className?:string,
@@ -17,57 +17,41 @@ export default function Popup(
         setOpen:(boolean) => void,
         preventManualEscape?:boolean,
         onCloseCallback?: () => void
-        initialFocus?:any
     }) {
     const router = useRouter();
     useEffect(() => {
         setOpen(false);
     }, [router]);
 
-    return <Transition.Root show={isOpen} as={Fragment}>
-        <Dialog className="fixed inset-0 overflow-y-auto z-[998]"
-                initialFocus={initialFocus}
-                onClose={() => {
-                    if (!preventManualEscape) {
-                        setOpen(false);
-                    }
-                    if (onCloseCallback) {
-                        onCloseCallback();
-                    }
-                }}
-        >
-            <Transition.Child
-                as={Fragment}
-                enter="ease-out duration-200"
-                enterFrom="opacity-0"
-                enterTo="opacity-100"
-                leave="ease-in duration-200"
-                leaveFrom="opacity-100"
-                leaveTo="opacity-0"
-            >
-                <Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-75 transition-opacity" />
-            </Transition.Child>
+    return <Dialog className="fixed inset-0 overflow-y-auto z-[998]"
+                   open={isOpen}
+                   onClose={() => {
+                       if (!preventManualEscape) {
+                           setOpen(false);
+                       }
+                       if (onCloseCallback) {
+                           onCloseCallback();
+                       }
+                   }}
+    >
 
-            <div className="fixed inset-0 overflow-y-auto">
-                <div className="min-h-full grid place-items-center pt-8 pb-8 pl-16 pr-16">
-                    <Transition.Child
-                        as={Fragment}
-                        enter="ease-out duration-300"
-                        enterFrom="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                        enterTo="opacity-100 translate-y-0 sm:scale-100"
-                        leave="ease-in duration-200"
-                        leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-                        leaveTo="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                    >
+        <DialogBackdrop transition className={clsx("fixed inset-0 bg-black bg-opacity-75 transition duration-200",
+            "data-[closed]:opacity-0",
+            "data-[enter]:ease-out data-[enter]:opacity-100",
+            "data-[leave]:ease-in")}/>
 
-                        <Dialog.Panel className={className}>
-                            { children }
-                        </Dialog.Panel>
 
-                    </Transition.Child>
-                </div>
+        <div className="fixed inset-0 overflow-y-auto">
+            <div className="min-h-full grid place-items-center pt-8 pb-8 pl-16 pr-16">
+
+                <DialogPanel transition className={clsx(className, "transition",
+                    "data-[closed]:opacity-0 data-[closed]:translate-y-4",
+                    "data-[enter]:duration-300 data-[enter]:ease-out data-[enter]:translate-y-0",
+                    "data-[leave]:duration-200 data-[leave]:ease-in data-[leave]:translate-y-0"
+                )}>
+                    { children }
+                </DialogPanel>
             </div>
-        </Dialog>
-    </Transition.Root>
-
+        </div>
+    </Dialog>
 }

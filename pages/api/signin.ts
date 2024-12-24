@@ -4,15 +4,15 @@ import {updateSessionCookie} from "features/utils/cookieUtils";
 
 export default async function handler (req, res) {
     return new Promise(async resolve => {
-        if (req.method !== "POST") { res.status(400).send(); }
         const {token, service} = req.body;
+        if (req.method !== "POST" || !token || !service) { res.status(400).send(); }
         try {
             const agent = new AtpAgent({service,
                 persistSession: async (evt: AtpSessionEvent, sess?: AtpSessionData) => {
                     switch (evt) {
                         case "create":
                         case "update": {
-                            updateSessionCookie(req.body, req, res);
+                            updateSessionCookie({service, token: sess}, req, res);
                             res.status(200).send();
                             break;
                         }
@@ -31,7 +31,7 @@ export default async function handler (req, res) {
             await agent.resumeSession(token);
         } catch (e) {
             console.error(e);
+            res.status(500).send();
         }
-
     });
 }

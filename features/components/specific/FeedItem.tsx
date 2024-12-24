@@ -60,7 +60,7 @@ export default function FeedItem ({item, setSelectedItem, setPopupState}) {
             </div>
             <div>{item.description}</div>
             {
-                item.my && item.views &&
+                item.views &&
                 <div>
                     <div className="">Unique viewers last whole day: {item.views.day}</div>
                     <div className="">Unique viewers last whole week: {item.views.week}</div>
@@ -88,7 +88,7 @@ export default function FeedItem ({item, setSelectedItem, setPopupState}) {
                 </button>
 
                 {
-                    item.edit && <Link href={`/edit-feed?feed=${item.uri}`}>
+                    item.edit && <Link href={`/feed/edit?feed=${item.uri}`}>
                         <button type="button"
                                 className="text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 rounded-xl p-1">
                             <HiPencil className="w-6 h-6" title="Edit My Feed"/>

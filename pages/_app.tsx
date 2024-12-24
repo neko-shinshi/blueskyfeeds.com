@@ -1,6 +1,6 @@
 import 'styles/globals.css'
 import {useRouter} from "next/router";
-import {RecaptchaProvider} from "features/auth/RecaptchaProvider";
+import {RecaptchaProvider} from "features/utils/RecaptchaProvider";
 
 export default function App({ Component, pageProps}) {
     const router = useRouter();

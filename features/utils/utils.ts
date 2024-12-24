@@ -1,20 +1,31 @@
-export function arraySplitToSize(arr:any[], size:number):any[] {
-    let result = [];
-    for (let i = 0; i < arr.length; i += size) {
-        result.push(arr.slice(i, i + size));
-    }
-    return result;
+
+export function sortWithSelectors(arr:any[], selectors:any[]) {
+    arr.sort((a, b) => {
+        for (const selector of selectors) {
+            const result = selector(a, b);
+            if (result === 0) {
+                continue;
+            }
+            return result;
+        }
+    });
 }
 
-export async function callApiInChunks(arr:any[], chunkSize:number, query:any, packer:any, numRetry=2) {
+export async function callApiInChunks(arr:any[], chunkSize:number, query:any, packer:any, numRetry=2, isBskyApi=true) {
     let result:any[] = [];
     for (let i = 0; i < arr.length; i += chunkSize) {
         const chunk = arr.slice(i, i + chunkSize);
         let reattempts = numRetry;
         do {
             try {
-                const {data: {...data}} = await query(chunk);
-                result.push(...packer(data));
+                console.log("querying", chunk);
+                if (isBskyApi) {
+                    const {data: {...data}} = await query(chunk);
+                    result.push(...packer(data));
+                } else {
+                    result.push(...packer(await query(chunk)));
+                }
+
                 reattempts = 0;
             } catch (e) {
                 console.error(e);
@@ -39,7 +50,11 @@ export async function queryWithCursor (command, paramObj, packer, numRetry=2) {
             const {data:{cursor:newCursor, ...data}} = await command({...paramObj, ...cursorObj});
             if (newCursor && newCursor === cursorObj?.cursor) { break; /* Looping! Stop without processing */ }
             //console.log(JSON.stringify(data, null, 2));
-            result.push(...packer(data));
+            const packedData = packer(data);
+            if (Array.isArray(packedData)) {
+                result.push(...packedData);
+            }
+
             if (!newCursor) { break; }
             cursorObj.cursor = newCursor;
             reattempts = numRetry; // succeed, reset reattempts

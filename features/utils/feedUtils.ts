@@ -1,83 +1,95 @@
-import {getCustomFeeds, getSavedFeeds, isSuperAdmin} from "features/utils/bsky";
-import {SavedFeedsPrefV2} from "@atproto/api/src/client/types/app/bsky/actor/defs";
+import {getCustomFeeds, getPublicAgent, isSuperAdmin} from "features/utils/bsky";
+import {SavedFeedsPref} from "@atproto/api/src/client/types/app/bsky/actor/defs";
 import {AtpAgent} from "@atproto/api";
 import {IDatabase} from "pg-promise";
-const MS_ONE_WEEK = 7*24*60*60*1000;
+import {callApiInChunks, sortWithSelectors} from "features/utils/utils";
+import {GeneratorView} from "@atproto/api/src/client/types/app/bsky/feed/defs";
+
 const MS_ONE_DAY = 24*60*60*1000;
-export const getMyFeeds = async (agent:AtpAgent, db:IDatabase<any>) => {
-    let my = await getCustomFeeds(agent); // including from other 3rd parties
-    const did = agent.session.did;
-
-    const query = "SELECT * FROM "
-
-    const regex = new RegExp(`^at://${did}`);
-    let [editableFeeds, feedViews] = await Promise.all([
-        db.feeds.find({_id: regex}).project({_id:1}).toArray(),
-        db.feedViews.aggregate([
-            {$match: {feed: new RegExp(`^at://${did}`)}},
-            {$group: {_id: "$feed", expireAt: {$push: "$expireAt"}}},
-        ]).toArray(),
+export const getMyFeeds = async (privateAgent:AtpAgent, db:IDatabase<any>) => {
+    const did = privateAgent.session.did;
+    const [createdFeeds, { data: {preferences} }, views] = await Promise.all([
+        getCustomFeeds(privateAgent), // including from other 3rd parties
+        privateAgent.app.bsky.actor.getPreferences(), // Get
+        db.manyOrNone("SELECT f.id AS id, v.t_viewed AS t_viewed FROM feed AS f "
+            +"JOIN feed_admin AS a ON a.feed_id = f.id AND a.admin_id = $1 "
+            +"LEFT JOIN feed_view AS v ON v.feed_id = f.id",
+            [did])
     ]);
+    const pref = preferences.find(x =>  x["$type"] === "app.bsky.actor.defs#savedFeedsPref");
+    const {pinned, saved} = pref as SavedFeedsPref;
+    const pinnedSet = new Set(pinned);
+    const savedSet = new Set(saved);
+    const nowTime = new Date().getTime();
+    const feedViews:Map<string, {week:number, day:number}> = new Map();
+    for (const {id, t_viewed} of views as {id: string, t_viewed: Date | null}[]) {
+        const obj = feedViews.get(id) || {week:0, day:0};
+        if (t_viewed) {
+            obj.week++;
+            const diff = nowTime - t_viewed.getTime();
+            if (diff <= MS_ONE_DAY) {
+                obj.day++;
+            }
+        }
+        feedViews.set(id, obj);
+    }
+    const publicAgent = getPublicAgent();
+    const feeds = createdFeeds.map(feed => {
+        const {uri} = feed;
+        feed.my = true;
+        if (pinnedSet.has(uri)) {
+            feed.pinned = true;
+            pinnedSet.delete(uri);
+        }
+        if (savedSet.has(uri)) {
+            feed.saved = true;
+            savedSet.delete(uri);
+        }
+        const views = feedViews.get(uri);
+        if (views) {
+            feed.views = views;
+            feed.edit = true;
+            feedViews.delete(uri);
+        }
 
-    // Get view stats
-    const now = new Date().getTime();
-    feedViews = feedViews.map(x => {
-        const {_id, expireAt} = x;
-        const week = expireAt.length;
-        const day = expireAt.reduce((acc,y) => {
-            const diff = now - y.getTime() + MS_ONE_WEEK;
-            if (diff < MS_ONE_DAY) {acc++;}
-            return acc;
-        }, 0);
-        return {_id, week, day};
+        return feed;
     });
 
-    let { data: preferences } = await agent.app.bsky.actor.getPreferences();
-    const prefV2:SavedFeedsPrefV2 = preferences.find(x => x["$type"] === "app.bsky.actor.defs#savedFeedsPrefV2") as SavedFeedsPrefV2;
-    if (prefV2) {
-        const {items} = prefV2;
-        for (const item of items) {
-            const {type, value, pinned} = item;
-            if (type === "feed") {
+    const feedsToFetch = new Set(feedViews.keys());
+    savedSet.forEach(x => feedsToFetch.add(x));
 
+    const items = Array.from(feedsToFetch);
+
+    feeds.push(...await callApiInChunks(items, 150,
+        (o) => publicAgent.app.bsky.feed.getFeedGenerators({feeds:o}),
+        ({feeds:_feeds}:{feeds:GeneratorView[]}) => {
+
+        return _feeds.map(feed => {
+            const {uri} = feed;
+            if (pinnedSet.has(uri)) {
+                feed.pinned = true;
             }
-        }
-    } else {
-        const pref = preferences.find(x =>  x["$type"] === "app.bsky.actor.defs#savedFeedsPref");
-        if (pref) {
-            const {pinned, saved} = pref;
-        }
-    }
-
-    let saved = await getSavedFeeds(agent);
-    my = my.reduce((acc, x) => {
-        const editable = editableFeeds.find(y => y._id === x.uri);
-        const views = feedViews.find(y => y._id === x.uri);
-        const found = saved.find(y => y.uri === x.uri);
-        if (found) {
-            found.my = true;
-            if (editable) {
-                found.edit = true;
-                if (views) {
-                    found.views = views;
-                }
+            if (savedSet.has(uri)) {
+                feed.saved = true;
             }
-        } else {
-            x.my = true;
-            if (editable) {
-                x.edit = true;
-                if (views) {
-                    x.views = views;
-                }
+            const views = feedViews.get(uri);
+            if (views) {
+                feed.views = views;
+                feed.edit = true;
             }
-            acc.push(x);
-        }
+            return feed;
+        });
+    }));
 
-        return acc;
-    }, []);
+    sortWithSelectors(feeds, [
+        (a,b) => !a.views === !b.views? 0 : !a.views? 1 : -1,
+        (a,b) => !a.my === !b.my? 0 : !a.my? 1 : -1,
+        (a,b) => !a.pinned === !b.pinned? 0 : !a.pinned? 1 : -1,
+        (a,b) => !a.saved === !b.saved? 0 : !a.saved? 1 : -1,
+        (a,b) => a.displayName.localeCompare(b.displayName, 'en', { sensitivity: 'base' })
+    ]);
 
-
-    return [ ...saved, ...my];
+    return feeds;
 }
 
 export const getFeedDetails = async (agent, db, feedId) => {
@@ -108,6 +120,3 @@ export const feedUriToUrl = (uri) => {
     return uri.slice(5).replace("app.bsky.feed.generator", "feed");
 }
 
-export const feedRKeyToUri = (rkey, did) => {
-    return `at://${did}/app.bsky.feed.generator/${rkey}`;
-}

@@ -9,7 +9,7 @@ import PageHeader from "features/components/PageHeader";
 import {getFeedDetails, getMyCustomFeedIds} from "features/utils/feedUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
-import {getCaptcha, useRecaptcha} from "features/auth/RecaptchaProvider";
+import {getCaptcha, useRecaptcha} from "features/utils/RecaptchaProvider";
 import {localDelete, localGet, localPost} from "features/network/network";
 import {toJson} from 'really-relaxed-json'
 import Image from "next/image";
@@ -27,7 +27,7 @@ import {
 import {OLD_SIGNATURES, SIGNATURE} from "features/utils/signature";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {isValidDomain} from "features/utils/validationUtils";
-import {expandUserLists, getPostInfo, isVIP} from "features/utils/bsky";
+import {expandUserLists, getPostInfo, getPublicAgent, isVIP} from "features/utils/bsky";
 import PopupLoading from "features/components/PopupLoading";
 import Link from "next/link";
 import {IoArrowBackSharp} from "react-icons/io5";
@@ -45,26 +45,26 @@ import InputUserFilter from "features/input/InputUserFilter";
 import PageFooter from "features/components/PageFooter";
 import {getLoggedInInfo} from "features/network/session";
 import {getDbClient} from "features/utils/db";
-import {AtpAgent} from "@atproto/api";
 import {MainWrapper} from "features/layout/MainWrapper";
+import {respondPageErrors} from "features/utils/page";
 
 export async function getServerSideProps({req, res, query}) {
     const [{ error, userData, privateAgent}, dbUtils] = await Promise.all([
         getLoggedInInfo(req, res),
         getDbClient()
     ]);
-    if (error) { return {redirect: `/${error}`, permanent:false}; }
-    if (!privateAgent) {return {redirect:"/401", permanent:false};}
-    if (!dbUtils) {return {redirect:"/500", permanent:false};}
+    const redirect = respondPageErrors([{val:error, code:error}, {val:!privateAgent, code:401}, {val:!dbUtils, code:500}]);
+    if (redirect) { return redirect; }
+
     const {db, helpers} = dbUtils;
 
     let feed = null;
     const VIP = isVIP(privateAgent);
-    const {feed: _feed} = query;
-    if (_feed) {
-        const publicAgent = new AtpAgent({service: "https://api.bsky.app/"});
+    const {feed: feedId} = query;
+    if (feedId) {
+        const publicAgent = getPublicAgent();
 
-        let feedData: any = await getFeedDetails(publicAgent, db, _feed);
+        let feedData: any = await getFeedDetails(publicAgent, db, feedId);
         if (feedData) {
             feedData = await expandUserLists(feedData, publicAgent);
             let {sticky, posts:_posts, mode} = feedData;
@@ -101,8 +101,11 @@ export async function getServerSideProps({req, res, query}) {
             return {redirect: {destination: '/404', permanent: false}}
         }
     } else {
+
+
+
         const feedIds = (await getMyCustomFeedIds(privateAgent, db)).map(x => x.split("/").at(-1));
-        if (feedIds.indexOf(_feed) < 0 && feedIds.length >= MAX_FEEDS_PER_USER && !isVIP(privateAgent)) {
+        if (feedIds.indexOf(feedId) < 0 && feedIds.length >= MAX_FEEDS_PER_USER && !isVIP(privateAgent)) {
             res.status(400).send("too many feeds"); return;
         }
     }
@@ -490,7 +493,7 @@ export default function Home({feed, userData, VIP}) {
                     const captcha = await getCaptcha(recaptcha);
                     const result = await localDelete("/feed/delete", {captcha, rkey: feed.uri.split("/").slice(-1)[0]});
                     if (result.status === 200) {
-                        await router.push("/my-feeds");
+                        await router.push("/feed/my");
                     } else {
                         console.log(result);
                     }
@@ -570,7 +573,7 @@ export default function Home({feed, userData, VIP}) {
                         </li>
                     </ul>
 
-                    <Link href={"/my-feeds"}>
+                    <Link href={"/feed/my"}>
                         <button type="button"
                                 className="mt-4 inline-flex justify-center items-center px-4 py-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                             <IoArrowBackSharp className="w-6 h-6"/>

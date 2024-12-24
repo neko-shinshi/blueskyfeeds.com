@@ -13,7 +13,7 @@ export async function getLoggedInInfo (req, res) {
             const {token, service} = JSON.parse(sessionKey);
             try {
                 const gate = new EventEmitter();
-                const privateAgent = new AtpAgent({ service ,
+                privateAgent = new AtpAgent({ service ,
                     persistSession: async (evt: AtpSessionEvent, sess?: AtpSessionData) => {
                     switch (evt) {
                         case "create":
