@@ -16,6 +16,7 @@ import {getDbClient} from "features/utils/db";
 import Link from "next/link";
 import {SiBuzzfeed} from "react-icons/si";
 import {getPublicAgent} from "features/utils/bsky";
+import {useUserData} from "features/provider/UserDataProvider";
 
 export async function getServerSideProps({req, res, params}) {
     const {did:_did, short} = params;
@@ -26,7 +27,7 @@ export async function getServerSideProps({req, res, params}) {
     ]);
     if (error) { return {redirect: `/${error}`, permanent:false}; }
     if (!dbUtils) {return {redirect:"/500", permanent:false};}
-    const {db, helpers} = dbUtils;
+    const {db} = dbUtils;
     const publicAgent = getPublicAgent();
 
     const result = await publicAgent.getProfile({actor:_did});
@@ -43,11 +44,11 @@ export async function getServerSideProps({req, res, params}) {
             t.oneOrNone(`FETCH ALL IN ${REF1}`),
             t.manyOrNone(`FETCH ALL IN ${REF2}`)
         ]);
-
-        localFeed = feedBody;
-
-        for (const {ids} of lists) {
-            ids.split(",").forEach(x => viewers.add(x));
+        if (feedBody.mode !== null) {
+            localFeed = feedBody;
+            for (const {ids} of lists) {
+                ids.split(",").forEach(x => viewers.add(x));
+            }
         }
     });
 
@@ -97,9 +98,19 @@ export async function getServerSideProps({req, res, params}) {
        }
     }
    
-    
-    let feedDescription:any = (await publicAgent.app.bsky.feed.getFeedGenerators({feeds:[feedId]}))?.data?.feeds[0] || {};
-    feedDescription = {...feedDescription, ...localFeed};
+
+    let [desc, other] = await Promise.all([
+        publicAgent.app.bsky.feed.getFeedGenerator({feed:feedId}),
+        publicAgent.com.atproto.repo.getRecord({repo: did, collection: "app.bsky.feed.generator", rkey:short})
+    ]);
+
+    const {skyfeedBuilder} = other.data.value as any;
+
+    let feedDescription:any = {...desc.data.view, ...localFeed};
+    if (skyfeedBuilder && skyfeedBuilder.blocks) {
+        feedDescription.skyfeed = skyfeedBuilder.blocks
+    }
+
     return {props: {feedItems, feedDescription , errorMessage}};
 }
 
@@ -112,6 +123,8 @@ export default function Home({feedItems:_feedItems, feedDescription, errorMessag
         setFeedItems(_feedItems);
     }, [_feedItems]);
 
+    const {user} = useUserData();
+
     return <MainWrapper>
         <HeadExtended title={title}
                       description={description}/>
@@ -123,7 +136,7 @@ export default function Home({feedItems:_feedItems, feedDescription, errorMessag
                 <button type="button"
                         className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border-2 border-black  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     <SiBuzzfeed className="w-6 h-6"/>
-                    <div className="text-lg font-medium">{userData? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
+                    <div className="text-lg font-medium">{user? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
                     <SiBuzzfeed className="w-6 h-6"/>
                 </button>
             </Link>
@@ -136,7 +149,7 @@ export default function Home({feedItems:_feedItems, feedDescription, errorMessag
                         <span>{feedDescription.likeCount}</span>
                     </div>
                 </div>
-                <div>
+                <div className="space-y-2">
                     {
                         !feedDescription.mode && <a href={`https://bsky.app/profile/${feedDescription.creator.handle}`}>
                             <div className="bg-red-200 border-2 font-semibold p-2 rounded-2xl">This feed is not managed here
@@ -237,6 +250,20 @@ export default function Home({feedItems:_feedItems, feedDescription, errorMessag
                                 <div className="text-lg font-medium">Download JSON</div>
                             </button>
                         </>
+                    }
+                    {
+                        feedDescription.skyfeed && <div className="bg-gray-100 rounded-xl p-2 space-y-2 border-2 border-black">
+                            <div>Skyfeed Blocks</div>
+                            {
+                                feedDescription.skyfeed.map(x =>
+                                    <div key={x.id}>
+                                        {
+                                            `{${Object.entries(x).filter(([a, b]) => a !== "id").sort((a, b) => a[0] === "type"? -1 : b[0] === "type"? 1 : a[0].localeCompare(b[0])).map(a => `'${a[0]}':${typeof a[1] === 'string'? `'${a[1]}'`: a[1]}`).join(", ")}}`
+                                        }
+                                    </div>
+                                )
+                            }
+                        </div>
                     }
                 </div>
             </div>
