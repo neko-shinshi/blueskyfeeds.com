@@ -293,8 +293,10 @@ export default function Home({feedShortNames, VIP}) {
                         stack[index].modal === "keywords" &&
                         <>
                             <BackAndForwardButtonWithTitle subtitle={subTitle} index={index} setIndex={setIndex} dataManager={dataManager} stack={stack}/>
-                            <div className="font-bold text-xl">Which keywords do you want use to filter the
-                                feed?{stack[index].optional && "   Optional"}</div>
+                            <div className="font-bold text-xl flex justify-between">
+                                <div>Which keywords do you want use to filter the feed?</div>
+                                    {stack[index].optional && <div>(Optional)</div>}
+                            </div>
                             <Keywords
                                 title="Block" busy={busy} setBusy={setBusy} VIP={VIP} dataManager={dataManager}
                                 path="blockKeywords" minSize={0}
