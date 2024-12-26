@@ -58,7 +58,7 @@ export const getUserData = () => {
     const cookie = getCookie(SESSION_MISC_ID);
     console.log("COOKIE", cookie);
     if (!cookie) { return null; }
-    const data = JSON.parse(cookie);
-    console.log("DATA", data);
-    return data;
+    const user = JSON.parse(cookie);
+    console.log("DATA", user);
+    return {user, last: new Date().getTime()};
 }

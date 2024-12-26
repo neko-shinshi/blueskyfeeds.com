@@ -2,11 +2,13 @@ import 'styles/globals.css'
 import {RecaptchaProvider} from "features/provider/RecaptchaProvider";
 import {WidthProvider} from "features/provider/WidthProvider";
 import {UserDataProvider} from "features/provider/UserDataProvider";
+import UserDataChecker from "features/components/UserDataChecker";
 
 export default function App({ Component, pageProps}) {
     return <RecaptchaProvider>
         <WidthProvider>
             <UserDataProvider>
+                <UserDataChecker/>
                 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
                 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
                 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"/>

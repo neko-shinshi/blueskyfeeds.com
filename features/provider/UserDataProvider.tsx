@@ -1,47 +1,37 @@
 import {createContext, useContext, useEffect, useState} from "react";
 import {UserProfileView} from "features/utils/types";
 import {getUserData} from "features/utils/cookieUtils";
-import {localGet} from "features/network/network";
-import {useRouter} from "next/router";
 
 const UserDataContext = createContext(null)
 
 function UserDataProvider ({children}) {
-    const router = useRouter();
-    const [userData, setUserData] = useState<UserProfileView|null>(null);
-    function visibilityListener() {
-        console.log("visible", userData);
-        if (userData) {
-            console.log("check");
-            (async() => {
-                const {status} = await localGet("/profile");
-                console.log("visible check", status);
-                if (status !== 200) {
-                    await router.push(`/${status}`);
-                }
-            })();
-        }
-    }
+    const [user, setUser] = useState<UserProfileView|null>(null);
+    const [time, setTime] = useState(0);
 
     useEffect(() => {
-        setUserData(getUserData());
-        document.addEventListener("focus", visibilityListener);
-        return () => {
-            document.removeEventListener("focus", visibilityListener)
-        }
+        const {user, last} = getUserData();
+        setUser(user);
+        setTime(last);
     }, []);
 
-    return <UserDataContext.Provider value={userData}>
+    function updateLast(last:number) {
+        console.log("updating last to", last);
+        setTime(last);
+    }
+
+
+    return <UserDataContext.Provider value={{user, last:time, updateLast}}>
         {children}
     </UserDataContext.Provider>
 }
 
-function useUserData() {
+function useUserData():{user:UserProfileView | null, last:number, updateLast:any} {
     const context = useContext(UserDataContext);
     if (context === undefined) {
         throw new Error('useUserData must be used within a UserDataProvider')
     }
     return context;
 }
+
 
 export {UserDataProvider, useUserData}

@@ -142,7 +142,7 @@ export default function Home({feeds, popularMadeHere}) {
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState<boolean>(false);
 
-    const userData = useUserData();
+    const {user} = useUserData();
     const recaptcha = useRecaptcha();
     const router = useRouter();
     return <MainWrapper>
@@ -181,7 +181,7 @@ export default function Home({feeds, popularMadeHere}) {
                     <button type="button"
                             className="mt-4 gap-4 w-full inline-flex justify-center items-center px-4 py-2 border border-transparent  rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         <SiBuzzfeed className="w-6 h-6"/>
-                        <div className="text-lg font-medium">{userData? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
+                        <div className="text-lg font-medium">{user? "Manage your feeds" : "Login to create and manage your Feeds"}</div>
                         <SiBuzzfeed className="w-6 h-6"/>
                     </button>
                 </Link>

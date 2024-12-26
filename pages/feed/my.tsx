@@ -51,7 +51,7 @@ export default function Home({myFeeds, canCreate}) {
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
-    const userData = useUserData();
+    const {user} = useUserData();
     const recaptcha = useRecaptcha();
     const router = useRouter();
 
@@ -81,12 +81,12 @@ export default function Home({myFeeds, canCreate}) {
         <HeadExtended title={title} description={description}/>
 
         {
-            !userData && <FormSignIn />
+            !user && <FormSignIn />
         }
 
 
         {
-            userData && <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
+            user && <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} />
 
                 {
