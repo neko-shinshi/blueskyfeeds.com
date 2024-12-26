@@ -1,6 +1,6 @@
 import Popup from "features/components/Popup";
 import {useState} from "react";
-import {useWidth} from "features/layout/WidthProvider";
+import {useWidth} from "features/provider/WidthProvider";
 
 export default function PopupAddKeyword ({isOpen, setOpen, keywords, busy, setBusy}) {
     const [mode, setMode] = useState<"t"|"s"|"#"|"">("");

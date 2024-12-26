@@ -4,9 +4,9 @@ import {useRouter} from "next/router";
 import {MainWrapper} from "features/layout/MainWrapper";
 
 
-export default function Example({userData}) {
+export default function Example({}) {
     const router = useRouter();
-    return <MainWrapper userData={userData}>
+    return <MainWrapper>
         <HeadExtended
             title="Page Not Found"
             description="This page does not exist"/>

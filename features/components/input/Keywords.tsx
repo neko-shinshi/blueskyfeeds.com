@@ -5,7 +5,7 @@ import {
 } from "features/utils/constants";
 import SortableWordBubbles from "features/components/SortableWordBubbles";
 import {useEffect, useState} from "react";
-import DataManager from "features/utils/DataManager";
+import DataManager from "features/components/input/DataManager";
 import {HiPlus} from "react-icons/hi";
 import PopupAddKeyword from "features/components/input/elements/PopupAddKeyword";
 import clsx from "clsx";

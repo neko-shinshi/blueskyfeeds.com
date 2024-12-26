@@ -5,7 +5,7 @@ import {SiBuzzfeed} from "react-icons/si";
 import PageHeader from "features/components/PageHeader";
 import {localDelete} from "features/network/network";
 import PopupConfirmation from "features/components/PopupConfirmation";
-import {useRecaptcha} from "features/utils/RecaptchaProvider";
+import {useRecaptcha} from "features/provider/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
 import {getLoggedInInfo} from "features/network/session";
@@ -20,9 +20,10 @@ import {getDbClient} from "features/utils/db";
 import {MainWrapper} from "features/layout/MainWrapper";
 import {getPublicAgent} from "features/utils/bsky";
 import {respondPageErrors} from "features/utils/page";
+import {useUserData} from "features/provider/UserDataProvider";
 
 export async function getServerSideProps({req, res, query}) {
-    const [{ error, userData}, dbUtils] = await Promise.all([
+    const [{ error, privateAgent}, dbUtils] = await Promise.all([
         getLoggedInInfo(req, res),
         getDbClient()
     ]);
@@ -58,7 +59,7 @@ export async function getServerSideProps({req, res, query}) {
         }
     }
 
-    const userDid = userData?.did || "";
+    const userDid = privateAgent?.session?.did || "";
     let everyFeedQuery:any = {
         query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
             +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
@@ -129,25 +130,25 @@ export async function getServerSideProps({req, res, query}) {
 
     }
 
-    return {props: {feeds, popularMadeHere, userData}};
+    return {props: {feeds, popularMadeHere}};
 }
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
-export default function Home({userData, feeds, popularMadeHere}) {
+export default function Home({feeds, popularMadeHere}) {
     const title = "Bluesky Social Feeds @ BlueskyFeeds.com";
     const description = "Find your perfect feed algorithm for Bluesky Social App, or build one yourself";
     const longDescription = "Search Bluesky feeds, browse the Bluesky feed directory, or use our no-code Bluesky feed builder to make your own custom feed for yourself or your community here."
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
-    const [busy, setBusy] = useState(false);
+    const [busy, setBusy] = useState<boolean>(false);
+
+    const userData = useUserData();
     const recaptcha = useRecaptcha();
     const router = useRouter();
-
-    return (
-        <MainWrapper userData={userData}>
+    return <MainWrapper>
             <HeadExtended title={title}
                           description={longDescription}/>
-            <PopupLoading isOpen={busy} setOpen={setBusy}/>
+            <PopupLoading isOpen={busy}/>
             <PopupConfirmation
                 isOpen={popupState === "delete"}
                 setOpen={setPopupState}
@@ -231,6 +232,6 @@ export default function Home({userData, feeds, popularMadeHere}) {
 
                 <PageFooter/>
             </div>
-        </MainWrapper>
-    )
+    </MainWrapper>
+
 }

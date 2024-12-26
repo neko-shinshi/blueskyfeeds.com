@@ -20,7 +20,7 @@ import {getPublicAgent} from "features/utils/bsky";
 export async function getServerSideProps({req, res, params}) {
     const {did:_did, short} = params;
     if (!_did || !short) {return { redirect: { destination: '/', permanent: false } };}
-    const [{ error, userData}, dbUtils] = await Promise.all([
+    const [{ error, privateAgent}, dbUtils] = await Promise.all([
         getLoggedInInfo(req, res),
         getDbClient()
     ]);
@@ -69,7 +69,7 @@ export async function getServerSideProps({req, res, params}) {
         keywords = keywords.sort((x, y) => x.w.localeCompare(y.w)? 1 : -1);
         
         if (viewers.size > 0) {
-            if (viewers.has(userData?.did)) {
+            if (viewers.has(privateAgent?.session?.did)) {
                 localFeed = {keywords, mode, keywordSetting, languages, pics, postLevels, sort};
             } else {
                 // Private feeds don't show config data
@@ -100,10 +100,10 @@ export async function getServerSideProps({req, res, params}) {
     
     let feedDescription:any = (await publicAgent.app.bsky.feed.getFeedGenerators({feeds:[feedId]}))?.data?.feeds[0] || {};
     feedDescription = {...feedDescription, ...localFeed};
-    return {props: {feedItems, feedDescription, userData , errorMessage}};
+    return {props: {feedItems, feedDescription , errorMessage}};
 }
 
-export default function Home({feedItems:_feedItems, feedDescription, userData, errorMessage}) {
+export default function Home({feedItems:_feedItems, feedDescription, errorMessage}) {
     const title = "Preview Feed";
     const description = "See feed configuration and preview some posts";
     const [feedItems, setFeedItems] = useState<any>();
@@ -112,8 +112,7 @@ export default function Home({feedItems:_feedItems, feedDescription, userData, e
         setFeedItems(_feedItems);
     }, [_feedItems]);
 
-
-    return <MainWrapper userData={userData}>
+    return <MainWrapper>
         <HeadExtended title={title}
                       description={description}/>
 

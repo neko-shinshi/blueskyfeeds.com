@@ -71,3 +71,14 @@ export async function queryWithCursor (command, paramObj, packer, numRetry=2) {
     } while (cursorObj);
     return result;
 }
+
+export function swapOrder(x:number, y:number, arr:any[]):any[]  {
+    const temp = arr[x];
+    arr[x] = arr[y];
+    arr[y] = temp;
+    return Array.from(arr);
+}
+
+export function cleanupStringToArray(v:string):string[] {
+    return v.replace(/[\[\]'"]/g, "").split(/,(\s)?/).filter(x => !!x && x.trim().length > 0);
+}

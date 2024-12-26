@@ -1,12 +1,12 @@
 import HeadExtended from "features/layout/HeadExtended";
 import {RiTestTubeLine} from "react-icons/ri";
 import Link from "next/link";
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import PageHeader from "features/components/PageHeader";
 import {getMyFeeds} from "features/utils/feedUtils";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {localDelete} from "features/network/network"
-import {useRecaptcha} from "features/utils/RecaptchaProvider";
+import {useRecaptcha} from "features/provider/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
 import {isVIP} from "features/utils/bsky";
@@ -17,9 +17,10 @@ import {MainWrapper} from "features/layout/MainWrapper";
 import {getDbClient} from "features/utils/db";
 import FormSignIn from "features/login/FormSignIn";
 import {respondPageErrors} from "features/utils/page";
+import {useUserData} from "features/provider/UserDataProvider";
 
 export async function getServerSideProps({req, res}) {
-    const [{ error, userData, privateAgent}, dbUtils] = await Promise.all([
+    const [{ error, privateAgent}, dbUtils] = await Promise.all([
         getLoggedInInfo(req, res),
         getDbClient()
     ]);
@@ -32,7 +33,7 @@ export async function getServerSideProps({req, res}) {
         const {db, helpers} = dbUtils;
         myFeeds = await getMyFeeds(privateAgent, db);
         if (!isVIP(privateAgent)) {
-            const countCustomFeeds =  myFeeds.filter(x => x.creator.did === userData.did).length;
+            const countCustomFeeds =  myFeeds.filter(x => x.creator.did === privateAgent.session.did).length;
             canCreate = countCustomFeeds < MAX_FEEDS_PER_USER? "yes" : "no";
         } else {
             canCreate = "vip";
@@ -40,20 +41,21 @@ export async function getServerSideProps({req, res}) {
     }
 
 
-    return {props: {userData, myFeeds, canCreate}};
+    return {props: {myFeeds, canCreate}};
 }
 
 
-export default function Home({userData, myFeeds, canCreate}) {
-    const title = "My BlueSky Feeds";
+export default function Home({myFeeds, canCreate}) {
+    const title = "My Bluesky Feeds";
     const description = "";
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
+    const userData = useUserData();
     const recaptcha = useRecaptcha();
     const router = useRouter();
 
-    return <MainWrapper userData={userData}>
+    return <MainWrapper>
         <PopupConfirmation
             isOpen={popupState === "delete"}
             setOpen={setPopupState}

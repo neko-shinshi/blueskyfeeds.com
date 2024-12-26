@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import {HiExclamationCircle} from "react-icons/hi";
 import {useEffect, useRef, useState} from "react";
-import DataManager from "features/utils/DataManager";
+import DataManager from "features/components/input/DataManager";
 
 export default function TextArea (
     {

@@ -31,7 +31,7 @@ import {respondApiErrors} from "features/utils/api";
 export default async function handler(req, res) {
     const {uri, captcha} = req.body;
     if (req.method !== "POST" || !uri || !captcha) { res.status(400).send(); return; }
-    const [{ error, privateAgent, userData}, {db, helpers}, captchaPass] = await Promise.all([
+    const [{ error, privateAgent}, {db, helpers}, captchaPass] = await Promise.all([
         getLoggedInInfo(req, res), getDbClient(), testRecaptcha(captcha)
     ]);
     if (respondApiErrors(res, [{val:error, code:error}, {val:!privateAgent, code:401}, {val:!captchaPass, code:529}])) { return; }
@@ -39,8 +39,8 @@ export default async function handler(req, res) {
     let canEdit = isSuperAdmin(privateAgent);
     if (!canEdit) {
         const query = helpers.concat([
-            {query:"SELECT EXISTS (SELECT 1 FROM feed_admin WHERE feed_id = $1 AND admin_id = $2", values:[uri, userData.did]},
-            {query:"SELECT COUNT(*) FROM feed WHERE author = $1", values:[userData.did]}
+            {query:"SELECT EXISTS (SELECT 1 FROM feed_admin WHERE feed_id = $1 AND admin_id = $2", values:[uri, privateAgent.session.did]},
+            {query:"SELECT COUNT(*) FROM feed WHERE author = $1", values:[privateAgent.session.did]}
         ]);
 
         const [isAdmin, numFeeds] = await db.multi(query);

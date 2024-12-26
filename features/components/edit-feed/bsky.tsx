@@ -2,7 +2,7 @@ import {HiTrash} from "react-icons/hi";
 import DropzoneImage from "features/components/input/DropzoneImage";
 import TextButton from "features/components/input/TextButton";
 import TextArea from "features/components/input/TextArea";
-import DataManager from "features/utils/DataManager";
+import DataManager from "features/components/input/DataManager";
 
 export default function ItemBsky({shortNameLocked, setPopupState, dataManager, feedShortNames}:
 {shortNameLocked:boolean, setPopupState?:any, dataManager:DataManager, feedShortNames:string[]}) {

@@ -148,7 +148,6 @@ export const getPostInfo = async (agent:AtpAgent, postUris:string[]) => {
             users.add(user);
         }
     });
-    console.log(users);
 
     let handleToDid = new Map();
     (await getActorsInfo(agent, [...users])).forEach(actor => {
@@ -172,16 +171,14 @@ export const getPostInfo = async (agent:AtpAgent, postUris:string[]) => {
         return acc;
     }, new Set()));
 
-    console.log(uris);
-
 
     const MAX_QUERY = 25;
     const result = await callApiInChunks(uris, MAX_QUERY, (o) => tryGetPosts(agent, o), (posts) => {
         return posts.reduce((acc,x) => {
-            const {record, uri}  = x;
+            const {record, uri, author}  = x;
             if (uri) {
                 const {text} = record;
-                acc.push({text: text || "", uri, record});
+                acc.push({text: text || "", uri, record, author});
             }
             return acc;
         }, []);
@@ -190,7 +187,7 @@ export const getPostInfo = async (agent:AtpAgent, postUris:string[]) => {
     return result;
 }
 
-export const getActorsInfo = async (agent:AtpAgent, actors:string[]) => {
+export const getActorsInfo = async (agent:AtpAgent, actors:string[]):Promise<{did:string, handle:string, displayName:string}[]> => {
     const MAX_QUERY = 25;
     return await callApiInChunks(actors, MAX_QUERY, (o) => agent.getProfiles({actors:o}), ({profiles}) => {
         return profiles.map(x => {

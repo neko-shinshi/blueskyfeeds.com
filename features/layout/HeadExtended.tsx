@@ -3,7 +3,7 @@ import {useRouter} from "next/router";
 
 
 const DEFAULT_IMAGE_URL = "https://files.anianimals.moe/blueskyfeeds-banner.jpg";
-const DEFAULT_IMAGE_DESCRIPTION = "BlueSkyFeeds Banner";
+const DEFAULT_IMAGE_DESCRIPTION = "BlueskyFeeds Banner";
 
 export default function HeadExtended(
     {

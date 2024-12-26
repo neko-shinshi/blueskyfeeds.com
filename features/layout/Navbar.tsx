@@ -4,15 +4,14 @@ import clsx from "clsx";
 import {useEffect, useRef, useState} from "react";
 import NavLogo from "features/layout/NavLogo";
 import NavButtonNavReposition from "features/layout/NavButtonNavReposition";
-import {getNavbarPosCookie} from "features/utils/cookieUtils";
+import {getNavbarPosCookie, getUserData} from "features/utils/cookieUtils";
 import {useRouter} from "next/router";
-import Link from "next/link";
-import {useWidth} from "features/layout/WidthProvider";
+import {useWidth} from "features/provider/WidthProvider";
 
 
 
 
-export default function Navbar({hide, userData}) {
+export default function Navbar({hide}) {
     const [navPosition, setNavPosition] = useState<"top" | "bottom">("top");
     const router = useRouter();
     let scrollTs = 0;
@@ -77,7 +76,7 @@ export default function Navbar({hide, userData}) {
 
                                     <NavButtonNavReposition position={navPosition}
                                                             setPosition={setNavPosition}/>
-                                    <NavButtonUserAvatar navPosition={navPosition} userData={userData}/>
+                                    <NavButtonUserAvatar navPosition={navPosition}/>
                                 </div>
 
                                 <div className="hidden md:flex-1 md:flex md:items-center md:justify-between">
@@ -90,7 +89,7 @@ export default function Navbar({hide, userData}) {
                                     {/* Desktop Right */}
                                     <div className="flex items-center md:ml-12 space-x-4">
                                         <NavButtonNavReposition position={navPosition} setPosition={setNavPosition}/>
-                                        <NavButtonUserAvatar navPosition={navPosition} userData={userData}/>
+                                        <NavButtonUserAvatar navPosition={navPosition}/>
                                     </div>
                                 </div>
                             </div>

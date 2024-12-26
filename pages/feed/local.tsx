@@ -1,9 +1,9 @@
 import HeadExtended from "features/layout/HeadExtended";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import PageHeader from "features/components/PageHeader";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {localDelete} from "features/network/network"
-import {useRecaptcha} from "features/utils/RecaptchaProvider";
+import {useRecaptcha} from "features/provider/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
 import {getLoggedInInfo} from "features/network/session";
@@ -17,7 +17,7 @@ import {getPublicAgent} from "features/utils/bsky";
 import {respondPageErrors} from "features/utils/page";
 
 export async function getServerSideProps({req, res, query}) {
-    const [{ error, userData}, dbUtils] = await Promise.all([
+    const [{ error, privateAgent}, dbUtils] = await Promise.all([
         getLoggedInInfo(req, res),
         getDbClient()
     ]);
@@ -36,7 +36,7 @@ export async function getServerSideProps({req, res, query}) {
         }
     }
 
-    const userDid = userData?.did || "";
+    const userDid = privateAgent?.session?.did || "";
     let feedsHereQuery:any = {
         query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
             + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
@@ -80,11 +80,11 @@ export async function getServerSideProps({req, res, query}) {
         return acc;
     }, []);
 
-    return {props: {feeds, userData}};
+    return {props: {feeds}};
 }
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
-export default function Home({userData, feeds}) {
+export default function Home({feeds}) {
     const title = "Feeds made at BlueskyFeeds.com";
     const description = "Opt out of being listed here by setting `Highlight this feed` to `no`.";
     const [popupState, setPopupState] = useState<"delete"|false>(false);
@@ -93,7 +93,7 @@ export default function Home({userData, feeds}) {
     const recaptcha = useRecaptcha();
     const router = useRouter();
 
-    return <MainWrapper userData={userData}>
+    return <MainWrapper>
         <PopupConfirmation
             isOpen={popupState === "delete"}
             setOpen={setPopupState}

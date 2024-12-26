@@ -1,5 +1,5 @@
 import {setCookie, getCookie} from "cookies-next";
-import {SESSION_KEY_DURATION, SESSION_KEY_ID} from "features/utils/constants";
+import {SESSION_KEY_DURATION, SESSION_KEY_ID, SESSION_MISC_ID} from "features/utils/constants";
 
 export const SUPPORTED_CW_LABELS = ["nudity", "sexual", "porn", "graphic-media"];
 
@@ -37,4 +37,28 @@ export const updateSessionCookie = (data, req, res) => {
         secure: true,
         sameSite:"strict"
     });
+}
+
+export const updatePublicCookie = (data, req, res) => {
+    setCookie(SESSION_MISC_ID, JSON.stringify(data), {
+        req, res,
+        domain: process.env.NEXT_PUBLIC_DOMAIN,
+        path:"/",
+        maxAge: SESSION_KEY_DURATION,
+        httpOnly:false,
+        secure: true,
+        sameSite:"strict"
+    });
+}
+
+export const getUserData = () => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+    const cookie = getCookie(SESSION_MISC_ID);
+    console.log("COOKIE", cookie);
+    if (!cookie) { return null; }
+    const data = JSON.parse(cookie);
+    console.log("DATA", data);
+    return data;
 }

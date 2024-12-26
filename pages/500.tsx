@@ -2,10 +2,11 @@ import ErrorCode from "features/error/ErrorCode";
 import {useRouter} from "next/router";
 import HeadExtended from "features/layout/HeadExtended";
 import { MainWrapper } from "features/layout/MainWrapper";
+import {useEffect} from "react";
 
-export default function Example({userData}) {
+export default function Example({}) {
     const router = useRouter();
-    return <MainWrapper userData={userData}>
+    return <MainWrapper>
         <HeadExtended
             title="Internal Server Error"
             description="Something went wrong. Try again later"/>

@@ -5,14 +5,15 @@ import {MainWrapper} from "features/layout/MainWrapper";
 
 
 export default function Example({}) {
+
     const router = useRouter();
-    return <MainWrapper userData={null}>
+    return <MainWrapper>
         <HeadExtended
             title="Unauthorized"
-            description="You are not allowed to access this page"/>
+            description="You are not allowed to access this page or have been logged out"/>
         <ErrorCode title="401"
                    text1="Unauthorized"
-                   text2="You are not allowed to access this page"
+                   text2="You are not allowed to access this page or have been logged out"
                    btnText="Go Back"
                    btnOnClick={() => {
                        router.back();

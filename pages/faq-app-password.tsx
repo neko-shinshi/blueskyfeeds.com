@@ -3,21 +3,13 @@ import Image from "next/image";
 import AppPasswordLink from "features/components/AppPasswordLink";
 import PageHeader from "features/components/PageHeader";
 import PageFooter from "features/components/PageFooter";
-import {getLoggedInInfo} from "features/network/session";
-import {useRouter} from "next/router";
 import {MainWrapper} from "features/layout/MainWrapper";
 
-export async function getServerSideProps({req, res, query}) {
-    const {error, userData} = await getLoggedInInfo(req, res);
-    if (error) { return {redirect: `/${error}`, permanent:false}; }
-    return {props: {userData}};
-}
 
-export default function Example({userData}) {
+export default function Example({}) {
     const title = "BlueskyFeeds App Password FAQ";
     const description = "Frequently asked questions about App Passwords in Bluesky social";
-
-    return  <MainWrapper userData={userData}>
+    return <MainWrapper>
         <HeadExtended title={title} description={description}/>
         <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
             <PageHeader title={title} description={description} />

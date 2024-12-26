@@ -21,7 +21,7 @@ export default function ListControlButtons(
     return <div className="relative z-0 inline-flex space-x-2">
         <button
             type="button"
-            className={clsx(!canMoveUp(i)? "cursor-not-allowed": "", "relative inline-flex items-center p-1 rounded-md border border-gray-300 bg-white disabled:bg-gray-300 text-sm font-medium text-FH-T4 hover:text-white hover:bg-gray-900 focus:z-10 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 focus:ring-offset-2")}
+            className={clsx(!canMoveUp(i)? "cursor-not-allowed": "hover:text-white hover:bg-gray-900", "relative inline-flex items-center p-1 rounded-md border border-gray-300 bg-white disabled:bg-gray-300 text-sm font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 focus:ring-offset-2")}
             onClick={() => {
                 moveUp(i);
             }}
@@ -32,7 +32,7 @@ export default function ListControlButtons(
         </button>
         <button
             type="button"
-            className={clsx(!canMoveDown(i)? "cursor-not-allowed": "", "-ml-px relative inline-flex items-center p-1 rounded-md border border-gray-300 bg-white disabled:bg-gray-300 text-sm font-medium text-FH-T4 hover:text-white hover:bg-gray-900 focus:z-10 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 focus:ring-offset-2")}
+            className={clsx(!canMoveDown(i)? "cursor-not-allowed": "hover:text-white hover:bg-gray-900", "-ml-px relative inline-flex items-center p-1 rounded-md border border-gray-300 bg-white disabled:bg-gray-300 text-sm font-medium focus:z-10 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 focus:ring-offset-2")}
             onClick={() => {
                 moveDown(i);
             }}
@@ -43,7 +43,7 @@ export default function ListControlButtons(
         </button>
         <button
             type="button"
-            className="-ml-px relative inline-flex items-center p-1 rounded-md border border-gray-300 bg-white disabled:bg-gray-300 text-sm font-medium text-FH-T4 hover:text-white hover:bg-gray-900 focus:z-10 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 focus:ring-offset-2"
+            className="-ml-px relative inline-flex items-center p-1 rounded-md border border-gray-300 bg-white disabled:bg-gray-300 text-sm font-medium hover:text-white hover:bg-gray-900 focus:z-10 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 focus:ring-offset-2"
             onClick={() => remove(i)}
         >
             <span className="sr-only">Remove</span>

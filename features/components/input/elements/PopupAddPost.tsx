@@ -1,8 +1,8 @@
-import React from "react";
 import PopupWithInputText from "features/components/PopupWithInputText";
 import {getPostInfo, getPublicAgent} from "features/utils/bsky";
 import PopupLoading from "features/components/PopupLoading";
-export default function PopupWithAddPost(
+import {cleanupStringToArray} from "features/utils/utils";
+export default function PopupAddPost(
     {
         isOpen,
         setOpen,
@@ -19,7 +19,7 @@ export default function PopupWithAddPost(
         message:string,
         busy:boolean
         setBusy:any
-        resultCallback,
+        resultCallback:any,
         limitOne?:boolean
     }) {
 
@@ -28,9 +28,9 @@ export default function PopupWithAddPost(
         setOpen={setOpen}
         title={title}
         message={message}
-        placeholder="bsky.app/profile/[user]/post/[id] or [user]/post/[id] or at://[user]/app.bsky.feed.post/[id] or "
-        validateCallback={(v) => {
-            return (v.includes("/post/") || (v.startsWith("at://did:plc:") && v.includes("/app.bsky.feed.post/"))) ? "" : "Invalid Post";
+        placeholder="bsky.app/profile/[user]/post/[id] or [user]/post/[id] or at://[user]/app.bsky.feed.post/[id]"
+        validateCallback={x => {
+            return cleanupStringToArray(x).every(v => v.includes("/post/") || (v.startsWith("at://did:plc:") && v.includes("/app.bsky.feed.post/"))) ? "" : "Invalid Post";
         }}
         yesText="Add"
         busy={busy}
@@ -42,27 +42,23 @@ export default function PopupWithAddPost(
             } else {
                 setBusy(true);
                 const publicAgent = getPublicAgent();
-                let posts:any[];
-                if (!limitOne && v.startsWith("[")) {
-                    // Multi
-                    posts = v.replaceAll("\\[|\\]", "").split(/,(\s)?/).filter(x=> !!x && x !== " ").map(x => x.startsWith("bsky.app/profile/")? `https://${x.trim()}` : x.trim());
-                } else {
-                    posts = [v.startsWith("bsky.app/profile/")? `https://${v}` : v];
-                }
+                let posts = cleanupStringToArray(v).map(post => post.startsWith("bsky.app/profile/")? `https://${post.trim()}` : post.trim());
+
                 try {
-                    const postData = (await getPostInfo(publicAgent, posts)).map(post => {
-                        const {text, uri} = post;
-                        return {text, uri};
-                    });
-                    console.log("posts",postData);
-                    if (limitOne) {
-                        const [post] = postData;
-                        const {uri, text} = post;
-                        resultCallback({uri, text});
-                        callback();
-                    } else {
-                        resultCallback(postData, callback);
+                    if (posts.length < 0) {
+                        throw "no posts";
                     }
+                    if (limitOne) {
+                        posts = posts.slice(0,1);
+                    }
+                    console.log("SENDING", posts);
+                    const postData = (await getPostInfo(publicAgent, posts)).map(post => {
+                        const {text, uri, author} = post;
+                        const url = `https://bsky.app/profile/${author.handle}/post/${uri.split("/").at(-1)}`;
+                        return {text, uri, author, url};
+                    });
+                    console.log("posts", postData);
+                    resultCallback(postData, callback);
                 } catch (e) {
                     console.error(e);
                     if (e.error === "InternalServerError") {

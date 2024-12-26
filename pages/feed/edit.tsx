@@ -9,7 +9,7 @@ import PageHeader from "features/components/PageHeader";
 import {getFeedDetails, getMyCustomFeedIds} from "features/utils/feedUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
-import {getCaptcha, useRecaptcha} from "features/utils/RecaptchaProvider";
+import {getCaptcha, useRecaptcha} from "features/provider/RecaptchaProvider";
 import {localDelete, localGet, localPost} from "features/network/network";
 import {toJson} from 'really-relaxed-json'
 import Image from "next/image";
@@ -39,7 +39,7 @@ import KeywordsEdit from "features/components/specific/KeywordsEdit";
 import BlueskyForm from "features/components/specific/BlueskyForm";
 import {compressedToJsonString, unEscapeRelaxed} from "features/utils/textAndKeywords";
 import PostsEdit from "features/components/specific/PostsEdit";
-import PopupWithAddPost from "features/components/PopupWithAddPost";
+import PopupAddPost from "features/components/input/elements/PopupAddPost";
 import EditFeedWizard from "features/components/specific/EditFeedWizard";
 import InputUserFilter from "features/input/InputUserFilter";
 import PageFooter from "features/components/PageFooter";
@@ -49,7 +49,7 @@ import {MainWrapper} from "features/layout/MainWrapper";
 import {respondPageErrors} from "features/utils/page";
 
 export async function getServerSideProps({req, res, query}) {
-    const [{ error, userData, privateAgent}, dbUtils] = await Promise.all([
+    const [{ error, privateAgent}, dbUtils] = await Promise.all([
         getLoggedInInfo(req, res),
         getDbClient()
     ]);
@@ -118,13 +118,13 @@ export async function getServerSideProps({req, res, query}) {
         Create public Feed Description Page to show internal workings of feed
     </div>
      */
-    return {props: {userData, feed, VIP}};
+    return {props: {feed, VIP}};
 }
 
 
 
 
-export default function Home({feed, userData, VIP}) {
+export default function Home({feed, VIP}) {
     const title = "Make a Feed for Bluesky Social";
     const description = "";
     const router = useRouter();
@@ -461,7 +461,7 @@ export default function Home({feed, userData, VIP}) {
                     }
                 }
             }}/>
-        <PopupWithAddPost
+        <PopupAddPost
             isOpen={popupState === "edit_sticky"}
             setOpen={setPopupState}
             title="Set Sticky Post"

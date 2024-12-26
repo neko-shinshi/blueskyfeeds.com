@@ -1,6 +1,6 @@
 import {HiPlus} from "react-icons/hi";
 import {useState} from "react";
-import PopupWithAddPost from "features/components/PopupWithAddPost";
+import PopupAddPost from "features/components/input/elements/PopupAddPost";
 import ListControlButtons from "features/components/ListControlButtons";
 
 
@@ -16,7 +16,7 @@ export default function PostsEdit ({useFormReturn, recaptcha, setBusy}) {
 
 
     return <div className="bg-lime-100 p-2">
-        <PopupWithAddPost
+        <PopupAddPost
             isOpen={popupOpen}
             setOpen={setPopupOpen}
             title="Add Post"

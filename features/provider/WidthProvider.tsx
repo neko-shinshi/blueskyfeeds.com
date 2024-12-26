@@ -22,7 +22,7 @@ function WidthProvider ({children}) {
 function useWidth() {
     const context = useContext(WidthContext);
     if (context === undefined) {
-        throw new Error('useCount must be used within a CountProvider')
+        throw new Error('useWidth must be used within a WidthProvider')
     }
     return context;
 }

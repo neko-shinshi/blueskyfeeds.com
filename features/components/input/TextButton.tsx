@@ -2,7 +2,7 @@ import clsx from "clsx";
 import {HiOutlineExclamationCircle} from "react-icons/hi";
 import {dotObjectStringPath} from "features/utils/objectUtils";
 import {useEffect, useRef, useState} from "react";
-import DataManager from "features/utils/DataManager";
+import DataManager from "features/components/input/DataManager";
 
 export default function TextButton(
     {

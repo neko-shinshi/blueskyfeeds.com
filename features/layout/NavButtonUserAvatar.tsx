@@ -8,16 +8,16 @@ import {HiListBullet} from "react-icons/hi2";
 import Link from "next/link";
 import FormSignIn from "features/login/FormSignIn";
 import Popup from "features/components/Popup";
-import {UserProfileView} from "features/utils/types";
+import {useUserData} from "features/provider/UserDataProvider";
 
-export default function NavButtonUserAvatar({navPosition, userData}:{navPosition:"top"|"bottom", userData: UserProfileView}) {
+export default function NavButtonUserAvatar({navPosition}:{navPosition:"top"|"bottom"}) {
     const router = useRouter();
     const [isOpen, setOpen] = useState(false);
-
-
     useEffect(() => {
         setOpen(false);
     }, [router]);
+
+    const userData = useUserData();
 
     return (
         <>
