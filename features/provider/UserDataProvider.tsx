@@ -6,21 +6,21 @@ const UserDataContext = createContext(null)
 
 function UserDataProvider ({children}) {
     const [user, setUser] = useState<UserProfileView|null>(null);
-    const [time, setTime] = useState(0);
+ //   const [time, setTime] = useState(0);
 
     useEffect(() => {
         const {user, last} = getUserData();
         setUser(user);
-        setTime(last);
+   //     setTime(last);
     }, []);
 
-    function updateLast(last:number) {
+    /*function updateLast(last:number) {
         console.log("updating last to", last);
         setTime(last);
-    }
+    }*/
 
 
-    return <UserDataContext.Provider value={{user, last:time, updateLast}}>
+    return <UserDataContext.Provider value={{user/*, last:time, updateLast*/}}>
         {children}
     </UserDataContext.Provider>
 }

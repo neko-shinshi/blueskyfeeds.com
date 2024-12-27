@@ -5,10 +5,11 @@ import {useUserData} from "features/provider/UserDataProvider";
 export default function UserDataChecker() {
     const router = useRouter();
     const userData = useUserData();
-    const {user, last, updateLast} = userData;
+    const {user} = userData;
 
     useEffect(() => {
         let hidden = false;
+        let last = 0;
         const visibilityListener = () => {
             if (!user) { return; }
             if (document.hidden) { hidden = true; return; }
@@ -16,7 +17,7 @@ export default function UserDataChecker() {
             const diff = now - last;
             if (hidden || diff > 30*1000) {
                 hidden = false;
-                updateLast(now);
+                last = now;
                 (async() => {
                     const {status} = await fetch("/api/ping");
                     if (status !== 200) {
