@@ -54,19 +54,39 @@ export async function getServerSideProps({req, res, params}) {
 
 
     if (localFeed) {
-        let {keywords:_keywords, mode, keywords_cfg:keywordSetting, lang_cfg:languages, media_cfg:pics, post_level_cfg:postLevels, sort, label_cfg} = localFeed;
+        let {keywords:keywords_1, keywords_2, mode, keywords_cfg:keywordSetting, lang_cfg:languages, media_cfg:pics, post_level_cfg:postLevels, sort, label_cfg, keywords_merge} = localFeed;
         let keywords:any[] = [];
         const keywordsQuote:any[] = []
-        _keywords.forEach(x => {
-            let o = JSON.parse(x) as any;
-            const {m,t, r} = o;
-            if (m.includes("k")) {
-                if ((t === "t" || t === "s") && !r) {
-                    o.r = [];
+
+        if (Array.isArray(keywords_2)) {
+            if (Array.isArray(keywords_merge)) {
+                keywords_1 = keywords_1 || [];
+
+                for (const kw of keywords_2) {
+                    const {m, a} = JSON.parse(kw);
+                    if (keywords_merge.find(x => x[0] === m &&
+                        ((a === 1 && x[1] === "1") || (!a && x[1] === "0")))) {
+                        keywords_1.push(kw);
+                    }
                 }
-                keywords.push(o);
+            } else if (!Array.isArray(keywords_1)) {
+                keywords_1 = keywords_2; // take parent's keywords
             }
-        });
+        }
+
+        if (Array.isArray(keywords_1)) {
+            keywords_1.forEach(x => {
+                let o = JSON.parse(x) as any;
+                const {m, t, r} = o;
+                if (m.includes("k")) {
+                    if ((t === "t" || t === "s") && !r) {
+                        o.r = [];
+                    }
+                    keywords.push(o);
+                }
+            });
+        }
+
         keywords = keywords.sort((x, y) => x.w.localeCompare(y.w)? 1 : -1);
         
         if (viewers.size > 0) {
