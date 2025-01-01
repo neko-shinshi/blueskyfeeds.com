@@ -1,6 +1,5 @@
 import {AtpAgent, AtpSessionData, AtpSessionEvent} from "@atproto/api";
 import {deleteCookie,} from "cookies-next";
-import {UserProfileView} from "features/utils/types";
 import {updatePublicCookie, updateSessionCookie} from "features/utils/cookieUtils";
 import {SESSION_KEY_ID, SESSION_MISC_ID} from "features/utils/constants";
 import EventEmitter from "node:events";

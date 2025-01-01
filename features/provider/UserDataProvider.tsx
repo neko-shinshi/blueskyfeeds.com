@@ -9,7 +9,10 @@ function UserDataProvider ({children}) {
  //   const [time, setTime] = useState(0);
 
     useEffect(() => {
-        const {user, last} = getUserData();
+        const userData = getUserData();
+        if (!userData) {return;}
+
+        const {user, last} = userData;
         setUser(user);
    //     setTime(last);
     }, []);

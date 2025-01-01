@@ -27,6 +27,10 @@ const nextConfig = {
   },
   rewrites: async () => [
     {
+      source: '/client-metadata.json',
+      destination: '/api/client-metadata'
+    },
+    {
       source: '/.well-known/did.json',
       destination: '/api/well-known'
     },

@@ -1,35 +1,13 @@
-import {connectToDatabase} from "features/utils/dbUtils";
 import {parseJwt} from "features/utils/jwtUtils";
 import {handler as userFeedHandler} from 'features/algos/user-feed';
 import {handler as liveFeedHandler} from 'features/algos/live-feed';
+import {getDbClient} from "features/utils/db";
+import {IDatabase} from "pg-promise";
 
-export const getSortMethod = (sort) => {
-    switch (sort) {
-        case "like": return {likes:-1, indexedAt:-1};
-        case "ups": return {ups:-1, indexedAt: -1};
-        case "sLike": return {likeV:-1, indexedAt: -1};
-        case "sUps": return {upV:-1, indexedAt:-1};
-
-        // "new" also
-        default: return {indexedAt: -1};
-    }
-}
-
-const MS_ONE_WEEK = 7*24*60*60*1000;
 const MS_HALF_DAY = 12*60*60*1000;
-const MS_CHECK_DELAY = 6*60*60*1000;
-
-const makeExpiryDate = (nowTs) => {
-    return new Date(nowTs + MS_ONE_WEEK);
-}
-
-export const listsToDids = (l) => {
-    let list = l || [];
-    return list.map(x => x.did);
-}
 
 
-const getAndLogUser = async (req, db, feedId, now) => {
+const getAndLogUser = async (req, db:IDatabase<any>, feedId:string, now) => {
     let {authorization} = req.headers;
     let user;
     if (authorization && authorization.startsWith("Bearer ")) {
@@ -44,14 +22,15 @@ const getAndLogUser = async (req, db, feedId, now) => {
             const then = global.views.get(key);
             if (!then || now - then > MS_HALF_DAY) { // don't update if seen within last half day
                 global.views.set(key, now);
-                const expireAt = makeExpiryDate(now);
-                await db.feedViews.updateOne({user, feed:feedId}, {$set: {expireAt}}, {upsert:true});
+                await db.none("INSERT INTO feed_view (feed_id, viewer, t_viewed) VALUES ($1, $2, NOW()) ON CONFLICT (feed_id, viewer) DO UPDATE SET t_viewed = EXCLUDED.t_viewed", [feedId, user]);
+               // await db.feedViews.updateOne({user, feed:feedId}, {$set: {expireAt}}, {upsert:true});
             }
         }
     }
     return user;
 }
 
+const REF1 = "ref1", REF2 = "ref2";
 export async function getServerSideProps({req, res, query}) {
     try {
         res.setHeader("Content-Type", "application/json");
@@ -64,12 +43,26 @@ export async function getServerSideProps({req, res, query}) {
     let limit = parseInt(_limit);
     if (limit > 100) { return { redirect: { destination: '/400', permanent: false } } }
 
-    const db = await connectToDatabase();
-    if (!db) { return { redirect: { destination: '/500', permanent: false } } }
+    const dbUtils = await getDbClient();
+    if (!dbUtils) { return { redirect: { destination: '/500', permanent: false } } }
+    const {db} = dbUtils;
 
-    const feedObj = await db.feeds.findOne({_id: feedId});
+    let feedObj:any, viewers:string[] = [];
+    await db.tx(async t => {
+        await t.query("SELECT * FROM get_feed_preview($1, $2, $3)", [feedId, REF1, REF2]);
+        const [feedBody, lists] = await Promise.all([
+            t.oneOrNone(`FETCH ALL IN ${REF1}`),
+            t.manyOrNone(`FETCH ALL IN ${REF2}`)
+        ]);
+        if (feedBody && feedBody.mode !== null) {
+            feedObj = feedBody;
+            for (const {ids} of lists) {
+                ids.split(",").forEach(x => viewers.push(x));
+            }
+        }
+    });
+
     if (!feedObj) {return { redirect: { destination: '/404', permanent: false } } }
-    const {viewers} = feedObj;
 
     let user;
     const now = new Date().getTime();
@@ -79,7 +72,7 @@ export async function getServerSideProps({req, res, query}) {
         user = await getAndLogUser(req, db, feedId, now);
     }
 
-    if (Array.isArray(viewers) && viewers.length > 0 && !viewers.find(x => x.did === user)) {
+    if (viewers.length > 0 && !viewers.find(x => x === user)) {
         res.statusCode = 401;
         res.write(JSON.stringify({
             feed:[], cursor:"",
@@ -107,12 +100,14 @@ export async function getServerSideProps({req, res, query}) {
             feed = feedV;
             cursor = cursorV;
         } else if (mode === "posts") {
-            let {posts} = feedObj;
+            // query by index
             const skip = parseInt(queryCursor) || 0;
-            feed = posts.slice(skip, limit).map(x => {return {post: x};});
+            const posts = await db.manyOrNone("SELECT post_id FROM feed_post_algo WHERE feed_id = $1 ORDER BY index ASC LIMIT $2 OFFSET $3", [feedId, limit, skip]);
+
+            feed = posts.slice(skip, limit).map(x => {return {post: x.post_id};});
             cursor = `${feed.length+skip}`;
         } else {
-            const {feed: feedV, cursor: cursorV} = await liveFeedHandler (db, feedObj, queryCursor, limit, now);
+            const {feed: feedV, cursor: cursorV} = await liveFeedHandler (dbUtils, feedObj, queryCursor, limit, now);
             feed = feedV;
             cursor = cursorV;
         }

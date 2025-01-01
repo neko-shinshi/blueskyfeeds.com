@@ -64,6 +64,24 @@ export async function getServerSideProps({req, res, query}) {
     if (feedId) {
         const publicAgent = getPublicAgent();
 
+        const REF1 = "ref1", REF2 = "ref2";
+        await db.tx(async t => {
+            await t.query("SELECT * FROM get_feed_raw($1, $2, $3)", [feedId, REF1, REF2]);
+            const [feedBody, lists] = await Promise.all([
+                t.manyOrNone(`FETCH ALL IN ${REF1}`),
+                t.manyOrNone(`FETCH ALL IN ${REF2}`)
+            ]);
+            if (feedBody.length === 0) {
+                localFeed = feedBody;
+                for (const {ids} of lists) {
+                    ids.split(",").forEach(x => viewers.add(x));
+                }
+            }
+        });
+
+
+
+
         let feedData: any = await getFeedDetails(publicAgent, db, feedId);
         if (feedData) {
             feedData = await expandUserLists(feedData, publicAgent);

@@ -18,6 +18,7 @@ import {SiBuzzfeed} from "react-icons/si";
 import {getPublicAgent} from "features/utils/bsky";
 import {useUserData} from "features/provider/UserDataProvider";
 
+const REF1 = "ref1", REF2 = "ref2";
 export async function getServerSideProps({req, res, params}) {
     const {did:_did, short} = params;
     if (!_did || !short) {return { redirect: { destination: '/', permanent: false } };}
@@ -37,14 +38,14 @@ export async function getServerSideProps({req, res, params}) {
 
     let localFeed:any, viewers:Set<string>= new Set();
 
-    const REF1 = "ref1", REF2 = "ref2";
+
     await db.tx(async t => {
         await t.query("SELECT * FROM get_feed_preview($1, $2, $3)", [feedId, REF1, REF2]);
         const [feedBody, lists] = await Promise.all([
             t.oneOrNone(`FETCH ALL IN ${REF1}`),
             t.manyOrNone(`FETCH ALL IN ${REF2}`)
         ]);
-        if (feedBody.mode !== null) {
+        if (feedBody && feedBody.mode !== null) {
             localFeed = feedBody;
             for (const {ids} of lists) {
                 ids.split(",").forEach(x => viewers.add(x));

@@ -1,8 +1,9 @@
 import {getAllPosts, getPostsInfo, getUserLikes} from "features/utils/bsky";
 import {connectToDatabase} from "../utils/dbUtils";
 import {preprocessKeywords, findKeywords} from "features/utils/textAndKeywords";
+import {IDatabase} from "pg-promise";
 
-export const handler = async (db, feedId, feedConfig, cursor, limit) => {
+export const handler = async (db:IDatabase<any>, feedId:string, feedConfig:any, cursor, limit) => {
     let start = 0;
     if (cursor) {
         const v = parseInt(cursor);
@@ -14,7 +15,10 @@ export const handler = async (db, feedId, feedConfig, cursor, limit) => {
     const {sticky} = feedConfig;
     const _limit = start === 0 && sticky? limit - 1 : limit;
 
-    let feed = await db.postsAlgoFeed.find({feed: feedId}).sort({indexedAt:-1}).skip(start).limit(_limit).project({_id:0, post:1}).toArray();
+    let feed = await db.manyOrNone("SELECT post_id FROM feed_post_algo WHERE feed_id = $1 ORDER BY t_indexed DESC LIMIT $2 OFFSET $3", [feedId, _limit, start]);
+
+
+   // let feed = await db.postsAlgoFeed.find({feed: feedId}).sort({indexedAt:-1}).skip(start).limit(_limit).project({_id:0, post:1}).toArray();
     //generate(feedId, feedConfig); // try regenerating the feed in the background
 
     if (feed.length === 0) {
@@ -23,7 +27,7 @@ export const handler = async (db, feedId, feedConfig, cursor, limit) => {
     } else {
         if (start === 0 && sticky) {feed.splice(1, 0, {post: sticky})}
         const end = Math.min(start + limit, start + feed.length);
-        return {feed: feed.map(x => {return {post:x.post}}), cursor: `${end}`};
+        return {feed: feed.map(x => {return {post:x.post_id}}), cursor: `${end}`};
     }
 }
 

@@ -1,7 +1,6 @@
 import {setCookie, getCookie} from "cookies-next";
 import {SESSION_KEY_DURATION, SESSION_KEY_ID, SESSION_MISC_ID} from "features/utils/constants";
 
-export const SUPPORTED_CW_LABELS = ["nudity", "sexual", "porn", "graphic-media"];
 
 const COOKIE_PREF_NAVBAR = "COOKIE_PREF_NAVBAR"
 
