@@ -36,11 +36,11 @@ export default async function handler(req, res) {
     ]);
     if (respondApiErrors(res, [{val:error, code:error}, {val:!privateAgent, code:401}, {val:!captchaPass, code:529}])) { return; }
 
-    let canEdit = isSuperAdmin(privateAgent);
+    let canEdit = isSuperAdmin(privateAgent.did);
     if (!canEdit) {
         const query = helpers.concat([
-            {query:"SELECT EXISTS (SELECT 1 FROM feed_admin WHERE feed_id = $1 AND admin_id = $2", values:[uri, privateAgent.session.did]},
-            {query:"SELECT COUNT(*) FROM feed WHERE author = $1", values:[privateAgent.session.did]}
+            {query:"SELECT EXISTS (SELECT 1 FROM feed_admin WHERE feed_id = $1 AND admin_id = $2", values:[uri, privateAgent.did]},
+            {query:"SELECT COUNT(*) FROM feed WHERE author = $1", values:[privateAgent.did]}
         ]);
 
         const [isAdmin, numFeeds] = await db.multi(query);

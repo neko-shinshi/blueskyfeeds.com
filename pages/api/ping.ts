@@ -11,7 +11,7 @@ export default async function handler (req, res) {
         ]);
         if (respondApiErrors(res, [{val:error, code:error}, {val:!privateAgent, code:401}, {val:!db, code: 500}])) { return; }
 
-        await db.none("INSERT INTO user_log (did, ts) VALUES ($1, $2) ON CONFLICT (did) DO UPDATE SET ts = EXCLUDED.ts", [privateAgent.session.did, new Date()]);
+        await db.none("INSERT INTO user_log (did, ts) VALUES ($1, $2) ON CONFLICT (did) DO UPDATE SET ts = EXCLUDED.ts", [privateAgent.did, new Date()]);
 
         res.status(200).send();
     });

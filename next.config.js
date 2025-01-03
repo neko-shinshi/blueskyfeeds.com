@@ -27,6 +27,10 @@ const nextConfig = {
   },
   rewrites: async () => [
     {
+      source: '/jwks.json',
+      destination: '/api/jwks'
+    },
+    {
       source: '/client-metadata.json',
       destination: '/api/client-metadata'
     },

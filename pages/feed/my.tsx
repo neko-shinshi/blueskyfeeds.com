@@ -15,9 +15,9 @@ import PageFooter from "features/components/PageFooter";
 import {getLoggedInInfo} from "features/network/session";
 import {MainWrapper} from "features/layout/MainWrapper";
 import {getDbClient} from "features/utils/db";
-import FormSignIn from "features/login/FormSignIn";
 import {respondPageErrors} from "features/utils/page";
 import {useUserData} from "features/provider/UserDataProvider";
+import OAuthSignIn from "features/login/OAuthSignIn";
 
 export async function getServerSideProps({req, res}) {
     const [{ error, privateAgent}, dbUtils] = await Promise.all([
@@ -32,8 +32,8 @@ export async function getServerSideProps({req, res}) {
     if (privateAgent) {
         const {db, helpers} = dbUtils;
         myFeeds = await getMyFeeds(privateAgent, db);
-        if (!isVIP(privateAgent)) {
-            const countCustomFeeds =  myFeeds.filter(x => x.creator.did === privateAgent.session.did).length;
+        if (!isVIP(privateAgent.did)) {
+            const countCustomFeeds =  myFeeds.filter(x => x.creator.did === privateAgent.did).length;
             canCreate = countCustomFeeds < MAX_FEEDS_PER_USER? "yes" : "no";
         } else {
             canCreate = "vip";
@@ -81,7 +81,7 @@ export default function Home({myFeeds, canCreate}) {
         <HeadExtended title={title} description={description}/>
 
         {
-            !user && <FormSignIn />
+            !user && <OAuthSignIn />
         }
 
 

@@ -13,11 +13,10 @@ export default async function handler(req, res) {
     ]);
     if (respondApiErrors(res, [{val:error, code:error}, {val:!privateAgent, code:401}, {val:!captchaPass, code:529}])) { return; }
 
-    const did = privateAgent.session.did;
     if (!(await deleteFeed(privateAgent, rkey))) {
         res.status(400).send();
     } else {
-        const uri = `at://${did}/app.bsky.feed.generator/${rkey}`;
+        const uri = `at://${privateAgent.did}/app.bsky.feed.generator/${rkey}`;
         await Promise.all([
             db.none("DELETE FROM every_feed WHERE id = $1", [uri]),
             db.none("DELETE FROM feed WHERE id = $1", [uri]),

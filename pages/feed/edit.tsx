@@ -59,7 +59,7 @@ export async function getServerSideProps({req, res, query}) {
     const {db, helpers} = dbUtils;
 
     let feed = null;
-    const VIP = isVIP(privateAgent);
+    const VIP = isVIP(privateAgent.did);
     const {feed: feedId} = query;
     if (feedId) {
         const publicAgent = getPublicAgent();
@@ -82,7 +82,7 @@ export async function getServerSideProps({req, res, query}) {
 
 
 
-        let feedData: any = await getFeedDetails(publicAgent, db, feedId);
+        let feedData: any = await getFeedDetails(publicAgent, userDid, db, feedId);
         if (feedData) {
             feedData = await expandUserLists(feedData, publicAgent);
             let {sticky, posts:_posts, mode} = feedData;
@@ -123,7 +123,7 @@ export async function getServerSideProps({req, res, query}) {
 
 
         const feedIds = (await getMyCustomFeedIds(privateAgent, db)).map(x => x.split("/").at(-1));
-        if (feedIds.indexOf(feedId) < 0 && feedIds.length >= MAX_FEEDS_PER_USER && !isVIP(privateAgent)) {
+        if (feedIds.indexOf(feedId) < 0 && feedIds.length >= MAX_FEEDS_PER_USER && !isVIP(userDid)) {
             res.status(400).send("too many feeds"); return;
         }
     }

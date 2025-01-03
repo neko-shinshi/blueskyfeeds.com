@@ -1,5 +1,5 @@
 import {setCookie, getCookie} from "cookies-next";
-import {SESSION_KEY_DURATION, SESSION_KEY_ID, SESSION_MISC_ID} from "features/utils/constants";
+import {SESSION_KEY_DURATION, SESSION_MISC_ID} from "features/utils/constants";
 
 
 const COOKIE_PREF_NAVBAR = "COOKIE_PREF_NAVBAR"
@@ -26,38 +26,38 @@ export const setNavbarPosCookie = (position) => {
     setCookie(COOKIE_PREF_NAVBAR, position,{maxAge:100 * 24 * 60 * 60, path: "/", sameSite:"lax", secure:true});
 }
 
-export const updateSessionCookie = (data, req, res) => {
-    setCookie(SESSION_KEY_ID, JSON.stringify(data), {
+
+export const defaultCookieOptions = (req, res) => {
+    return {
         req, res,
         domain: process.env.NEXT_PUBLIC_DOMAIN,
         path:"/",
         maxAge: SESSION_KEY_DURATION,
         httpOnly:true,
         secure: true,
-        sameSite:"strict"
+        sameSite:"lax"
+    }
+}
+
+export function setUserData ({did, handle, displayName="", avatar, req, res}:{did:string, handle:string, displayName?:string, avatar:string, req, res}) {
+    setCookie(SESSION_MISC_ID, JSON.stringify({did, handle, displayName, avatar}), {
+        domain: process.env.NEXT_PUBLIC_DOMAIN,
+        maxAge:SESSION_KEY_DURATION,
+        path: "/",
+        sameSite:"lax",
+        secure:true,
+        httpOnly:false,
+        req, res
     });
 }
 
-export const updatePublicCookie = (data, req, res) => {
-    setCookie(SESSION_MISC_ID, JSON.stringify(data), {
-        req, res,
-        domain: process.env.NEXT_PUBLIC_DOMAIN,
-        path:"/",
-        maxAge: SESSION_KEY_DURATION,
-        httpOnly:false,
-        secure: true,
-        sameSite:"strict"
-    });
-}
 
 export const getUserData = () => {
     if (typeof window === 'undefined') {
         return null;
     }
     const cookie = getCookie(SESSION_MISC_ID);
-    console.log("COOKIE", cookie);
     if (!cookie) { return null; }
     const user = JSON.parse(cookie);
-    console.log("DATA", user);
     return {user, last: new Date().getTime()};
 }

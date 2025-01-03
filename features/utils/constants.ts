@@ -70,4 +70,5 @@ export type FeedKeyword = {
 
 export const SESSION_KEY_DURATION = 30 * 24 * 60 * 60; // 30 days
 export const SESSION_KEY_ID = "sk";
+export const STATE_KEY_ID = "st";
 export const SESSION_MISC_ID = "sd";

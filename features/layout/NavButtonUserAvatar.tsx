@@ -6,7 +6,7 @@ import {Fragment, useEffect, useState} from "react";
 import Image from "next/image";
 import {HiListBullet} from "react-icons/hi2";
 import Link from "next/link";
-import FormSignIn from "features/login/FormSignIn";
+import OAuthSignIn from "features/login/OAuthSignIn";
 import Popup from "features/components/Popup";
 import {useUserData} from "features/provider/UserDataProvider";
 
@@ -127,7 +127,7 @@ export default function NavButtonUserAvatar({navPosition}:{navPosition:"top"|"bo
             !user &&
             <>
                 <Popup isOpen={isOpen} setOpen={setOpen}>
-                    <FormSignIn />
+                    <OAuthSignIn />
                 </Popup>
                 <button className={clsx("inline-block h-8 w-8 rounded-full overflow-hidden bg-gray-100 ",
                     "ring-offset-1 ring-2 ring-blue-200 hover:brightness-75" )}

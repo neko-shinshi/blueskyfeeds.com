@@ -1,4 +1,4 @@
-import {AtpAgent, UnicodeString} from "@atproto/api";
+import {Agent, AtpAgent, UnicodeString} from "@atproto/api";
 import {SIGNATURE} from "features/utils/signature";
 import {processQ} from "features/utils/queue";
 import {callApiInChunks, queryWithCursor} from "features/utils/utils";
@@ -11,16 +11,15 @@ export function getPublicAgent () {
     return new AtpAgent({ service: "https://api.bsky.app/" });
 }
 
-export const getCustomFeeds = async (agent:AtpAgent):Promise<GeneratorView[]> => {
-    const actor = agent.session.did;
-    return await queryWithCursor((o) => agent.app.bsky.feed.getActorFeeds(o), {actor},
+export const getCustomFeeds = async (agent:Agent):Promise<GeneratorView[]> => {
+    return await queryWithCursor((o) => agent.app.bsky.feed.getActorFeeds(o), {actor:agent.did},
         ({feeds}) => { return feeds; });
 }
 
 
-export const deleteFeed = async (agent:AtpAgent, rkey:string) => {
+export const deleteFeed = async (agent:Agent, rkey:string) => {
     const record = {
-        repo: agent.session.did,
+        repo: agent.did,
         collection: 'app.bsky.feed.generator',
         rkey,
     };
@@ -197,18 +196,18 @@ export const getActorsInfo = async (agent:AtpAgent, actors:string[]):Promise<{di
     });
 }
 
-export const isVIP = (privateAgent:AtpAgent) => {
+export const isVIP = (userDid:string) => {
     return ["did:plc:eubjsqnf5edgvcc6zuoyixhw",
         "did:plc:tazrmeme4dzahimsykusrwrk",
         "did:plc:2dozc4lhicvbmpsbxnicvdpj",
         "did:plc:be5wkrivorcuc6db22drsc6z",
-    ].indexOf(privateAgent.session.did) >= 0;
+    ].indexOf(userDid) >= 0;
 }
 
-export const isSuperAdmin = (privateAgent:AtpAgent) => {
+export const isSuperAdmin = (userDid:string) => {
     return ["did:plc:eubjsqnf5edgvcc6zuoyixhw",
         "did:plc:tazrmeme4dzahimsykusrwrk"
-    ].indexOf(privateAgent.session.did) >= 0;
+    ].indexOf(userDid) >= 0;
 }
 
 export const getAllPosts = async (agent, target, filter= (post) => true) => {

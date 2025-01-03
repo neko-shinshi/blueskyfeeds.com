@@ -42,7 +42,7 @@ const getServer = (secure) => {
 
 
 app.prepare().then(async () => {
-    const secure = dev; // https is provided by load balancer and cloudflare
+    const secure = false; // https is provided by load balancer and cloudflare
     const server = getServer(secure);
 
     server.listen(port, async (err) => {

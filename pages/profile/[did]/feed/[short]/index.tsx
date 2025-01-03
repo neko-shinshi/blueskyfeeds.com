@@ -91,7 +91,7 @@ export async function getServerSideProps({req, res, params}) {
         keywords = keywords.sort((x, y) => x.w.localeCompare(y.w)? 1 : -1);
         
         if (viewers.size > 0) {
-            if (viewers.has(privateAgent?.session?.did)) {
+            if (viewers.has(privateAgent?.did)) {
                 localFeed = {keywords, mode, keywordSetting, languages, pics, postLevels, sort};
             } else {
                 // Private feeds don't show config data

@@ -18,7 +18,6 @@ export async function callApiInChunks(arr:any[], chunkSize:number, query:any, pa
         let reattempts = numRetry;
         do {
             try {
-                console.log("querying", chunk);
                 if (isBskyApi) {
                     const {data: {...data}} = await query(chunk);
                     result.push(...packer(data));

@@ -27,6 +27,8 @@ export async function getServerSideProps({req, res, query}) {
         getLoggedInInfo(req, res),
         getDbClient()
     ]);
+
+    console.log("agent", !!privateAgent);
     const redirect = respondPageErrors([{val:error, code:error}, {val:!dbUtils, code:500}]);
     if (redirect) { return redirect; }
 
@@ -59,12 +61,13 @@ export async function getServerSideProps({req, res, query}) {
         }
     }
 
-    const userDid = privateAgent?.session?.did || "";
+    const myDid = privateAgent?.did || "";
+
     let everyFeedQuery:any = {
         query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
             +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
             +"ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
-        values: [userDid, PAGE_SIZE, offset]};
+        values: [myDid, PAGE_SIZE, offset]};
     let popularMadeHereQuery:any = false;
     const qTrim = q && q.trim();
     const lInt = parseInt(l);
@@ -74,14 +77,14 @@ export async function getServerSideProps({req, res, query}) {
             query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
                 +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
                 +"WHERE e.id @@@ $2::JSONB ORDER BY e.likes DESC LIMIT $3 OFFSET $4",
-            values:[userDid, searchConfig, PAGE_SIZE, offset]};
+            values:[myDid, searchConfig, PAGE_SIZE, offset]};
     } else if (lInt && !isNaN(lInt) && lInt > 0) {
         // Limit by likes
         everyFeedQuery = {
             query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
                 +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
                 +"WHERE e.likes > $2 ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $3 OFFSET $4",
-            values: [userDid, lInt, PAGE_SIZE, offset]};
+            values: [myDid, lInt, PAGE_SIZE, offset]};
     } else if (!p || parseInt(p) === 1) {
         // Default, show popular here
         popularMadeHereQuery= {
@@ -89,7 +92,7 @@ export async function getServerSideProps({req, res, query}) {
                 +"JOIN every_feed AS e ON e.id = f.id AND f.highlight = TRUE "
                 +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1"
                 +"ORDER BY likes DESC LIMIT 6",
-            values:[userDid]};
+            values:[myDid]};
     }
 
     const publicAgent = getPublicAgent();

@@ -1,37 +1,24 @@
-
-import {AtpAgent, AtpSessionData, AtpSessionEvent} from "@atproto/api";
-import {updateSessionCookie} from "features/utils/cookieUtils";
+import {randomBytes} from "crypto";
+import {getOAuthClient} from "features/utils/bsky-oauth";
 
 export default async function handler (req, res) {
     return new Promise(async resolve => {
-        const {token, service} = req.body;
-        if (req.method !== "POST" || !token || !service) { res.status(400).send(); }
-        try {
-            const agent = new AtpAgent({service,
-                persistSession: async (evt: AtpSessionEvent, sess?: AtpSessionData) => {
-                    switch (evt) {
-                        case "create":
-                        case "update": {
-                            updateSessionCookie({service, token: sess}, req, res);
-                            res.status(200).send();
-                            break;
-                        }
-                        case "create-failed": {
-                            res.status(401).send();
-                            break;
-                        }
-                        case "expired":
-                        case "network-error": {
-                            res.status(500).send();
-                            break;
-                        }
-                    }
-                }
-            });
-            await agent.resumeSession(token);
-        } catch (e) {
-            console.error(e);
-            res.status(500).send();
-        }
+        if (req.method !== "GET") {res.status(404).send(); return;}
+        let {handle, back} = req.query;
+        if (!handle || !back) {res.status(404).send(); return;}
+
+        const prev = Buffer.from(back, 'base64url').toString();
+
+
+        const ac = new AbortController();
+        req.on('close', () => ac.abort());
+
+        handle = handle.startsWith("@")? handle.slice(1) : handle;
+        const state =  JSON.stringify({prev, rand:randomBytes(512).toString('base64url')});
+        const client = await getOAuthClient(req, res);
+
+        const url = await client.authorize(handle, {signal: ac.signal, state});
+        console.log("TO URL", url.toString());
+        res.redirect(302, url.toString());
     });
 }

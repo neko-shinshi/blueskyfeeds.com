@@ -1,13 +1,13 @@
 import {getCustomFeeds, getPublicAgent, isSuperAdmin} from "features/utils/bsky";
 import {SavedFeedsPref} from "@atproto/api/src/client/types/app/bsky/actor/defs";
-import {AtpAgent} from "@atproto/api";
+import {Agent} from "@atproto/api";
 import {IDatabase} from "pg-promise";
 import {callApiInChunks, sortWithSelectors} from "features/utils/utils";
 import {GeneratorView} from "@atproto/api/src/client/types/app/bsky/feed/defs";
 
 const MS_ONE_DAY = 24*60*60*1000;
-export const getMyFeeds = async (privateAgent:AtpAgent, db:IDatabase<any>) => {
-    const did = privateAgent.session.did;
+export const getMyFeeds = async (privateAgent:Agent, db:IDatabase<any>) => {
+    const did = privateAgent.did;
     const [createdFeeds, { data: {preferences} }, views] = await Promise.all([
         getCustomFeeds(privateAgent), // including from other 3rd parties
         privateAgent.app.bsky.actor.getPreferences(), // Get
@@ -93,7 +93,7 @@ export const getMyFeeds = async (privateAgent:AtpAgent, db:IDatabase<any>) => {
 }
 
 export const getFeedDetails = async (agent, db, feedId) => {
-    const superAdmin = feedId.includes("/") && isSuperAdmin(agent);
+    const superAdmin = feedId.includes("/") && isSuperAdmin(agent.did);
     let feedData = {uri:feedId};
     if (!superAdmin) {
         const feeds = (await getCustomFeeds(agent)) as any[];

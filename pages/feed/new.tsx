@@ -23,7 +23,7 @@ export async function getServerSideProps({req, res, query}) {
     const myCreatedFeeds = await getCustomFeeds(privateAgent);
     const feedShortNames = myCreatedFeeds.map(x => x.uri.split("/").at(-1));
 
-    const VIP = isVIP(privateAgent);
+    const VIP = isVIP(privateAgent.did);
 
     return {props: {feedShortNames, VIP}}
 }

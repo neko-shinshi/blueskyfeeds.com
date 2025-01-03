@@ -1,41 +1,27 @@
-import {AtpAgent, AtpSessionData, AtpSessionEvent} from "@atproto/api";
-import {deleteCookie,} from "cookies-next";
-import {updatePublicCookie, updateSessionCookie} from "features/utils/cookieUtils";
+import {Agent} from "@atproto/api";
+import {deleteCookie, getCookie} from "cookies-next";
+import {setUserData} from "features/utils/cookieUtils";
 import {SESSION_KEY_ID, SESSION_MISC_ID} from "features/utils/constants";
-import EventEmitter from "node:events";
+import {getOAuthClient} from "features/utils/bsky-oauth";
 
 export async function getLoggedInInfo (req, res) {
     try {
-        let privateAgent = null;
-        const sessionKey = req.cookies[SESSION_KEY_ID];
+        let privateAgent:Agent = null;
+        const sessionKey = getCookie(SESSION_MISC_ID, {req, res});
         if (sessionKey) {
-            const {token, service} = JSON.parse(sessionKey);
+            const {did} = JSON.parse(sessionKey);
+            if (!did) {return {privateAgent};}
             try {
-                const gate = new EventEmitter();
-                privateAgent = new AtpAgent({ service ,
-                    persistSession: async (evt: AtpSessionEvent, sess?: AtpSessionData) => {
-                    switch (evt) {
-                        case "create":
-                        case "update": {
-                            updateSessionCookie({service, token:sess}, req, res);
-                            break;
-                        }
-                        default: {
-                            console.log("deleting cookie", evt);
-                            deleteCookie(SESSION_KEY_ID, {req, res});
-                            deleteCookie(SESSION_MISC_ID, {req, res});
-                        }
-                    }
-                    gate.emit("k");
-                }});
-                privateAgent.resumeSession(token);
-                await new Promise(resolve => gate.once('k', resolve));
-                const {data:{did, handle, displayName, avatar}} = await privateAgent.getProfile({actor: privateAgent.session.did});
-                updatePublicCookie({did, handle, displayName, avatar}, req, res);
+                const client = await getOAuthClient(req, res);
+                const oauthSession = await client.restore(did);
+                privateAgent = new Agent(oauthSession);
+                const {data:{handle, displayName, avatar}} = await privateAgent.getProfile({actor: did});
+                setUserData({did, handle, displayName, avatar, req, res});
             } catch (e) {
                 console.error("token error",e);
-                deleteCookie(SESSION_KEY_ID, {req, res});
                 deleteCookie(SESSION_MISC_ID, {req, res});
+                deleteCookie(SESSION_KEY_ID, {req, res});
+
                 return {error: 401};
             }
         }

@@ -35,14 +35,14 @@ export async function getServerSideProps({req, res, query}) {
             return { redirect: { destination: '/400', permanent: false } };
         }
     }
+    const myDid = privateAgent?.did || "";
 
-    const userDid = privateAgent?.session?.did || "";
     let feedsHereQuery:any = {
         query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
             + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
             + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
             + "ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
-        values: [userDid, PAGE_SIZE, offset]};
+        values: [myDid, PAGE_SIZE, offset]};
     const qTrim = q && q.trim();
     const lInt = parseInt(l);
     if (qTrim) {
@@ -52,7 +52,7 @@ export async function getServerSideProps({req, res, query}) {
                 + "JOIN every_feed AS e WHERE f.id = e.id AND f.highlight = TRUE "
                 + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
                 + "WHERE e.id @@@ $2::JSONB ORDER BY likes DESC LIMIT $3 OFFSET $4",
-            values: [userDid, searchConfig, PAGE_SIZE, offset]};
+            values: [myDid, searchConfig, PAGE_SIZE, offset]};
     } else if (lInt && !isNaN(lInt) && lInt > 0) {
         // Limit by likes
         feedsHereQuery = {
@@ -60,7 +60,7 @@ export async function getServerSideProps({req, res, query}) {
                 + "JOIN every_feed AS e WHERE f.id = e.id AND f.highlight = TRUE "
                 + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
                 + "WHERE likes > $2 ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
-            values: [userDid, lInt, PAGE_SIZE, offset]};
+            values: [myDid, lInt, PAGE_SIZE, offset]};
     }
     const feedsHere = await db.manyOrNone(helpers.concat([feedsHereQuery]));
 
