@@ -1,5 +1,4 @@
 import React from "react";
-import {DialogTitle} from '@headlessui/react'
 import Popup from "features/components/Popup";
 
 export default function PopupLoading(

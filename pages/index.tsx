@@ -28,7 +28,6 @@ export async function getServerSideProps({req, res, query}) {
         getDbClient()
     ]);
 
-    console.log("agent", !!privateAgent);
     const redirect = respondPageErrors([{val:error, code:error}, {val:!dbUtils, code:500}]);
     if (redirect) { return redirect; }
 

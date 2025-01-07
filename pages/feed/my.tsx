@@ -81,7 +81,7 @@ export default function Home({myFeeds, canCreate}) {
         <HeadExtended title={title} description={description}/>
 
         {
-            !user && <OAuthSignIn />
+            !user && <OAuthSignIn setBusy={setBusy} busy={busy}/>
         }
 
 

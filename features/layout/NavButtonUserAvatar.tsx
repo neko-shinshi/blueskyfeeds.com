@@ -13,6 +13,7 @@ import {useUserData} from "features/provider/UserDataProvider";
 export default function NavButtonUserAvatar({navPosition}:{navPosition:"top"|"bottom"}) {
     const router = useRouter();
     const [isOpen, setOpen] = useState(false);
+    const [busy, setBusy] = useState(false);
     useEffect(() => {
         setOpen(false);
     }, [router]);
@@ -127,7 +128,7 @@ export default function NavButtonUserAvatar({navPosition}:{navPosition:"top"|"bo
             !user &&
             <>
                 <Popup isOpen={isOpen} setOpen={setOpen}>
-                    <OAuthSignIn />
+                    <OAuthSignIn busy={busy} setBusy={setBusy}/>
                 </Popup>
                 <button className={clsx("inline-block h-8 w-8 rounded-full overflow-hidden bg-gray-100 ",
                     "ring-offset-1 ring-2 ring-blue-200 hover:brightness-75" )}
