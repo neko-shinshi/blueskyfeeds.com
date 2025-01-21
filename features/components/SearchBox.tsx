@@ -6,12 +6,14 @@ export default function SearchBox ({path, title, setBusy}:{path:string, title:st
     const router = useRouter();
     const searchTextRef = useRef(null);
     const startSearch = async () => {
+        setBusy(true);
         const q = searchTextRef.current.value;
         if (!q.trim()) {
             await router.push(path);
             return;
         }
         let params: any = {q};
+        setBusy(false);
         await router.push(urlWithParams(path, params));
     }
 
@@ -29,17 +31,13 @@ export default function SearchBox ({path, title, setBusy}:{path:string, title:st
             <div className="flex">
                 <input ref={searchTextRef} className="rounded-l-md p-1" type="text" onKeyDown={async (event) => {
                     if (event.key === "Enter") {
-                        setBusy(true);
                         await startSearch();
                     }
                 }}/>
                 <button
                     type="button"
                     className={"relative -ml-px inline-flex items-center space-x-2 rounded-r-md border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"}
-                    onClick={async () => {
-                        setBusy(true);
-                        await startSearch();
-                    }}
+                    onClick={startSearch}
                 >
                     <span>Search</span>
                 </button>
