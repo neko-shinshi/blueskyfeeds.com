@@ -149,7 +149,7 @@ export async function get_feed_full (id:string, db:IDatabase<any>) {
 
         for (const list of feedLists) {
             const {type, ids} = list;
-            for (const id of ids.split(",")) {
+            for (const id of ids) {
                 feedBody[type].add(id);
             }
         }
@@ -221,22 +221,30 @@ export function makeEveryFeedQuery (myDid:string, qTrim:string, lInt:number, PAG
     if (qTrim) {
         const searchConfig = getSearchConfig(qTrim, lInt);
         return {
-            query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
-                +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-                +"WHERE e.id @@@ $2::JSONB ORDER BY e.likes DESC LIMIT $3 OFFSET $4",
+            query:"SELECT e.id, (admin_id IS NOT NULL) AS edit, ARRAY_REMOVE(ARRAY_AGG(tag), NULL) AS tags FROM every_feed AS e "
+                + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
+                + "LEFT JOIN every_feed_tag AS t ON t.feed_id = e.id "
+                + "WHERE e.id @@@ $2::JSONB "
+                + "GROUP BY e.id, likes, t_indexed, admin_id "
+                + "ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
             values:[myDid, searchConfig, PAGE_SIZE, offset]};
     } else if (lInt && !isNaN(lInt) && lInt > 0) {
         // Limit by likes
         return {
-            query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
-                +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-                +"WHERE e.likes > $2 ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $3 OFFSET $4",
+            query: "SELECT e.id, (admin_id IS NOT NULL) AS edit, ARRAY_REMOVE(ARRAY_AGG(tag), NULL) AS tags FROM every_feed AS e "
+                + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
+                + "LEFT JOIN every_feed_tag AS t ON t.feed_id = e.id "
+                + "WHERE e.likes > $2 "
+                + "GROUP BY e.id, likes, t_indexed, admin_id "
+                + "ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
             values: [myDid, lInt, PAGE_SIZE, offset]};
     }
     return {
-        query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
-            +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-            +"ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
+        query: "SELECT e.id, (admin_id IS NOT NULL) AS edit, ARRAY_REMOVE(ARRAY_AGG(tag), NULL) AS tags FROM every_feed AS e "
+            + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
+            + "LEFT JOIN every_feed_tag AS t ON t.feed_id = e.id "
+            + "GROUP BY e.id, likes, t_indexed, admin_id "
+            + "ORDER BY e.likes DESC, t_indexed ASC LIMIT $2 OFFSET $3",
         values: [myDid, PAGE_SIZE, offset], def:true};
 }
 
@@ -244,25 +252,33 @@ export function makeLocalFeedQuery (myDid:string, qTrim:string, lInt:number, PAG
     if (qTrim) {
         const searchConfig = getSearchConfig(qTrim, lInt);
         return {
-            query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
+            query: "SELECT e.id, (admin_id IS NOT NULL) AS edit, ARRAY_REMOVE(ARRAY_AGG(tag), NULL) AS tags FROM feed AS f "
                 + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
                 + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-                + "WHERE e.id @@@ $2::JSONB ORDER BY likes DESC LIMIT $3 OFFSET $4",
+                + "LEFT JOIN every_feed_tag AS t ON t.feed_id = e.id "
+                + "WHERE e.id @@@ $2::JSONB"
+                + "GROUP BY e.id, likes, t_indexed, admin_id "
+                + "ORDER BY likes, t_indexed ASC DESC LIMIT $3 OFFSET $4"
+                + "SELECT id, EVERY(edit) AS edit,  FROM rr LEFT JOIN every_feed_tag ON feed_id = id GROUP BY id, likes, t_indexed ORDER BY likes DESC, t_indexed ASC",
             values: [myDid, searchConfig, PAGE_SIZE, offset]};
     } else if (!isNaN(lInt) && lInt > 0) {
         // Limit by likes
         return {
-            query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
+            query: "SELECT e.id, (admin_id IS NOT NULL) AS edit, ARRAY_REMOVE(ARRAY_AGG(tag), NULL) AS tags FROM feed AS f "
                 + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
                 + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-                + "WHERE likes > $2 ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
+                + "LEFT JOIN every_feed_tag AS t ON t.feed_id = e.id "
+                + "WHERE likes > $2 "
+                + "GROUP BY e.id, likes, t_indexed, admin_id "
+                + "ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
             values: [myDid, lInt, PAGE_SIZE, offset]};
     }
     return {
-        query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
+        query: "SELECT e.id, (admin_id IS NOT NULL) AS edit, ARRAY_REMOVE(ARRAY_AGG(tag), NULL) AS tags FROM feed AS f "
             + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
             + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-            + "ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
+            + "LEFT JOIN every_feed_tag AS t ON t.feed_id = e.id "
+            + "GROUP BY e.id, likes, t_indexed, admin_id "
+            + "ORDER BY likes DESC, t_indexed ASC LIMIT $2 OFFSET $3",
         values: [myDid, PAGE_SIZE, offset]};
-
 }

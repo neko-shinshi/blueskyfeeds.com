@@ -8,11 +8,67 @@ import {HiPencil, HiTrash} from "react-icons/hi";
 import {HiMagnifyingGlass} from "react-icons/hi2";
 import {FaUserGear} from "react-icons/fa6";
 import {FaRegCopy} from "react-icons/fa";
+import {localDelete} from "features/network/network";
+import {useRef} from "react";
+import PopupConfirmation from "features/components/PopupConfirmation";
+import {useRecaptcha} from "features/provider/RecaptchaProvider";
+import {useRouter} from "next/router";
 
-export default function FeedItem ({item, setSelectedItem, setPopupState}) {
+export default function FeedItem ({item, popupState, setPopupState, busy, setBusy}) {
+    const ref = useRef(null);
+    const recaptcha = useRecaptcha();
+    const router = useRouter();
+
+    const startSubmit = async () => {
+        if (busy) {return;}
+        const q = ref.current.value.trim();
+        if (q.length === 0) { return; }
+        setBusy(true);
+        try {
+            const result = await fetch('/api/admin/add-tag', {
+                method:"POST",
+                headers: {"Content-Type": "application/json"},
+                body:JSON.stringify({feed: item.uri, tag: q})});
+            if (result.ok) {
+                // Update
+            } else {
+                console.error(result);
+            }
+        } catch (error) {
+            console.error("Error:", error);
+        }
+
+        ref.current.value = "";
+
+        setBusy(false);
+    }
+
     return <div className={clsx("w-full border-2 flex gap-2 p-1 -mt-0.5",
           item.edit? "bg-green-200 border-green-600" : "bg-white border-black"
     )}>
+        <PopupConfirmation
+            isOpen={popupState === "delete"}
+            setOpen={setPopupState}
+            title={`Confirm deletion of ${item?.displayName}`}
+            message="This cannot be reversed"
+            yesCallback={async() => {
+                if (typeof recaptcha !== 'undefined' && !busy) {
+                    recaptcha.ready(async () => {
+                        setBusy(true);
+                        //@ts-ignore
+                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
+                        const result = await localDelete("/feed/delete", {captcha, rkey: item.uri.split("/").slice(-1)[0]});
+                        if (result.status === 200) {
+                            router.reload();
+                        } else {
+                            console.log(result);
+                        }
+                        setBusy(false);
+                    });
+                }
+            }
+            }/>
+
         <div>
             <BlueskyAvatar type="feed" avatar={item.avatar} uri={item.uri}/>
 
@@ -27,8 +83,9 @@ export default function FeedItem ({item, setSelectedItem, setPopupState}) {
                     item.pinned && <BsPinFill className="w-4 h-4"/>
                 }
                 <a href={`https://bsky.app/profile/${item.uri.slice(5).replace("app.bsky.feed.generator", "feed")}`}>
-                    <div
-                        className="text-blue-500 hover:text-blue-800 underline hover:bg-orange-200 ">{item.displayName}</div>
+                    <div className="text-blue-500 hover:text-blue-800 underline hover:bg-orange-200 ">
+                        {item.displayName}
+                    </div>
                 </a>
 
                 <div>by</div>
@@ -100,13 +157,29 @@ export default function FeedItem ({item, setSelectedItem, setPopupState}) {
                         <button type="button"
                                 className="text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 rounded-xl p-1"
                                 onClick={() => {
-                                    setSelectedItem(item);
                                     setPopupState("delete");
                                 }}>
                             <HiTrash className="w-6 h-6" title="Delete Feed"/>
                         </button>
                     </div>
                 }
+            </div>
+
+            {
+                item.tags.length > 0 && <div className="flex space-x-1 mt-1">
+                    {
+                        item.tags.map(x => <div key={x} className="p-1 bg-gray-200 rounded-xl">
+                            {x}
+                        </div>)
+                    }
+                </div>
+            }
+
+            <div className="flex">
+                <input className="h-6 w-32 text-sm" ref={ref}/>
+                <button className="text-sm bg-gray-300 p-0.5" type="button" onClick={startSubmit}>
+                    Add
+                </button>
             </div>
         </div>
     </div>

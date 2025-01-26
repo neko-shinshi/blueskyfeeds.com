@@ -13,7 +13,6 @@ import PopupLoading from "features/components/PopupLoading";
 import BackAndForwardButtons from "features/components/BackAndForwardButtons";
 import {removeUndefined} from "features/utils/validationUtils";
 import PageFooter from "features/components/PageFooter";
-import {getSearchConfig} from "features/utils/getSearchConfig";
 import {extractLabels} from "features/utils/parseLabels";
 import SearchBox from "features/components/SearchBox";
 import {getDbClient, makeEveryFeedQuery, makeLocalFeedQuery} from "features/utils/db";
@@ -67,7 +66,6 @@ export async function getServerSideProps({req, res, query}) {
     {
         const {query, values, def} = makeEveryFeedQuery(myDid, qTrim, lInt, PAGE_SIZE, offset);
         everyFeedQuery = {query, values};
-        console.log("Query", helpers.concat([everyFeedQuery]));
         if (def) {
             // Default, show popular here
             popularMadeHereQuery = makeLocalFeedQuery (myDid, "", 0, 6, 0);
@@ -85,6 +83,7 @@ export async function getServerSideProps({req, res, query}) {
     const feedIds = mainIds.map(x => x.id);
     if (feedsHere) {
         feedsHere.forEach(x => feedIds.push(x.id));
+        console.log(JSON.stringify(feedsHere, null, 2));
     }
 
     if (feedIds.length > 0) {
@@ -98,15 +97,15 @@ export async function getServerSideProps({req, res, query}) {
                 displayName, description, likeCount, indexedAt, labels}, true);
         });
 
-        mainIds.forEach(({id, edit}) => {
+        mainIds.forEach(({id, edit, tags}) => {
             const item = updatedFeeds.find(y => y.uri === id);
-            if (item) { feeds.push({...item, edit}); }
+            if (item) { feeds.push({...item, edit, tags}); }
         });
 
         if (feedsHere) {
-            feedsHere.forEach(({id, edit}) => {
+            feedsHere.forEach(({id, edit, tags}) => {
                 const item = updatedFeeds.find(y => y.uri === id);
-                if (item) { popularMadeHere.push({...item, edit}); }
+                if (item) { popularMadeHere.push({...item, edit, tags}); }
             });
         }
 
@@ -121,38 +120,15 @@ export default function Home({feeds, popularMadeHere}) {
     const description = "Find your perfect feed algorithm for Bluesky Social App, or build one yourself";
     const longDescription = "Search Bluesky feeds, browse the Bluesky feed directory, or use our no-code Bluesky feed builder to make your own custom feed for yourself or your community here."
     const [popupState, setPopupState] = useState<"delete"|false>(false);
-    const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState<boolean>(false);
 
     const {user} = useUserData();
-    const recaptcha = useRecaptcha();
+
     const router = useRouter();
     return <MainWrapper>
-            <HeadExtended title={title}
-                          description={longDescription}/>
+            <HeadExtended title={title} description={longDescription}/>
             <PopupLoading isOpen={busy}/>
-            <PopupConfirmation
-                isOpen={popupState === "delete"}
-                setOpen={setPopupState}
-                title={`Confirm deletion of ${selectedItem?.displayName}`}
-                message="This cannot be reversed"
-                yesCallback={async() => {
-                    if (typeof recaptcha !== 'undefined' && !busy) {
-                        recaptcha.ready(async () => {
-                            setBusy(true);
-                            //@ts-ignore
-                            const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                            const result = await localDelete("/feed/delete", {captcha, rkey: selectedItem.uri.split("/").slice(-1)[0]});
-                            if (result.status === 200) {
-                                router.reload();
-                            } else {
-                                console.log(result);
-                            }
-                            setBusy(false);
-                        });
-                    }
-                }
-                }/>
+
             <div className="bg-sky-200 w-full max-w-7xl rounded-xl overflow-hidden p-4 space-y-4">
                 <PageHeader title={title} description={description} description2="*This site is not affiliated with Bluesky or the ATProtocol, both of which are still in Beta. Feeds here are not guaranteed to work 100% of the time as it is maintained by only 1 person, and may be impacted by changes in Bluesky." />
 
@@ -183,9 +159,7 @@ export default function Home({feeds, popularMadeHere}) {
                         </div>
 
                         {
-                            popularMadeHere.map(x =>
-                                <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />
-                            )
+                            popularMadeHere.map(x => <FeedItem key={x.uri} item={x} popupState={popupState} setPopupState={setPopupState} busy={busy} setBusy={setBusy}/>)
                         }
                     </div>
                 }
@@ -198,10 +172,7 @@ export default function Home({feeds, popularMadeHere}) {
                     }
 
                     {
-                        feeds.map(x =>
-                            <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem}
-                                      setPopupState={setPopupState}/>
-                        )
+                        feeds.map(x => <FeedItem key={x.uri} item={x} popupState={popupState} setPopupState={setPopupState} busy={busy} setBusy={setBusy}/>)
                     }
 
                     {

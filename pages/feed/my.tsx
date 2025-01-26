@@ -4,11 +4,7 @@ import Link from "next/link";
 import {useState} from "react";
 import PageHeader from "features/components/PageHeader";
 import {getMyFeeds} from "features/utils/feedUtils";
-import PopupConfirmation from "features/components/PopupConfirmation";
-import {localDelete} from "features/network/network"
-import {useRecaptcha} from "features/provider/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
-import {useRouter} from "next/router";
 import {isVIP} from "features/utils/bsky";
 import {MAX_FEEDS_PER_USER} from "features/utils/constants";
 import PageFooter from "features/components/PageFooter";
@@ -49,35 +45,10 @@ export default function Home({myFeeds, canCreate}) {
     const title = "My Bluesky Feeds";
     const description = "";
     const [popupState, setPopupState] = useState<"delete"|false>(false);
-    const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
     const {user} = useUserData();
-    const recaptcha = useRecaptcha();
-    const router = useRouter();
 
     return <MainWrapper>
-        <PopupConfirmation
-            isOpen={popupState === "delete"}
-            setOpen={setPopupState}
-            title={`Confirm deletion of ${selectedItem?.displayName}`}
-            message="This cannot be reversed"
-            yesCallback={async() => {
-                if (typeof recaptcha !== 'undefined' && !busy) {
-                    recaptcha.ready(async () => {
-                        setBusy(true);
-                        //@ts-ignore
-                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                        const result = await localDelete("/feed/delete", {captcha, rkey: selectedItem.uri.split("/").slice(-1)[0]});
-                        if (result.status === 200) {
-                            router.reload();
-                        } else {
-                            console.log(result);
-                        }
-                        setBusy(false);
-                    });
-                }
-            }
-        }/>
         <HeadExtended title={title} description={description}/>
 
         {
@@ -105,7 +76,7 @@ export default function Home({myFeeds, canCreate}) {
                     <div>Feeds Editable here are in green</div>
                     {
                         myFeeds && myFeeds.map(x =>
-                            <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState} />
+                            <FeedItem key={x.uri} item={x} popupState={popupState} setPopupState={setPopupState} busy={busy} setBusy={setBusy}/>
                         )
                     }
                 </div>

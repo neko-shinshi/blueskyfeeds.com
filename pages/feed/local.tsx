@@ -52,9 +52,9 @@ export async function getServerSideProps({req, res, query}) {
     });
 
     const feeds = feedsHere.reduce((acc,x) => {
-        const {id, edit} = x;
+        const {id, edit, tags} = x;
         const temp = updatedFeeds.find(y => y.uri === id);
-        if (temp) { acc.push({...temp, edit}); }
+        if (temp) { acc.push({...temp, edit, tags}); }
         return acc;
     }, []);
 
@@ -66,34 +66,10 @@ export default function Home({feeds}) {
     const title = "Feeds made at BlueskyFeeds.com";
     const description = "Opt out of being listed here by setting `Highlight this feed` to `no`.";
     const [popupState, setPopupState] = useState<"delete"|false>(false);
-    const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
-    const recaptcha = useRecaptcha();
     const router = useRouter();
 
     return <MainWrapper>
-        <PopupConfirmation
-            isOpen={popupState === "delete"}
-            setOpen={setPopupState}
-            title={`Confirm deletion of ${selectedItem?.displayName}`}
-            message="This cannot be reversed"
-            yesCallback={async() => {
-                if (typeof recaptcha !== 'undefined' && !busy) {
-                    recaptcha.ready(async () => {
-                        setBusy(true);
-                        //@ts-ignore
-                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                        const result = await localDelete("/feed/delete", {captcha, rkey: selectedItem.uri.split("/").slice(-1)[0]});
-                        if (result.status === 200) {
-                            router.reload();
-                        } else {
-                            console.log(result);
-                        }
-                        setBusy(false);
-                    });
-                }
-            }
-        }/>
         <HeadExtended title={title} description={description}/>
 
         <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
@@ -108,7 +84,7 @@ export default function Home({feeds}) {
                 }
                 {
                     feeds && feeds.map(x =>
-                        <FeedItem key={x.uri} item={x} setSelectedItem={setSelectedItem} setPopupState={setPopupState}/>
+                        <FeedItem key={x.uri} item={x} popupState={popupState} setPopupState={setPopupState} busy={busy} setBusy={setBusy}/>
                     )
                 }
                 {

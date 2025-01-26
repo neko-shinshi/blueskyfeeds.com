@@ -57,7 +57,7 @@ export async function getServerSideProps({req, res, query}) {
         if (feedBody && feedBody.mode !== null) {
             feedObj = feedBody;
             for (const {ids} of lists) {
-                ids.split(",").forEach(x => viewers.push(x));
+                ids.forEach(x => viewers.push(x));
             }
         }
     });
