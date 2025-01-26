@@ -16,7 +16,7 @@ import PageFooter from "features/components/PageFooter";
 import {getSearchConfig} from "features/utils/getSearchConfig";
 import {extractLabels} from "features/utils/parseLabels";
 import SearchBox from "features/components/SearchBox";
-import {getDbClient} from "features/utils/db";
+import {getDbClient, makeEveryFeedQuery, makeLocalFeedQuery} from "features/utils/db";
 import {MainWrapper} from "features/layout/MainWrapper";
 import {getPublicAgent} from "features/utils/bsky";
 import {respondPageErrors} from "features/utils/page";
@@ -61,37 +61,17 @@ export async function getServerSideProps({req, res, query}) {
     }
 
     const myDid = privateAgent?.did || "";
-
-    let everyFeedQuery:any = {
-        query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
-            +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-            +"ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
-        values: [myDid, PAGE_SIZE, offset]};
-    let popularMadeHereQuery:any = false;
+    let popularMadeHereQuery:any = false, everyFeedQuery:any = false;
     const qTrim = q && q.trim();
     const lInt = parseInt(l);
-    if (qTrim) {
-        const searchConfig = getSearchConfig(qTrim, lInt);
-        everyFeedQuery = {
-            query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
-                +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-                +"WHERE e.id @@@ $2::JSONB ORDER BY e.likes DESC LIMIT $3 OFFSET $4",
-            values:[myDid, searchConfig, PAGE_SIZE, offset]};
-    } else if (lInt && !isNaN(lInt) && lInt > 0) {
-        // Limit by likes
-        everyFeedQuery = {
-            query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
-                +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-                +"WHERE e.likes > $2 ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $3 OFFSET $4",
-            values: [myDid, lInt, PAGE_SIZE, offset]};
-    } else if (!p || parseInt(p) === 1) {
-        // Default, show popular here
-        popularMadeHereQuery= {
-            query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
-                +"JOIN every_feed AS e ON e.id = f.id AND f.highlight = TRUE "
-                +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1"
-                +"ORDER BY likes DESC LIMIT 6",
-            values:[myDid]};
+    {
+        const {query, values, def} = makeEveryFeedQuery(myDid, qTrim, lInt, PAGE_SIZE, offset);
+        everyFeedQuery = {query, values};
+        console.log("Query", helpers.concat([everyFeedQuery]));
+        if (def) {
+            // Default, show popular here
+            popularMadeHereQuery = makeLocalFeedQuery (myDid, "", 0, 6, 0);
+        }
     }
 
     const publicAgent = getPublicAgent();

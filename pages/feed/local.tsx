@@ -11,7 +11,7 @@ import PageFooter from "features/components/PageFooter";
 import SearchBox from "features/components/SearchBox";
 import {getSearchConfig} from "features/utils/getSearchConfig";
 import BackAndForwardButtons from "features/components/BackAndForwardButtons";
-import {getDbClient} from "features/utils/db";
+import {getDbClient, makeLocalFeedQuery} from "features/utils/db";
 import {MainWrapper} from "features/layout/MainWrapper";
 import {getPublicAgent} from "features/utils/bsky";
 import {respondPageErrors} from "features/utils/page";
@@ -36,32 +36,10 @@ export async function getServerSideProps({req, res, query}) {
         }
     }
     const myDid = privateAgent?.did || "";
-
-    let feedsHereQuery:any = {
-        query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
-            + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
-            + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-            + "ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
-        values: [myDid, PAGE_SIZE, offset]};
     const qTrim = q && q.trim();
     const lInt = parseInt(l);
-    if (qTrim) {
-        const searchConfig = getSearchConfig(qTrim, lInt);
-        feedsHereQuery = {
-            query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
-                + "JOIN every_feed AS e WHERE f.id = e.id AND f.highlight = TRUE "
-                + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-                + "WHERE e.id @@@ $2::JSONB ORDER BY likes DESC LIMIT $3 OFFSET $4",
-            values: [myDid, searchConfig, PAGE_SIZE, offset]};
-    } else if (lInt && !isNaN(lInt) && lInt > 0) {
-        // Limit by likes
-        feedsHereQuery = {
-            query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
-                + "JOIN every_feed AS e WHERE f.id = e.id AND f.highlight = TRUE "
-                + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
-                + "WHERE likes > $2 ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
-            values: [myDid, lInt, PAGE_SIZE, offset]};
-    }
+
+    const feedsHereQuery = makeLocalFeedQuery (myDid, qTrim, lInt, PAGE_SIZE, offset);
     const feedsHere = await db.manyOrNone(helpers.concat([feedsHereQuery]));
 
     const publicAgent = getPublicAgent();

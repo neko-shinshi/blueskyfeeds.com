@@ -1,6 +1,7 @@
 import pgp from 'pg-promise'
 import {IDatabase, IHelpers} from "pg-promise";
 import {global} from "styled-jsx/css";
+import {getSearchConfig} from "features/utils/getSearchConfig";
 export async function getDbClient ():Promise<{db:IDatabase<any>, helpers:IHelpers}> {
     // @ts-ignore
     if (global.dbCache) {
@@ -214,4 +215,54 @@ export async function get_feed_raw (id:string, db:IDatabase<any>) {
     });
 
     return feed;
+}
+
+export function makeEveryFeedQuery (myDid:string, qTrim:string, lInt:number, PAGE_SIZE:number, offset:number): {query:string, values:any[], def?:true} {
+    if (qTrim) {
+        const searchConfig = getSearchConfig(qTrim, lInt);
+        return {
+            query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
+                +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
+                +"WHERE e.id @@@ $2::JSONB ORDER BY e.likes DESC LIMIT $3 OFFSET $4",
+            values:[myDid, searchConfig, PAGE_SIZE, offset]};
+    } else if (lInt && !isNaN(lInt) && lInt > 0) {
+        // Limit by likes
+        return {
+            query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
+                +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
+                +"WHERE e.likes > $2 ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $3 OFFSET $4",
+            values: [myDid, lInt, PAGE_SIZE, offset]};
+    }
+    return {
+        query:"SELECT e.id, (a.admin_id IS NOT NULL) AS edit FROM every_feed AS e "
+            +"LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
+            +"ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
+        values: [myDid, PAGE_SIZE, offset], def:true};
+}
+
+export function makeLocalFeedQuery (myDid:string, qTrim:string, lInt:number, PAGE_SIZE:number, offset:number): {query:string, values:any[]} {
+    if (qTrim) {
+        const searchConfig = getSearchConfig(qTrim, lInt);
+        return {
+            query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
+                + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
+                + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
+                + "WHERE e.id @@@ $2::JSONB ORDER BY likes DESC LIMIT $3 OFFSET $4",
+            values: [myDid, searchConfig, PAGE_SIZE, offset]};
+    } else if (!isNaN(lInt) && lInt > 0) {
+        // Limit by likes
+        return {
+            query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
+                + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
+                + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
+                + "WHERE likes > $2 ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
+            values: [myDid, lInt, PAGE_SIZE, offset]};
+    }
+    return {
+        query:"SELECT f.id AS id, (a.admin_id IS NOT NULL) AS edit FROM feed AS f "
+            + "JOIN every_feed AS e ON f.id = e.id AND f.highlight = TRUE "
+            + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
+            + "ORDER BY e.likes DESC, e.t_indexed ASC LIMIT $2 OFFSET $3",
+        values: [myDid, PAGE_SIZE, offset]};
+
 }
