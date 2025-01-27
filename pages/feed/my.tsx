@@ -1,7 +1,7 @@
 import HeadExtended from "features/layout/HeadExtended";
 import {RiTestTubeLine} from "react-icons/ri";
 import Link from "next/link";
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import PageHeader from "features/components/PageHeader";
 import {getMyFeeds} from "features/utils/feedUtils";
 import FeedItem from "features/components/specific/FeedItem";
@@ -41,11 +41,14 @@ export async function getServerSideProps({req, res}) {
 }
 
 
-export default function Home({myFeeds, canCreate}) {
+export default function Home({myFeeds:_myFeeds, canCreate}) {
     const title = "My Bluesky Feeds";
     const description = "";
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [busy, setBusy] = useState(false);
+    const [myFeeds, setMyFeeds] = useState(_myFeeds);
+    function refreshFeeds () { setMyFeeds([...myFeeds]); }
+    useEffect(() => setMyFeeds(_myFeeds), [_myFeeds]);
     const {user} = useUserData();
 
     return <MainWrapper>
@@ -76,7 +79,7 @@ export default function Home({myFeeds, canCreate}) {
                     <div>Feeds Editable here are in green</div>
                     {
                         myFeeds && myFeeds.map(x =>
-                            <FeedItem key={x.uri} item={x} popupState={popupState} setPopupState={setPopupState} busy={busy} setBusy={setBusy}/>
+                            <FeedItem key={x.uri} item={x} popupState={popupState} setPopupState={setPopupState} busy={busy} setBusy={setBusy} refreshFeeds={refreshFeeds}/>
                         )
                     }
                 </div>

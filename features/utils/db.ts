@@ -217,6 +217,17 @@ export async function get_feed_raw (id:string, db:IDatabase<any>) {
     return feed;
 }
 
+export function makeTagQuery (myDid:string, tag:string, PAGE_SIZE:number, offset:number): {query:string, values:any[]} {
+    return {
+        query: "SELECT e.id, (admin_id IS NOT NULL) AS edit, ARRAY_REMOVE(ARRAY_AGG(tag), NULL) AS tags FROM every_feed AS e "
+            + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
+            + "LEFT JOIN every_feed_tag AS t ON t.feed_id = e.id "
+            + "GROUP BY e.id, likes, t_indexed, admin_id "
+            + "HAVING NOT ('deprecated' = ANY (ARRAY_REMOVE(ARRAY_AGG(tag), NULL))) AND $2 = ANY (ARRAY_REMOVE(ARRAY_AGG(tag), NULL))"
+            + "ORDER BY e.likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
+        values: [myDid, tag, PAGE_SIZE, offset]};
+}
+
 export function makeEveryFeedQuery (myDid:string, qTrim:string, lInt:number, PAGE_SIZE:number, offset:number): {query:string, values:any[], def?:true} {
     if (qTrim) {
         const searchConfig = getSearchConfig(qTrim, lInt);
@@ -226,6 +237,7 @@ export function makeEveryFeedQuery (myDid:string, qTrim:string, lInt:number, PAG
                 + "LEFT JOIN every_feed_tag AS t ON t.feed_id = e.id "
                 + "WHERE e.id @@@ $2::JSONB "
                 + "GROUP BY e.id, likes, t_indexed, admin_id "
+                + "HAVING NOT ('deprecated' = ANY (ARRAY_REMOVE(ARRAY_AGG(tag), NULL))) "
                 + "ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
             values:[myDid, searchConfig, PAGE_SIZE, offset]};
     } else if (lInt && !isNaN(lInt) && lInt > 0) {
@@ -236,6 +248,7 @@ export function makeEveryFeedQuery (myDid:string, qTrim:string, lInt:number, PAG
                 + "LEFT JOIN every_feed_tag AS t ON t.feed_id = e.id "
                 + "WHERE e.likes > $2 "
                 + "GROUP BY e.id, likes, t_indexed, admin_id "
+                + "HAVING NOT ('deprecated' = ANY (ARRAY_REMOVE(ARRAY_AGG(tag), NULL))) "
                 + "ORDER BY likes DESC, t_indexed ASC LIMIT $3 OFFSET $4",
             values: [myDid, lInt, PAGE_SIZE, offset]};
     }
@@ -244,6 +257,7 @@ export function makeEveryFeedQuery (myDid:string, qTrim:string, lInt:number, PAG
             + "LEFT JOIN feed_admin AS a ON a.feed_id = e.id AND admin_id = $1 "
             + "LEFT JOIN every_feed_tag AS t ON t.feed_id = e.id "
             + "GROUP BY e.id, likes, t_indexed, admin_id "
+            + "HAVING NOT ('deprecated' = ANY (ARRAY_REMOVE(ARRAY_AGG(tag), NULL))) "
             + "ORDER BY e.likes DESC, t_indexed ASC LIMIT $2 OFFSET $3",
         values: [myDid, PAGE_SIZE, offset], def:true};
 }

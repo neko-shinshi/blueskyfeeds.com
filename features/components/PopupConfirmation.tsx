@@ -12,7 +12,8 @@ export default function PopupConfirmation(
         yesText,
         noText,
         yesCallback,
-        buttonClass=""
+        buttonClass="",
+        onCloseCallback
     }: {
         isOpen:boolean
         setOpen:(boolean) => void,
@@ -22,6 +23,7 @@ export default function PopupConfirmation(
         noText?:string,
         yesCallback: () => void,
         buttonClass?:string
+        onCloseCallback?:any
     }) {
 
 
@@ -31,7 +33,7 @@ export default function PopupConfirmation(
                    setOpen(open);
                }}
                preventManualEscape={false}
-               onCloseCallback={undefined}>
+               onCloseCallback={onCloseCallback}>
         <div className="bg-white rounded-xl p-4">
             <div className="mt-3 text-center sm:mt-5">
                 <Dialog.Title as="h3" className="text-lg leading-6 font-medium text-gray-900">

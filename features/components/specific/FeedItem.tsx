@@ -6,31 +6,64 @@ import {AiFillHeart} from "react-icons/ai";
 import {BsPinFill} from "react-icons/bs";
 import {HiPencil, HiTrash} from "react-icons/hi";
 import {HiMagnifyingGlass} from "react-icons/hi2";
-import {FaUserGear} from "react-icons/fa6";
 import {FaRegCopy} from "react-icons/fa";
 import {localDelete} from "features/network/network";
-import {useRef} from "react";
+import {useRef, useState} from "react";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {useRecaptcha} from "features/provider/RecaptchaProvider";
 import {useRouter} from "next/router";
 
-export default function FeedItem ({item, popupState, setPopupState, busy, setBusy}) {
+export default function FeedItem ({item, popupState, setPopupState, busy, setBusy, refreshFeeds}) {
     const ref = useRef(null);
     const recaptcha = useRecaptcha();
     const router = useRouter();
+    const [buttonDisabled, setButtonDisabled] = useState(true);
+    const [selected, setSelected] = useState(false);
 
     const startSubmit = async () => {
         if (busy) {return;}
-        const q = ref.current.value.trim();
+        const q = ref.current.value.trim().toLowerCase();
         if (q.length === 0) { return; }
+        if (item.tags.includes(q)) {
+            ref.current.value = "";
+            setButtonDisabled(true);
+            return;
+        }
         setBusy(true);
+
         try {
-            const result = await fetch('/api/admin/add-tag', {
+            const result = await fetch('/api/admin/tag', {
                 method:"POST",
                 headers: {"Content-Type": "application/json"},
                 body:JSON.stringify({feed: item.uri, tag: q})});
             if (result.ok) {
-                // Update
+                item.tags.push(q);
+                refreshFeeds();
+            } else {
+                console.error(result);
+            }
+        } catch (error) {
+            console.error("Error:", error);
+        }
+
+        ref.current.value = "";
+        setButtonDisabled(true);
+
+        setBusy(false);
+    }
+
+    const startDelete = async (tag) => {
+        if (busy) {return;}
+        setBusy(true);
+
+        try {
+            const result = await fetch('/api/admin/tag', {
+                method: "DELETE",
+                headers: {"Content-Type": "application/json"},
+                body:JSON.stringify({feed: item.uri, tag})});
+            if (result.ok) {
+                item.tags = item.tags.filter(x => x !== tag);
+                refreshFeeds();
             } else {
                 console.error(result);
             }
@@ -47,7 +80,7 @@ export default function FeedItem ({item, popupState, setPopupState, busy, setBus
           item.edit? "bg-green-200 border-green-600" : "bg-white border-black"
     )}>
         <PopupConfirmation
-            isOpen={popupState === "delete"}
+            isOpen={selected && popupState === "delete"}
             setOpen={setPopupState}
             title={`Confirm deletion of ${item?.displayName}`}
             message="This cannot be reversed"
@@ -66,8 +99,10 @@ export default function FeedItem ({item, popupState, setPopupState, busy, setBus
                         setBusy(false);
                     });
                 }
-            }
-            }/>
+                setSelected(false);
+            }}
+            onCloseCallback={() => { setSelected(false); }}
+        />
 
         <div>
             <BlueskyAvatar type="feed" avatar={item.avatar} uri={item.uri}/>
@@ -158,6 +193,7 @@ export default function FeedItem ({item, popupState, setPopupState, busy, setBus
                                 className="text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 rounded-xl p-1"
                                 onClick={() => {
                                     setPopupState("delete");
+                                    setSelected(true);
                                 }}>
                             <HiTrash className="w-6 h-6" title="Delete Feed"/>
                         </button>
@@ -168,16 +204,34 @@ export default function FeedItem ({item, popupState, setPopupState, busy, setBus
             {
                 item.tags.length > 0 && <div className="flex space-x-1 mt-1">
                     {
-                        item.tags.map(x => <div key={x} className="p-1 bg-gray-200 rounded-xl">
-                            {x}
-                        </div>)
+                        item.tags.map(x =>
+                            <div key={x}
+                                 className="p-1 bg-gray-200 rounded-xl hover:bg-gray-100"
+                                 onClick={ async () => await startDelete(x) }>
+                                {x}
+                            </div>)
                     }
                 </div>
             }
 
             <div className="flex">
-                <input className="h-6 w-32 text-sm" ref={ref}/>
-                <button className="text-sm bg-gray-300 p-0.5" type="button" onClick={startSubmit}>
+                <input className="h-6 w-32 text-sm"
+                       ref={ref}
+                       onChange={() => {
+                           const state = !(ref.current?.value.trim().length > 0);
+                           console.log(state);
+                           setButtonDisabled(state);
+                       }}
+                       onKeyDown={async (event) => {
+                           const key = event.key;
+                           if (key === "Enter") {
+                               await startSubmit();
+                           }
+                       }}
+                />
+                <button
+                    className={clsx("text-sm p-0.5", buttonDisabled ? "cursor-not-allowed bg-gray-400" : "bg-gray-200")}
+                    type="button" onClick={startSubmit} disabled={buttonDisabled}>
                     Add
                 </button>
             </div>

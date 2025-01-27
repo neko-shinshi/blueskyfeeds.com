@@ -2,19 +2,19 @@ import {useEffect, useRef} from "react";
 import {urlWithParams} from "features/network/network";
 import {useRouter} from "next/router";
 
-export default function SearchBox ({path, title, setBusy}:{path:string, title:string, setBusy:any}) {
+export default function SearchBox ({path, title, busy, setBusy}:{path:string, title:string, busy:boolean, setBusy:any}) {
     const router = useRouter();
     const searchTextRef = useRef(null);
     const startSearch = async () => {
+        if (busy) { return; }
         setBusy(true);
         const q = searchTextRef.current.value;
         if (!q.trim()) {
             await router.push(path);
             return;
         }
-        let params: any = {q};
-        setBusy(false);
-        await router.push(urlWithParams(path, params));
+        setTimeout(() => setBusy(false), 1000); // delay a bit before removing loading popup
+        await router.push(urlWithParams(path, {q}));
     }
 
     useEffect(() => {

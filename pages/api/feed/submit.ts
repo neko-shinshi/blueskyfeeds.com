@@ -473,6 +473,8 @@ export default async function handler(req, res) {
                     }
                 }
 
+                // TODO update every_feed by querying
+
                 wLogger.info(`submitted ${_id}`);
 
                 res.status(200).json({did});

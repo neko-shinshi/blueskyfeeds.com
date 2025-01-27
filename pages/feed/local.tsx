@@ -62,11 +62,14 @@ export async function getServerSideProps({req, res, query}) {
 }
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
-export default function Home({feeds}) {
+export default function Home({feeds:_feeds}) {
     const title = "Feeds made at BlueskyFeeds.com";
     const description = "Opt out of being listed here by setting `Highlight this feed` to `no`.";
     const [popupState, setPopupState] = useState<"delete"|false>(false);
     const [busy, setBusy] = useState(false);
+    const [feeds, setFeeds] = useState(_feeds);
+    function refreshFeeds () { setFeeds([...feeds]); }
+    useEffect(() => setFeeds(_feeds), [_feeds]);
     const router = useRouter();
 
     return <MainWrapper>
@@ -74,7 +77,7 @@ export default function Home({feeds}) {
 
         <div className="bg-sky-200 w-full max-w-8xl rounded-xl overflow-hidden p-4 space-y-4">
             <PageHeader title={title} description={description}/>
-            <SearchBox path="/feed/local" title="Search Feeds made here" setBusy={setBusy} />
+            <SearchBox path="/feed/local" title="Search Feeds made here" busy={busy} setBusy={setBusy} />
 
             <div className="bg-white border-black border-2 p-4 rounded-xl space-y-2">
                 <div className="text-lg font-medium">Feeds Made Here</div>
@@ -84,7 +87,7 @@ export default function Home({feeds}) {
                 }
                 {
                     feeds && feeds.map(x =>
-                        <FeedItem key={x.uri} item={x} popupState={popupState} setPopupState={setPopupState} busy={busy} setBusy={setBusy}/>
+                        <FeedItem key={x.uri} item={x} popupState={popupState} setPopupState={setPopupState} busy={busy} setBusy={setBusy} refreshFeeds={refreshFeeds}/>
                     )
                 }
                 {

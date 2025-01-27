@@ -9,8 +9,8 @@ const MS_ONE_DAY = 24*60*60*1000;
 export const getMyFeeds = async (privateAgent:Agent, db:IDatabase<any>) => {
     const did = privateAgent.did;
     const [createdFeeds, { data: {preferences} }, views] = await Promise.all([
-        getCustomFeeds(privateAgent), // including from other 3rd parties
-        privateAgent.app.bsky.actor.getPreferences(), // Get
+        getCustomFeeds(privateAgent), // tied to my account including from other 3rd parties
+        privateAgent.app.bsky.actor.getPreferences(), // Get to check pin/save status
         db.manyOrNone("SELECT f.id AS id, v.t_viewed AS t_viewed FROM feed AS f "
             +"JOIN feed_admin AS a ON a.feed_id = f.id AND a.admin_id = $1 "
             +"LEFT JOIN feed_view AS v ON v.feed_id = f.id",
@@ -35,7 +35,7 @@ export const getMyFeeds = async (privateAgent:Agent, db:IDatabase<any>) => {
     }
     const publicAgent = getPublicAgent();
     const feeds = createdFeeds.map(feed => {
-        const {uri} = feed;
+        const {uri, did} = feed;
         feed.my = true;
         if (pinnedSet.has(uri)) {
             feed.pinned = true;
@@ -45,6 +45,8 @@ export const getMyFeeds = async (privateAgent:Agent, db:IDatabase<any>) => {
             feed.saved = true;
             savedSet.delete(uri);
         }
+
+
         const views = feedViews.get(uri);
         if (views) {
             feed.views = views;
@@ -55,7 +57,7 @@ export const getMyFeeds = async (privateAgent:Agent, db:IDatabase<any>) => {
         return feed;
     });
 
-    const feedsToFetch = new Set(feedViews.keys());
+    const feedsToFetch = new Set(feedViews.keys()); // Remainder of feeds
     savedSet.forEach(x => feedsToFetch.add(x));
 
     const items = Array.from(feedsToFetch);
