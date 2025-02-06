@@ -3,7 +3,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import {makeCustomException} from "features/error/customException";
 import {APP_PASSWORD, APP_SESSION} from "features/auth/authUtils";
 import {secondsAfter} from "features/utils/timeUtils";
-import {testRecaptcha} from "features/utils/recaptchaUtils";
 import {getAgent} from "features/utils/bsky";
 import {connectToDatabase} from "features/utils/dbUtils";
 import {randomUuid} from "features/utils/randomUtils";
@@ -108,11 +107,6 @@ export const authOptions: NextAuthOptions = {
                 // Add artificial delay
                 if (totalRequests >= 3) {
                     await new Promise(r => setTimeout(r, 500 + 300 * (totalRequests-3)));
-                }
-
-
-                if (!(await testRecaptcha(captcha))) {
-                    throw makeCustomException('400', {code: 400});
                 }
 
                 const db = await connectToDatabase();

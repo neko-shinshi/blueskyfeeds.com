@@ -1,8 +1,8 @@
 import {userPromise} from "features/utils/apiUtils";
 
 export default async function handler(req, res) {
-    return userPromise(req, res, "GET", true, false,
-        ({feed, captcha}) => !!feed && !!captcha,
+    return userPromise(req, res, "GET", true,
+        ({feed}) => !!feed,
         async ({db}) => {
 
             const {feed:_id} = req.query;

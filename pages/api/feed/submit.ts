@@ -30,7 +30,7 @@ import {generateFeed} from "features/algos/user-feed";
 // Regular users are restricted to MAX_FEEDS_PER_USER feeds and MAX_KEYWORDS_PER_FEED keywords
 
 export default async function handler(req, res) {
-    return userPromise(req, res, "POST", true, true,
+    return userPromise(req, res, "POST", true,
         ({shortName}) => !!shortName,
         async ({db, token}) => {
             const agent = await rebuildAgentFromToken(token);

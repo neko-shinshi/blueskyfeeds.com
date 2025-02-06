@@ -5,7 +5,6 @@ import {clearRememberEmail, getRememberEmail, setRememberEmail} from "features/u
 import {APP_PASSWORD} from "features/auth/authUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {HiAtSymbol} from "react-icons/hi";
-import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import Link from "next/link";
 
 export default function FormSignIn() {
@@ -17,7 +16,6 @@ export default function FormSignIn() {
     const emailRef = useRef(null);
     const rememberMeRef = useRef(null);
     const [error, setError] = useState<{msg?:string, part?:string}[]>([]);
-    const recaptcha = useRecaptcha();
 
     useEffect(() => {
         // Run Once, remembered email/username is from localStorage, never from server
@@ -69,25 +67,21 @@ export default function FormSignIn() {
                 return;
             }
 
-            if (typeof recaptcha !== 'undefined') {
-                recaptcha.ready(async () => {
-                    //@ts-ignore
-                    const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                    let usernameOrEmail = emailRef.current.value;
-                    usernameOrEmail = usernameOrEmail.startsWith("@")? usernameOrEmail.slice(1) : usernameOrEmail;
-                    usernameOrEmail = usernameOrEmail.indexOf(".") < 0? `${usernameOrEmail}.${domain}` : usernameOrEmail;
-                    const result = await signIn(APP_PASSWORD, {redirect:false, service:domain, usernameOrEmail, password, captcha});
-                    if (result.status === 200) { // If signin successful
-                        location.reload();
-                    } else if (result.status === 401) {
-                        console.log(result);
-                        setError([{msg:"Authentication Failed", part:"password"}]);
-                    } else {
-                        console.log(result);
-                        setError([{msg:"Unknown Error, try again later or contact @blueskyfeeds.com", part:"all"}]);
-                    }
-                });
-            }
+
+                let usernameOrEmail = emailRef.current.value;
+                usernameOrEmail = usernameOrEmail.startsWith("@")? usernameOrEmail.slice(1) : usernameOrEmail;
+                usernameOrEmail = usernameOrEmail.indexOf(".") < 0? `${usernameOrEmail}.${domain}` : usernameOrEmail;
+                const result = await signIn(APP_PASSWORD, {redirect:false, service:domain, usernameOrEmail, password, captcha:""});
+                if (result.status === 200) { // If signin successful
+                    location.reload();
+                } else if (result.status === 401) {
+                    console.log(result);
+                    setError([{msg:"Authentication Failed", part:"password"}]);
+                } else {
+                    console.log(result);
+                    setError([{msg:"Unknown Error, try again later or contact @blueskyfeeds.com", part:"all"}]);
+                }
+
         } catch (e) {
             setError([{msg:"Unknown Caught Error, try again later or contact @blueskyfeeds.com", part:"all"}]);
             console.log("ERROR");
@@ -235,10 +229,6 @@ export default function FormSignIn() {
                     </button>
                 </div>
             </form>
-            <div className="mt-4 text-sm">This site is protected by reCAPTCHA and the Google
-                <a className="text-blue-500" href="https://policies.google.com/privacy">{" Privacy Policy "}</a> and
-                <a className="text-blue-500" href="https://policies.google.com/terms">{" Terms of Service "}</a> apply.
-            </div>
         </div>
 
     </div>

@@ -2,13 +2,11 @@ import 'styles/globals.css'
 import { SessionProvider } from "next-auth/react"
 import Navbar from "features/layout/Navbar";
 import {useRouter} from "next/router";
-import {RecaptchaProvider} from "features/auth/RecaptchaProvider";
 
 export default function App({ Component, pageProps: { session, ...pageProps }}) {
     const router = useRouter();
 
-    return <RecaptchaProvider>
-        <SessionProvider session={session}>
+    return <SessionProvider session={session}>
             <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
             <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
             <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png"/>
@@ -22,6 +20,6 @@ export default function App({ Component, pageProps: { session, ...pageProps }}) 
                     <Component {...pageProps} />
                 </div>
             </main>
-        </SessionProvider>
-    </RecaptchaProvider>
+    </SessionProvider>
+
 }

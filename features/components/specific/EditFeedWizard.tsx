@@ -7,7 +7,7 @@ import {PICS_SETTING, POST_LEVELS} from "features/utils/constants";
 import BlueskyForm from "features/components/specific/BlueskyForm";
 import {useSession} from "next-auth/react";
 
-export default function EditFeedWizard({modal, setModal, setMode, setSubMode, setPostLevels, useFormReturn, recaptcha, setBusy, setKeywords, keywords, VIP, setPopupState, multiWordCallback, shortNameLocked, setPics, watchEveryListSync, setLiveAllowList}) {
+export default function EditFeedWizard({modal, setModal, setMode, setSubMode, setPostLevels, useFormReturn, setBusy, setKeywords, keywords, VIP, setPopupState, multiWordCallback, shortNameLocked, setPics, watchEveryListSync, setLiveAllowList}) {
     const {
         setValue,
         getValues
@@ -78,7 +78,7 @@ export default function EditFeedWizard({modal, setModal, setMode, setSubMode, se
                     Back
                 </button>
                 <div className="font-bold text-xl">Which posts do you want to show into the feed?</div>
-                <PostsEdit useFormReturn={useFormReturn} recaptcha={recaptcha} setBusy={setBusy}/>
+                <PostsEdit useFormReturn={useFormReturn} setBusy={setBusy}/>
 
                 <div className="flex justify-end">
                     <button

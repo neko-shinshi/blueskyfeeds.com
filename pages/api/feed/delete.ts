@@ -4,7 +4,7 @@ import {deleteFeed, rebuildAgentFromToken} from "features/utils/bsky";
 import {wLogger} from "features/utils/logger";
 
 export default async function handler(req, res) {
-    return userPromise(req, res, "DELETE", true, true,
+    return userPromise(req, res, "DELETE", true,
         ({rkey}) => !!rkey,
         async ({db, token}) => {
         const agent = await rebuildAgentFromToken(token);

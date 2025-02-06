@@ -4,7 +4,7 @@ import PopupWithAddPost from "features/components/PopupWithAddPost";
 import ListControlButtons from "features/components/ListControlButtons";
 
 
-export default function PostsEdit ({useFormReturn, recaptcha, setBusy}) {
+export default function PostsEdit ({useFormReturn, setBusy}) {
     const [popupOpen, setPopupOpen] = useState(false);
     const {
         setValue,
@@ -21,7 +21,6 @@ export default function PostsEdit ({useFormReturn, recaptcha, setBusy}) {
             setOpen={setPopupOpen}
             title="Add Post"
             message="Copy whole or part of url from browser or share button. Use a comma-separated array for multiple posts e.g. with brackets [A,B,C]"
-            recaptcha={recaptcha}
             setBusy={setBusy}
             limitOne={false}
             resultCallback={(posts, callback) => {

@@ -5,7 +5,6 @@ import {SiBuzzfeed} from "react-icons/si";
 import PageHeader from "features/components/PageHeader";
 import {localDelete, urlWithParams} from "features/network/network";
 import PopupConfirmation from "features/components/PopupConfirmation";
-import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
 import {signIn, useSession} from "next-auth/react";
@@ -181,7 +180,6 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
     const [searchUser, setSearchUser] = useState(false);
-    const recaptcha = useRecaptcha();
     const router = useRouter();
     const {data:session, status} = useSession();
     const searchTextRef = useRef(null);
@@ -224,20 +222,17 @@ export default function Home({updateSession, feeds, popularMadeHere}) {
                 title={`Confirm deletion of ${selectedItem?.displayName}`}
                 message="This cannot be reversed"
                 yesCallback={async() => {
-                    if (typeof recaptcha !== 'undefined' && !busy) {
-                        recaptcha.ready(async () => {
-                            setBusy(true);
-                            //@ts-ignore
-                            const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                            const result = await localDelete("/feed/delete", {captcha, rkey: selectedItem.uri.split("/").slice(-1)[0]});
-                            if (result.status === 200) {
-                                router.reload();
-                            } else {
-                                console.log(result);
-                            }
-                            setBusy(false);
-                        });
+
+                    setBusy(true);
+                    //@ts-ignore
+                    const result = await localDelete("/feed/delete", {rkey: selectedItem.uri.split("/").slice(-1)[0]});
+                    if (result.status === 200) {
+                        router.reload();
+                    } else {
+                        console.log(result);
                     }
+                    setBusy(false);
+
                 }
                 }/>
             <div className="bg-sky-200 w-full max-w-7xl rounded-xl overflow-hidden p-4 space-y-4">

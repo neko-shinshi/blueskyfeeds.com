@@ -8,7 +8,6 @@ import PageHeader from "features/components/PageHeader";
 import {getMyFeeds} from "features/utils/feedUtils";
 import PopupConfirmation from "features/components/PopupConfirmation";
 import {localDelete} from "features/network/network"
-import {useRecaptcha} from "features/auth/RecaptchaProvider";
 import FeedItem from "features/components/specific/FeedItem";
 import {useRouter} from "next/router";
 import {getLoggedInData} from "features/network/session";
@@ -45,7 +44,6 @@ export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [busy, setBusy] = useState(false);
     const [myFeeds, setMyFeeds] = useState([]);
-    const recaptcha = useRecaptcha();
     const router = useRouter();
 
     useEffect(() => {
@@ -80,22 +78,18 @@ export default function Home({updateSession, myFeeds:_myFeeds, canCreate}) {
             title={`Confirm deletion of ${selectedItem?.displayName}`}
             message="This cannot be reversed"
             yesCallback={async() => {
-                if (typeof recaptcha !== 'undefined' && !busy) {
-                    recaptcha.ready(async () => {
-                        setBusy(true);
-                        //@ts-ignore
-                        const captcha = await recaptcha.execute(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY, {action: 'submit'});
-                        const result = await localDelete("/feed/delete", {captcha, rkey: selectedItem.uri.split("/").slice(-1)[0]});
-                        if (result.status === 200) {
-                            router.reload();
-                        } else {
-                            console.log(result);
-                        }
-                        setBusy(false);
-                    });
-                }
-            }
-        }/>
+
+                    setBusy(true);
+                    const result = await localDelete("/feed/delete", {rkey: selectedItem.uri.split("/").slice(-1)[0]});
+                    if (result.status === 200) {
+                        router.reload();
+                    } else {
+                        console.log(result);
+                    }
+                    setBusy(false);
+
+            }}
+        />
         <HeadExtended title={title} description={description}/>
         {
             !session && <div className="flex flex-col place-items-center gap-4">

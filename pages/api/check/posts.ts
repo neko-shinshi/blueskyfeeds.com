@@ -2,7 +2,7 @@ import {userPromise} from "features/utils/apiUtils";
 import {getPostInfo, rebuildAgentFromToken} from "features/utils/bsky";
 
 export default async function handler(req, res) {
-    return userPromise(req, res, "GET", true, false,
+    return userPromise(req, res, "GET", true,
         ({posts}) => !!posts,
         async ({token}) => {
         const agent = await rebuildAgentFromToken(token);

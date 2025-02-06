@@ -11,7 +11,6 @@ import PageHeader from "features/components/PageHeader";
 import {getFeedDetails, getMyCustomFeedIds} from "features/utils/feedUtils";
 import {BsFillInfoCircleFill} from "react-icons/bs";
 import {RxCheck, RxCross2} from "react-icons/rx";
-import {getCaptcha, useRecaptcha} from "features/auth/RecaptchaProvider";
 import {localDelete, localGet, localPost} from "features/network/network";
 import {toJson} from 'really-relaxed-json'
 import Image from "next/image";
@@ -159,7 +158,6 @@ export default function Home({feed, updateSession, VIP}) {
     const [liveMentionList, setLiveMentionList] = useState(false);
     const [liveAllowList, setLiveAllowList] = useState(false);
 
-    const recaptcha = useRecaptcha();
 
     const formRef = useRef(null);
 
@@ -347,22 +345,21 @@ export default function Home({feed, updateSession, VIP}) {
             }
 
             if (isList) {
-                if (typeof recaptcha !== 'undefined') {
-                    const captcha = await getCaptcha(recaptcha);
-                    const result = await localGet("/check/list", {captcha, list:user});
-                    console.log(result);
-                    if (result.status === 200 && Array.isArray(result.data.v)) {
-                        clearErrors(fieldName);
-                        console.log(result.data);
-                        callback(result.data.v);
-                    } else if (result.status === 400) {
-                        setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
-                    } else if (result.status === 401) {
-                        await router.reload();
-                    } else {
-                        setError(fieldName, {type:'custom', message:"Error"});
-                    }
+
+                const result = await localGet("/check/list", {list:user});
+                console.log(result);
+                if (result.status === 200 && Array.isArray(result.data.v)) {
+                    clearErrors(fieldName);
+                    console.log(result.data);
+                    callback(result.data.v);
+                } else if (result.status === 400) {
+                    setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
+                } else if (result.status === 401) {
+                    await router.reload();
+                } else {
+                    setError(fieldName, {type:'custom', message:"Error"});
                 }
+
             } else {
                 console.log("user", user);
                 for (const l of lists) {
@@ -374,21 +371,20 @@ export default function Home({feed, updateSession, VIP}) {
                     }
                 }
 
-                if (typeof recaptcha !== 'undefined') {
-                    const captcha = await getCaptcha(recaptcha);
-                    const result = await localGet("/check/user", {captcha, actors:[user]});
-                    if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
-                        clearErrors(fieldName);
-                        console.log(result.data[0]);
-                        callback(result.data[0]);
-                    } else if (result.status === 400) {
-                        setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
-                    } else if (result.status === 401) {
-                        await router.reload();
-                    } else {
-                        setError(fieldName, {type:'custom', message:"Error"});
-                    }
+
+                const result = await localGet("/check/user", {actors:[user]});
+                if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
+                    clearErrors(fieldName);
+                    console.log(result.data[0]);
+                    callback(result.data[0]);
+                } else if (result.status === 400) {
+                    setError(fieldName, {type:'custom', message:"Invalid user or user not found"});
+                } else if (result.status === 401) {
+                    await router.reload();
+                } else {
+                    setError(fieldName, {type:'custom', message:"Error"});
                 }
+
             }
             setBusy(false);
         }
@@ -409,10 +405,8 @@ export default function Home({feed, updateSession, VIP}) {
                 return (v.startsWith("did:plc:") || v.startsWith("@") || isValidDomain(v)) ? "" : "Invalid User";
             }}
             yesCallback={async (v:string, callback) => {
-                if (typeof recaptcha !== 'undefined') {
-                    const captcha = await getCaptcha(recaptcha);
-                    //@ts-ignore
-                    const result = await localGet("/check/user", {captcha, actors:[v]});
+
+                    const result = await localGet("/check/user", {actors:[v]});
                     if (result.status === 200 && Array.isArray(result.data) && result.data.length === 1) {
                         console.log(result.data[0]);
                         setValue("allowList", result.data);
@@ -423,7 +417,7 @@ export default function Home({feed, updateSession, VIP}) {
                     } else {
                         callback("Unknown error");
                     }
-                }
+
             }}/>
 
         <PopupWithInputText
@@ -444,11 +438,9 @@ export default function Home({feed, updateSession, VIP}) {
                     const v = (popupState as string).split("_")[1];
                     setValue(`${v}Sync`, "");
                     callback();
-                } else if (typeof recaptcha !== 'undefined') {
+                }
                     const fieldName = (popupState as string).split("_")[1];
-                    const captcha = await getCaptcha(recaptcha);
-                    //@ts-ignore
-                    const result = await localGet("/check/list", {captcha, list});
+                    const result = await localGet("/check/list", {list});
                     if (result.status === 200 && Array.isArray(result.data.v)) {
                         clearErrors(fieldName);
                         console.log(result.data);
@@ -463,14 +455,13 @@ export default function Home({feed, updateSession, VIP}) {
                     } else {
                         setError(fieldName, {type:'custom', message:"Error"});
                     }
-                }
+
             }}/>
         <PopupWithAddPost
             isOpen={popupState === "edit_sticky"}
             setOpen={setPopupState}
             title="Set Sticky Post"
             message="Copy whole or part of url from browser or share button. Submit blank to remove sticky"
-            recaptcha={recaptcha}
             setBusy={setBusy}
             limitOne={true}
             resultCallback={result => {
@@ -492,19 +483,17 @@ export default function Home({feed, updateSession, VIP}) {
             title={`Confirm deletion of ${feed?.displayName}`}
             message="This cannot be reversed"
             yesCallback={async() => {
-                if (typeof recaptcha !== 'undefined' && !busy) {
-                    setBusy(true);
-                    const captcha = await getCaptcha(recaptcha);
-                    const result = await localDelete("/feed/delete", {captcha, rkey: feed.uri.split("/").slice(-1)[0]});
-                    if (result.status === 200) {
-                        await router.push("/my-feeds");
-                    } else {
-                        console.log(result);
-                    }
-                    setBusy(false);
+
+                setBusy(true);
+                const result = await localDelete("/feed/delete", {rkey: feed.uri.split("/").slice(-1)[0]});
+                if (result.status === 200) {
+                    await router.push("/my-feeds");
+                } else {
+                    console.log(result);
                 }
-            }
-            }/>
+                setBusy(false);
+            }}
+        />
         <HeadExtended title={title} description={description}/>
         {
             !session && <FormSignIn/>
@@ -522,7 +511,6 @@ export default function Home({feed, updateSession, VIP}) {
                        setSubMode={setSubMode}
                        setPostLevels={setPostLevels}
                        useFormReturn={useFormReturn}
-                       recaptcha={recaptcha}
                        setBusy={setBusy}
                        setKeywords={setKeywords}
                        keywords={keywords}
@@ -593,7 +581,6 @@ export default function Home({feed, updateSession, VIP}) {
                     modal === "edit" &&
                     <RHForm
                         formRef={formRef}
-                        recaptcha={recaptcha}
                         useFormReturn={useFormReturn}
                         cleanUpData={async (data) => {
                             if (mode === "live" && keywords.length + keywordsQuote.length === 0 && (getValues("everyList") || []).length === 0 && getValues("mentionList").length === 0) {
@@ -1536,7 +1523,7 @@ export default function Home({feed, updateSession, VIP}) {
                         {
                             mode === "posts" && <div className="bg-white p-2">
                                 <div className="text-lg font-bold">Post List</div>
-                                <PostsEdit useFormReturn={useFormReturn} recaptcha={recaptcha} setBusy={setBusy}/>
+                                <PostsEdit useFormReturn={useFormReturn} setBusy={setBusy}/>
                             </div>
                         }
 
@@ -1648,9 +1635,6 @@ export default function Home({feed, updateSession, VIP}) {
                                         input.type = 'file';
                                         input.accept = "application/json"
                                         input.onchange = () => {
-                                            if (typeof recaptcha === 'undefined') {
-                                                return;
-                                            }
 
                                             // getting a hold of the file reference
                                             let file = input.files[0];
@@ -1679,7 +1663,6 @@ export default function Home({feed, updateSession, VIP}) {
                                                     allowLabels = allowLabels || SUPPORTED_CW_LABELS;
                                                     mustLabels = mustLabels || [];
 
-                                                    const captcha = await getCaptcha(recaptcha);
                                                     console.log("parsed", JSON.stringify(parsed, null, 2));
                                                     let {
                                                         data:{
@@ -1689,7 +1672,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                             everyList, everyListSync,
                                                             viewers, viewersSync
                                                         }
-                                                    } = await localPost("/check/lists_users", {captcha, data:parsed});
+                                                    } = await localPost("/check/lists_users", {data:parsed});
 
 
 
@@ -1725,8 +1708,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                     if (mode === "posts") {
                                                         let posts = [];
                                                         if (_posts.length > 0) {
-                                                            const captcha = await getCaptcha(recaptcha);
-                                                            const result = await localGet("/check/posts", {captcha, posts:_posts});
+                                                            const result = await localGet("/check/posts", {posts:_posts});
                                                             if (result.status === 200 && result.data.posts.length > 0) {
                                                                 posts = result.data.posts;
                                                             }
@@ -1804,8 +1786,7 @@ export default function Home({feed, updateSession, VIP}) {
 
 
                                                         if (sticky) {
-                                                            const captcha = await getCaptcha(recaptcha);
-                                                            const result = await localGet("/check/posts", {captcha, posts:[sticky]});
+                                                            const result = await localGet("/check/posts", {posts:[sticky]});
                                                             if (result.status === 200 && result.data.posts.length > 0) {
                                                                 const [post] = result.data.posts;
                                                                 if (post) {

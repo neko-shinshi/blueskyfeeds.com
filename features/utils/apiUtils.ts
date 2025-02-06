@@ -3,7 +3,6 @@ import {connectToDatabase} from "features/utils/dbUtils";
 import {getServerSession} from "next-auth";
 import {authOptions} from "pages/api/auth/[...nextauth]";
 import {removeUndefined} from "features/utils/validationUtils";
-import {testRecaptcha} from "features/utils/recaptchaUtils";
 import {getToken} from "next-auth/jwt";
 
 export const getSession = async (req, res) => {
@@ -21,7 +20,7 @@ const deduplicatedPromise = (req, res, validation, getDB, callback) => {
         }
 
         const data = req.method == "GET"? req.query : req.body;
-        if (!validation(data) || !data.captcha || !(await testRecaptcha(data.captcha))) {
+        if (!validation(data)) {
             res.status(400).send(); return;
         }
 
@@ -37,17 +36,9 @@ const deduplicatedPromise = (req, res, validation, getDB, callback) => {
 
 
 
-export const userPromise = (req, res, type:"POST"|"GET"|"DELETE", captcha, getDB, validation, callback) => {
+export const userPromise = (req, res, type:"POST"|"GET"|"DELETE", getDB, validation, callback) => {
     if (req.method === type) {
-        if (captcha) {
-            return deduplicatedPromise(req, res, validation, getDB, async ({db}) => {
-                const token = await getToken({req});
-                if (!token) {
-                    res.status(401).send(); return;
-                }
-                callback({db, token});
-            });
-        } else {
+
             return new Promise(async resolve => {
                 const token = await getToken({req});
                 if (!token) {
@@ -62,6 +53,6 @@ export const userPromise = (req, res, type:"POST"|"GET"|"DELETE", captcha, getDB
                     callback({token});
                 }
             });
-        }
+
     }
 }

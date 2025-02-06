@@ -2,8 +2,8 @@ import {userPromise} from "features/utils/apiUtils";
 import {getActorsInfo, rebuildAgentFromToken} from "features/utils/bsky";
 
 export default async function handler(req, res) {
-    return userPromise(req, res, "GET", true, false,
-        ({list, captcha}) => !!list && !!captcha,
+    return userPromise(req, res, "GET", true,
+        ({list}) => !!list,
         async ({token}) => {
             const agent = await rebuildAgentFromToken(token);
             if (!agent) {res.status(401).send(); return;}
