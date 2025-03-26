@@ -50,29 +50,40 @@ export const getCustomFeeds = async (agent) => {
     return results;
 }
 
-const getSavedFeedIds = async (agent) => {
-    let { data} = await agent.api.app.bsky.actor.getPreferences();
-    const feeds = data.preferences.find(x =>  x["$type"] === "app.bsky.actor.defs#savedFeedsPref");
-    if (feeds) {
-        const {$type, ...rest} = feeds;
-        return rest;
-    }
-
-    return {};
-}
-
-
 export const getSavedFeeds = async (agent) => {
-    const feeds = await getSavedFeedIds(agent);
-    if (feeds && feeds.saved && feeds.saved.length > 0) {
-        let {data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feeds.saved});
+    let { data} = await agent.api.app.bsky.actor.getPreferences();
+    const feedsV2 = data.preferences.find(x =>  x["$type"] === "app.bsky.actor.defs#savedFeedsPrefV2");
+    if (feedsV2 && feedsV2.items) {
+        const feeds = [];
+        for (const feed of feedsV2.items) {
+            if (feed.type === "feed") {
+                feeds.push(feed);
+            }
+        }
+
+        let {data} = await agent.app.bsky.feed.getFeedGenerators({feeds: feeds.map(x => x.value)});
         return data.feeds.map(x => {
-            if (feeds.pinned.indexOf(x.uri) >= 0) {
+            if (feeds.find(y => y.value === x.uri)) {
                 return {...x, pinned:true};
             }
             return x;
         });
     }
+
+    const feedsV1 = data.preferences.find(x =>  x["$type"] === "app.bsky.actor.defs#savedFeedsPref");
+    if (feedsV1) {
+        const {$type, ...feeds} = feedsV1;
+        if (feeds.saved && feeds.saved.length > 0) {
+            let {data} = await agent.api.app.bsky.feed.getFeedGenerators({feeds: feeds.saved});
+            return data.feeds.map(x => {
+                if (feeds.pinned.indexOf(x.uri) >= 0) {
+                    return {...x, pinned:true};
+                }
+                return x;
+            });
+        }
+    }
+
     return [];
 }
 
