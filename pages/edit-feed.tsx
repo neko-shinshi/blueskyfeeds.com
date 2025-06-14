@@ -552,19 +552,6 @@ export default function Home({feed, updateSession, VIP}) {
                                     <a className="ml-1 inline-flex underline text-blue-500 hover:text-blue-800" href={(feed?._id && `https://bsky.app/profile/${feed?._id.split("/")[2]}/feed/${feed?._id.split("/").at(-1)}`) || `https://bsky.app/profile/${userDid}/feed/${getValues("shortName")}`} target="_blank" rel="noreferrer">here</a>.
                                 Or copy it to clipboard
                                 <BiCopy onClick={() => { navigator.clipboard.writeText((feed?._id && `https://bsky.app/profile/${feed?._id.split("/")[2]}/feed/${feed?._id.split("/").at(-1)}`) || `https://bsky.app/profile/${userDid}/feed/${getValues("shortName")}`); alert("Url copied to clipboard")}} className="ml-1 h-4 w-4 text-blue-500 hover:text-blue-800"/></div></li>
-                            <li>
-                                <div className="">It costs money to operate BlueskyFeeds.com servers, if you would like to contribute, please visit my
-                                    <a className="ml-1 inline-flex underline text-blue-500 hover:text-blue-800" href="https://ko-fi.com/anianimalsmoe" target="_blank" rel="noreferrer">
-                                        Ko-Fi
-                                        <div className="h-6 w-6">
-                                            <Image width={25} height={25} alt="ko-fi icon" src="/ko-fi.png"/>
-                                        </div>
-                                    </a>
-                                </div>
-                            </li>
-                            <li>
-                                {"I'm currently running the server as cheaply as I possibly can, but it's still about US$40/mo and I don't have many contributions for it yet"}
-                            </li>
                         </ul>
 
                         <Link href={"/my-feeds"}>
