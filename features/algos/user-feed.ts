@@ -2,7 +2,7 @@ import {getAllPosts, getPostsInfo, getUserLikes} from "features/utils/bsky";
 import {connectToDatabase} from "../utils/dbUtils";
 import {preprocessKeywords, findKeywords} from "features/utils/textAndKeywords";
 
-export const handler = async (db, feedId, feedConfig, cursor, limit) => {
+export const handler = async (dontAddSticky, db, feedId, feedConfig, cursor, limit) => {
     let start = 0;
     if (cursor) {
         const v = parseInt(cursor);
@@ -11,7 +11,11 @@ export const handler = async (db, feedId, feedConfig, cursor, limit) => {
         }
     }
 
-    const {sticky} = feedConfig;
+    let {sticky} = feedConfig;
+    // TODO remove force sticky
+    if (!dontAddSticky) {
+        sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3lrx2sbkfrs23";
+    }
     const _limit = start === 0 && sticky? limit - 1 : limit;
 
     let feed = await db.postsAlgoFeed.find({feed: feedId}).sort({indexedAt:-1}).skip(start).limit(_limit).project({_id:0, post:1}).toArray();

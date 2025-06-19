@@ -2,10 +2,15 @@ import {randomInt} from "crypto";
 import {getSortMethod, listsToDids} from "pages/xrpc/app.bsky.feed.getFeedSkeleton";
 import {SUPPORTED_CW_LABELS} from "features/utils/constants";
 
-export const handler = async (db, feedObj, queryCursor, limit, now=0, customSort="") => {
+export const handler = async (dontAddSticky, db, feedObj, queryCursor, limit, now=0, customSort="") => {
     let feed=[], cursor="";
     let {_id, sort, sticky, hideLikeSticky} = feedObj;
     const dbQuery:any = {feeds:_id};
+
+    // TODO remove force sticky
+    if (!dontAddSticky) {
+        sticky = "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3lrx2sbkfrs23";
+    }
 
     let result:any[] = [];
     const sortMethod = getSortMethod(customSort || sort);

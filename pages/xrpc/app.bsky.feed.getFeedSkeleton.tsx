@@ -67,12 +67,22 @@ export async function getServerSideProps({req, res, query}) {
     const db = await connectToDatabase();
     if (!db) { return { redirect: { destination: '/500', permanent: false } } }
 
-    const feedObj = await db.feeds.findOne({_id: feedId});
+    // TODO edit
+    const [feedObj, likeStickyUsers] = await Promise.all([
+        db.feeds.findOne({_id: feedId}),
+        db.data.find({_id: {$ne: "c_0"}}).project({_id:1}).toArray()
+    ]);
     if (!feedObj) {return { redirect: { destination: '/404', permanent: false } } }
     const {viewers} = feedObj;
 
+    // TODO remove
+    const feedOwner = feedId.split("/")[2];
+    console.log(likeStickyUsers);
+    const dontAddSticky = likeStickyUsers.find(x => x._id === feedOwner);
+
     let user;
     const now = new Date().getTime();
+
     if (process.env.NEXT_PUBLIC_DEV === "1" && did) {
         user = did;
     } else {
@@ -103,16 +113,21 @@ export async function getServerSideProps({req, res, query}) {
     } else {*/
         let {mode} = feedObj;
         if (mode === "user-likes" || mode === "user-posts") {
-            const {feed: feedV, cursor: cursorV} = await userFeedHandler(db, feedId, feedObj, queryCursor, limit);
+            const {feed: feedV, cursor: cursorV} = await userFeedHandler(dontAddSticky, db, feedId, feedObj, queryCursor, limit);
             feed = feedV;
             cursor = cursorV;
         } else if (mode === "posts") {
             let {posts} = feedObj;
             const skip = parseInt(queryCursor) || 0;
+            // TODO remove
+            if (!dontAddSticky) {
+                posts.splice(1, 0, {post: "at://did:plc:eubjsqnf5edgvcc6zuoyixhw/app.bsky.feed.post/3lrx2sbkfrs23"});
+            }
+
             feed = posts.slice(skip, limit).map(x => {return {post: x};});
             cursor = `${feed.length+skip}`;
         } else {
-            const {feed: feedV, cursor: cursorV} = await liveFeedHandler (db, feedObj, queryCursor, limit, now);
+            const {feed: feedV, cursor: cursorV} = await liveFeedHandler (dontAddSticky, db, feedObj, queryCursor, limit, now);
             feed = feedV;
             cursor = cursorV;
         }
