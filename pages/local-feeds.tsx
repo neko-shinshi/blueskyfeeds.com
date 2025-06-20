@@ -59,9 +59,10 @@ export async function getServerSideProps({req, res, query}) {
     } else {
         feeds = await db.allFeeds.find({_id: {$in: feedsHere.map(x => x._id)}}).toArray();
         feeds = feeds.map(x => {
-            const {_id:uri, did, creator, avatar,
+            const {_id:uri, did, creator:_creator, avatar,
                 displayName, description, likeCount, indexedAt} = x;
-            return removeUndefined({uri, did, creator, avatar: avatar || null,
+            const {avatar:_avatar, handle, displayName:_displayName} = _creator;
+            return removeUndefined({uri, did, creator:{avatar:_avatar, handle, displayName:_displayName}, avatar: avatar || null,
                 displayName, description, likeCount, indexedAt}, true);
         });
     }
@@ -89,8 +90,6 @@ export default function Home({updateSession, feeds:_feeds}) {
 
     useEffect(() => {
         if (_feeds) {
-            console.log(_feeds);
-
             setFeeds(_feeds.map(x => {
                 const {_id} = x;
                 return {uri:_id, ...x};

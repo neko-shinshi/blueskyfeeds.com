@@ -37,9 +37,15 @@ export async function getServerSideProps({req, res, params}) {
 
     let localFeed:any = await db.feeds.findOne({_id: feed});
     if (localFeed) {
-        let {keywords:storedKeywords, mode, subMode, keywordSetting,languages, pics,postLevels, sort, viewers} = localFeed;
+        let {keywords:storedKeywords, mode, subMode, keywordSetting,languages, pics,postLevels, sort, viewers, posts, everyListBlockKeywordSetting, everyListBlockKeyword, keywordsQuote, sticky} = localFeed;
         mode = mode === "user"? `${mode}-${subMode}` : mode;
-        const keywords = storedKeywords?.map(x => {
+        posts = posts || [];
+        sticky = sticky || "";
+        storedKeywords = storedKeywords || [];
+        everyListBlockKeywordSetting = everyListBlockKeywordSetting || [];
+        everyListBlockKeyword = everyListBlockKeyword || [];
+        keywordsQuote = keywordsQuote || [];
+        const keywords = storedKeywords.map(x => {
             const {t, a} = x;
             let o:any;
             try {
@@ -56,19 +62,23 @@ export async function getServerSideProps({req, res, params}) {
             return o;
         }) || [];
 
+
+
         if (Array.isArray(viewers) && viewers.length > 0) {
             if (viewers.includes(agent.session.did)) {
-                localFeed = {keywords, storedKeywords, mode, keywordSetting, languages, pics, postLevels, sort};
+                localFeed = {keywords, storedKeywords, mode, keywordSetting, languages, pics, postLevels, sort, posts, everyListBlockKeywordSetting, everyListBlockKeyword, keywordsQuote,sticky};
             } else {
                 // Private feeds don't show config data
                 localFeed = {};
             }
         } else {
-            localFeed = {keywords, storedKeywords, mode, keywordSetting, languages, pics, postLevels, sort};
+            localFeed = {keywords, storedKeywords, mode, keywordSetting, languages, pics, postLevels, sort, posts, everyListBlockKeywordSetting, everyListBlockKeyword, keywordsQuote, sticky};
         }
     } else {
         localFeed = {};
     }
+
+    console.log(localFeed);
 
 
 
@@ -202,9 +212,8 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
 
                             <button type="button"
                                     onClick={() => {
-                                        const {mode,keywords:_keywords, languages, postLevels, pics, keywordSetting, sort} = feedDescription;
-                                        const keywords = _keywords.map(x => {return {a:x.a, t:x.tt}});
-                                        const result = {mode,keywords, languages, postLevels, pics, keywordSetting, sort};
+                                        const {mode,storedKeywords, languages, postLevels, pics, keywordSetting, sort, posts, everyListBlockKeywordSetting, everyListBlockKeyword, keywordsQuote, sticky} = feedDescription;
+                                        const result = {mode,keywords:storedKeywords, languages, postLevels, pics, keywordSetting, sort, posts, everyListBlockKeywordSetting, everyListBlockKeyword, keywordsQuote, sticky};
                                         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
                                         const dlAnchorElem = document.createElement('a');
                                         dlAnchorElem.setAttribute("href",     dataStr     );
