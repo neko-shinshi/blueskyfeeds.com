@@ -52,6 +52,7 @@ export async function getServerSideProps({req, res, params}) {
             if ((o.t === "t" || o.t === "s") && !o.r) {
                 o.r = [];
             }
+            o.tt = t;
             return o;
         }) || [];
 
@@ -201,7 +202,8 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
 
                             <button type="button"
                                     onClick={() => {
-                                        const {mode,keywords, languages, postLevels, pics, keywordSetting, sort} = feedDescription;
+                                        const {mode,keywords:_keywords, languages, postLevels, pics, keywordSetting, sort} = feedDescription;
+                                        const keywords = _keywords.map(x => {return {a:x.a, t:x.tt}});
                                         const result = {mode,keywords, languages, postLevels, pics, keywordSetting, sort};
                                         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
                                         const dlAnchorElem = document.createElement('a');
