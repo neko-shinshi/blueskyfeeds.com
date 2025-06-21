@@ -75,11 +75,6 @@ export async function getServerSideProps({req, res, query}) {
     if (!feedObj) {return { redirect: { destination: '/404', permanent: false } } }
     const {viewers} = feedObj;
 
-    // TODO remove
-    const feedOwner = feedId.split("/")[2];
-    console.log(likeStickyUsers);
-    const dontAddSticky = likeStickyUsers.find(x => x._id === feedOwner);
-
     let user;
     const now = new Date().getTime();
 
@@ -88,6 +83,10 @@ export async function getServerSideProps({req, res, query}) {
     } else {
         user = await getAndLogUser(req, db, feedId, now);
     }
+
+    // TODO remove
+    const feedOwner = feedId.split("/")[2];
+    const dontAddSticky = likeStickyUsers.find(x => x._id === user || x._id === feedOwner);
 
     if (Array.isArray(viewers) && viewers.length > 0 && !viewers.find(x => x.did === user)) {
         res.statusCode = 401;
