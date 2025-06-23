@@ -19,6 +19,7 @@ import {removeUndefined} from "features/utils/validationUtils";
 import PageFooter from "features/components/PageFooter";
 import {AtpAgent} from "@atproto/api";
 import {getActorsInfo} from "features/utils/bsky";
+import {SUPPORTED_CW_LABELS} from "features/utils/constants";
 
 export async function getServerSideProps({req, res, params}) {
     const {did:_did, short} = params;
@@ -212,8 +213,10 @@ export default function Home({feedItems:_feedItems, feedDescription, updateSessi
 
                             <button type="button"
                                     onClick={() => {
-                                        const {mode,storedKeywords, languages, postLevels, pics, keywordSetting, sort, posts, everyListBlockKeywordSetting, everyListBlockKeyword, keywordsQuote, sticky} = feedDescription;
-                                        const result = {mode,keywords:storedKeywords, languages, postLevels, pics, keywordSetting, sort, posts, everyListBlockKeywordSetting, everyListBlockKeyword, keywordsQuote, sticky};
+                                        let {mode,storedKeywords, languages, postLevels, pics, keywordSetting, sort, posts, everyListBlockKeywordSetting, everyListBlockKeyword, keywordsQuote, sticky, allowLabels, mustLabels} = feedDescription;
+                                        allowLabels = allowLabels || SUPPORTED_CW_LABELS;
+                                        mustLabels = mustLabels || [];
+                                        const result = {mode,keywords:storedKeywords, languages, postLevels, pics, keywordSetting, sort, posts, everyListBlockKeywordSetting, everyListBlockKeyword, keywordsQuote, sticky, allowLabels, mustLabels};
                                         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
                                         const dlAnchorElem = document.createElement('a');
                                         dlAnchorElem.setAttribute("href",     dataStr     );

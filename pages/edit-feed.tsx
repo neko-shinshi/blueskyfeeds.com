@@ -1571,7 +1571,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                 blockList, blockListSync,
                                                 everyList, everyListSync,
                                                 viewers, viewersSync,
-                                                mustUrl, blockUrl, copy, highlight, sticky, posts,
+                                                mustUrl, blockUrl, copy, highlight, sticky, posts, allowLabels, mustLabels
                                             } = getValues();
 
                                             allowList = (allowList || []).map(x => x.did);
@@ -1603,7 +1603,7 @@ export default function Home({feed, updateSession, VIP}) {
                                                 blockList, blockListSync: blockListSync || "",
                                                 everyList, everyListSync: everyListSync || "",
                                                 viewers, viewersSync: viewersSync || "",
-                                                mustUrl, blockUrl, mode: modeText,
+                                                mustUrl, blockUrl, mode: modeText, allowLabels, mustLabels
                                             };
                                             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(result, null, 2));
                                             const dlAnchorElem = document.createElement('a');
